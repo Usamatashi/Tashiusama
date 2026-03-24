@@ -60,6 +60,13 @@ export default function AdminLayout() {
           tabBarIcon: ({ color }) => <Feather name="user-plus" size={22} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="claims"
+        options={{
+          title: "Claims",
+          tabBarIcon: ({ color }) => <Feather name="gift" size={22} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

@@ -53,3 +53,14 @@ export type QRCode = typeof qrCodesTable.$inferSelect;
 export const insertScanSchema = createInsertSchema(scansTable).omit({ id: true, scannedAt: true });
 export type InsertScan = z.infer<typeof insertScanSchema>;
 export type Scan = typeof scansTable.$inferSelect;
+
+export const claimsTable = pgTable("claims", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  pointsClaimed: integer("points_claimed").notNull(),
+  claimedAt: timestamp("claimed_at").notNull().defaultNow(),
+});
+
+export const insertClaimSchema = createInsertSchema(claimsTable).omit({ id: true, claimedAt: true });
+export type InsertClaim = z.infer<typeof insertClaimSchema>;
+export type Claim = typeof claimsTable.$inferSelect;
