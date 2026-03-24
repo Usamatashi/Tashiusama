@@ -161,3 +161,33 @@ export const ListScansResponseItem = zod.object({
   scannedAt: zod.string(),
 });
 export const ListScansResponse = zod.array(ListScansResponseItem);
+
+/**
+ * @summary List all ad banners
+ */
+export const ListAdsResponseItem = zod.object({
+  id: zod.number(),
+  imageBase64: zod.string(),
+  title: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const ListAdsResponse = zod.array(ListAdsResponseItem);
+
+/**
+ * @summary Create an ad banner (admin only)
+ */
+export const CreateAdBody = zod.object({
+  imageBase64: zod.string(),
+  title: zod.string().optional(),
+});
+
+/**
+ * @summary Delete an ad banner (admin only)
+ */
+export const DeleteAdParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteAdResponse = zod.object({
+  success: zod.boolean(),
+});

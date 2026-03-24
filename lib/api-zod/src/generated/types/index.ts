@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./ad";
 export * from "./authResponse";
+export * from "./createAdRequest";
 export * from "./createQRCodeRequest";
 export * from "./createUserRequest";
 export * from "./createUserRequestRole";

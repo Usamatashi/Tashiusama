@@ -112,3 +112,15 @@ export interface Scan {
   pointsEarned: number;
   scannedAt: string;
 }
+
+export interface Ad {
+  id: number;
+  imageBase64: string;
+  title?: string | null;
+  createdAt: string;
+}
+
+export interface CreateAdRequest {
+  imageBase64: string;
+  title?: string;
+}

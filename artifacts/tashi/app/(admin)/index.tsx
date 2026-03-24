@@ -36,7 +36,7 @@ const ACTIONS = [
     icon: "radio" as const,
     label: "Create Ads",
     desc: "Create and manage advertisements",
-    route: "/(admin)/create-qr" as const,
+    route: "/(admin)/create-ads" as const,
     gradient: ["#0D9488", "#2DD4BF"] as [string, string],
     decoration: "#2DD4BF",
   },

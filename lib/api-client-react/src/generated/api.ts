@@ -17,7 +17,9 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  Ad,
   AuthResponse,
+  CreateAdRequest,
   CreateQRCodeRequest,
   CreateUserRequest,
   CreateVehicleRequest,
@@ -1058,3 +1060,238 @@ export function useListScans<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all ad banners
+ */
+export const getListAdsUrl = () => {
+  return `/api/ads`;
+};
+
+export const listAds = async (options?: RequestInit): Promise<Ad[]> => {
+  return customFetch<Ad[]>(getListAdsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdsQueryKey = () => {
+  return [`/api/ads`] as const;
+};
+
+export const getListAdsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAds>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listAds>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAds>>> = ({
+    signal,
+  }) => listAds({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAds>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAds>>
+>;
+export type ListAdsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all ad banners
+ */
+
+export function useListAds<
+  TData = Awaited<ReturnType<typeof listAds>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listAds>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an ad banner (admin only)
+ */
+export const getCreateAdUrl = () => {
+  return `/api/ads`;
+};
+
+export const createAd = async (
+  createAdRequest: CreateAdRequest,
+  options?: RequestInit,
+): Promise<Ad> => {
+  return customFetch<Ad>(getCreateAdUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createAdRequest),
+  });
+};
+
+export const getCreateAdMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAd>>,
+    TError,
+    { data: BodyType<CreateAdRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAd>>,
+  TError,
+  { data: BodyType<CreateAdRequest> },
+  TContext
+> => {
+  const mutationKey = ["createAd"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAd>>,
+    { data: BodyType<CreateAdRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAd(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAd>>
+>;
+export type CreateAdMutationBody = BodyType<CreateAdRequest>;
+export type CreateAdMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an ad banner (admin only)
+ */
+export const useCreateAd = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAd>>,
+    TError,
+    { data: BodyType<CreateAdRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAd>>,
+  TError,
+  { data: BodyType<CreateAdRequest> },
+  TContext
+> => {
+  return useMutation(getCreateAdMutationOptions(options));
+};
+
+/**
+ * @summary Delete an ad banner (admin only)
+ */
+export const getDeleteAdUrl = (id: number) => {
+  return `/api/ads/${id}`;
+};
+
+export const deleteAd = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteAdUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAd>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAd>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAd"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAd>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAd(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAd>>
+>;
+
+export type DeleteAdMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an ad banner (admin only)
+ */
+export const useDeleteAd = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAd>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAd>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteAdMutationOptions(options));
+};

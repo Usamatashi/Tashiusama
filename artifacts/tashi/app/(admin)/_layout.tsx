@@ -87,6 +87,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="create-account" />
       <Tabs.Screen name="create-qr" options={{ href: null }} />
       <Tabs.Screen name="claims" options={{ href: null }} />
+      <Tabs.Screen name="create-ads" options={{ href: null }} />
     </Tabs>
   );
 }

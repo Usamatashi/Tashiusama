@@ -6,6 +6,7 @@ import vehiclesRouter from "./vehicles";
 import qrcodesRouter from "./qrcodes";
 import scansRouter from "./scans";
 import claimsRouter from "./claims";
+import adsRouter from "./ads";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/vehicles", vehiclesRouter);
 router.use("/qrcodes", qrcodesRouter);
 router.use("/scans", scansRouter);
 router.use("/claims", claimsRouter);
+router.use("/ads", adsRouter);
 
 export default router;

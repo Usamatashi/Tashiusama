@@ -64,3 +64,14 @@ export const claimsTable = pgTable("claims", {
 export const insertClaimSchema = createInsertSchema(claimsTable).omit({ id: true, claimedAt: true });
 export type InsertClaim = z.infer<typeof insertClaimSchema>;
 export type Claim = typeof claimsTable.$inferSelect;
+
+export const adsTable = pgTable("ads", {
+  id: serial("id").primaryKey(),
+  imageBase64: text("image_base64").notNull(),
+  title: text("title"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAdSchema = createInsertSchema(adsTable).omit({ id: true, createdAt: true });
+export type InsertAd = z.infer<typeof insertAdSchema>;
+export type Ad = typeof adsTable.$inferSelect;

@@ -19,6 +19,8 @@ tags:
     description: User management
   - name: scans
     description: Scan history
+  - name: ads
+    description: Ad banner management
 paths:
   /healthz:
     get:
@@ -283,6 +285,63 @@ paths:
                 items:
                   $ref: "#/components/schemas/Scan"
 
+  /ads:
+    get:
+      operationId: listAds
+      tags: [ads]
+      summary: List all ad banners
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of ads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ad"
+    post:
+      operationId: createAd
+      tags: [ads]
+      summary: Create an ad banner (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdRequest"
+      responses:
+        "201":
+          description: Ad created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ad"
+
+  /ads/{id}:
+    delete:
+      operationId: deleteAd
+      tags: [ads]
+      summary: Delete an ad banner (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ad deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -482,3 +541,30 @@ components:
         - vehicleName
         - pointsEarned
         - scannedAt
+
+    Ad:
+      type: object
+      properties:
+        id:
+          type: integer
+        imageBase64:
+          type: string
+        title:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - imageBase64
+        - createdAt
+
+    CreateAdRequest:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+        title:
+          type: string
+      required:
+        - imageBase64

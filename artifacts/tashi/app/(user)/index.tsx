@@ -29,6 +29,12 @@ interface ClaimRecord {
   claimedAt: string;
 }
 
+interface AdBanner {
+  id: number;
+  imageBase64: string;
+  title: string | null;
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
@@ -39,6 +45,12 @@ async function getToken(): Promise<string> {
   const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
   return (await AsyncStorage.getItem("tashi_token")) || "";
 }
+
+const FALLBACK_BANNERS = [
+  { bg: Colors.primary, title: "Welcome!", subtitle: "Earn points by scanning QR codes" },
+  { bg: "#C5611A", title: "Earn Points", subtitle: "Scan QR codes after every service" },
+  { bg: "#2D2D2D", title: "Redeem Rewards", subtitle: "Use your points for exclusive benefits" },
+];
 
 export default function UserHomeScreen() {
   const { user, refreshUser } = useAuth();
@@ -52,13 +64,21 @@ export default function UserHomeScreen() {
   const [claimHistory, setClaimHistory] = useState<ClaimRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [justClaimed, setJustClaimed] = useState<number | null>(null);
+  const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
 
-  const BANNERS = [
-    { id: 0, bg: Colors.primary, title: "Welcome back!", subtitle: user?.email || "", tag: user?.role?.toUpperCase() || "" },
-    { id: 1, bg: "#C5611A", title: "Earn Points", subtitle: "Scan QR codes after every service", tag: "" },
-    { id: 2, bg: "#2D2D2D", title: "Redeem Rewards", subtitle: "Use your points for exclusive benefits", tag: "" },
-    { id: 3, bg: "#1A5276", title: "Track History", subtitle: "View all your scan activity", tag: "" },
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) setAdBanners(await res.json());
+      } catch {
+        // fall back to static banners
+      }
+    })();
+  }, []);
 
   useEffect(() => { refreshUser(); }, []);
 
@@ -151,19 +171,25 @@ export default function UserHomeScreen() {
             setBannerIndex(idx);
           }}
         >
-          {BANNERS.map((b) => (
-            <View key={b.id} style={[styles.banner, { backgroundColor: b.bg, width: BANNER_WIDTH }]}>
-              {b.tag ? (
-                <View style={styles.bannerTag}><Text style={styles.bannerTagText}>{b.tag}</Text></View>
-              ) : null}
-              <Text style={styles.bannerTitle}>{b.title}</Text>
-              <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>
-            </View>
-          ))}
+          {adBanners.length > 0
+            ? adBanners.map((ad) => (
+                <Image
+                  key={ad.id}
+                  source={{ uri: ad.imageBase64 }}
+                  style={[styles.bannerImage, { width: BANNER_WIDTH }]}
+                  resizeMode="cover"
+                />
+              ))
+            : FALLBACK_BANNERS.map((b, i) => (
+                <View key={i} style={[styles.banner, { backgroundColor: b.bg, width: BANNER_WIDTH }]}>
+                  <Text style={styles.bannerTitle}>{b.title}</Text>
+                  <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>
+                </View>
+              ))}
         </ScrollView>
 
         <View style={styles.dots}>
-          {BANNERS.map((_, i) => (
+          {(adBanners.length > 0 ? adBanners : FALLBACK_BANNERS).map((_, i) => (
             <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
           ))}
         </View>
@@ -312,6 +338,7 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, gap: 16, paddingBottom: 32 },
   bannerScroll: { borderRadius: 16 },
   banner: { height: 160, borderRadius: 16, padding: 24, justifyContent: "flex-end" },
+  bannerImage: { height: 160, borderRadius: 16 },
   bannerTag: {
     alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.25)",
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8,
