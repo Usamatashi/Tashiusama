@@ -15,13 +15,13 @@ export default function AdminLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.adminCard,
-          borderTopColor: "#333",
+          backgroundColor: Colors.white,
+          borderTopColor: Colors.border,
           height: Platform.OS === "web" ? 84 : 60,
           paddingBottom: Platform.OS === "web" ? 34 : 8,
         },
         tabBarActiveTintColor: Colors.adminAccent,
-        tabBarInactiveTintColor: "#888",
+        tabBarInactiveTintColor: Colors.textLight,
         tabBarLabelStyle: { fontFamily: "Inter_500Medium", fontSize: 11 },
       }}
     >

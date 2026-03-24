@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
   },
   iconBox: {
     width: 52,

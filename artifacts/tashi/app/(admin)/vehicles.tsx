@@ -127,7 +127,7 @@ export default function VehiclesScreen() {
         onRefresh={fetchVehicles}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="truck" size={48} color="#444" />
+            <Feather name="truck" size={48} color={Colors.textLight} />
             <Text style={styles.emptyText}>No vehicles yet. Tap + to add one.</Text>
           </View>
         }
@@ -156,14 +156,14 @@ export default function VehiclesScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="Vehicle name"
-              placeholderTextColor="#555"
+              placeholderTextColor={Colors.textLight}
               value={name}
               onChangeText={setName}
             />
             <TextInput
               style={styles.modalInput}
               placeholder="Points value"
-              placeholderTextColor="#555"
+              placeholderTextColor={Colors.textLight}
               value={points}
               onChangeText={setPoints}
               keyboardType="numeric"
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
   addBtn: {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
   },
   cardLeft: { flex: 1 },
   vehicleName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
@@ -224,37 +224,37 @@ const styles = StyleSheet.create({
   cardActions: { flexDirection: "row", gap: 12 },
   iconBtn: { padding: 8 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },
-  emptyText: { color: "#666", fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+  emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modal: {
-    backgroundColor: "#222",
+    backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 28,
     gap: 14,
   },
-  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText, marginBottom: 4 },
+  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text, marginBottom: 4 },
   modalInput: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     fontFamily: "Inter_400Regular",
-    color: Colors.adminText,
+    color: Colors.text,
   },
   modalBtns: { flexDirection: "row", gap: 12, marginTop: 8 },
   cancelBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#444",
+    borderColor: Colors.border,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
-  cancelBtnText: { color: "#888", fontFamily: "Inter_600SemiBold", fontSize: 16 },
+  cancelBtnText: { color: Colors.textSecondary, fontFamily: "Inter_600SemiBold", fontSize: 16 },
   saveBtn: {
     flex: 1,
     backgroundColor: Colors.adminAccent,

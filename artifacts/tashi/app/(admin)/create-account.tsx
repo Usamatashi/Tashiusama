@@ -92,7 +92,7 @@ export default function CreateAccountScreen() {
           <TextInput
             style={styles.input}
             placeholder="Enter email address"
-            placeholderTextColor="#555"
+            placeholderTextColor={Colors.textLight}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -106,7 +106,7 @@ export default function CreateAccountScreen() {
           <TextInput
             style={styles.input}
             placeholder="Enter password (min. 6 chars)"
-            placeholderTextColor="#555"
+            placeholderTextColor={Colors.textLight}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -133,23 +133,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
   scroll: { padding: 20, gap: 24 },
   inputGroup: { gap: 10 },
-  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#aaa" },
+  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
   roleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   roleBtn: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#444",
+    borderColor: Colors.border,
     backgroundColor: "transparent",
   },
   roleBtnActive: { backgroundColor: Colors.adminAccent, borderColor: Colors.adminAccent },
-  roleBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#888" },
+  roleBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
   roleBtnTextActive: { color: Colors.white },
   input: {
     backgroundColor: Colors.adminCard,

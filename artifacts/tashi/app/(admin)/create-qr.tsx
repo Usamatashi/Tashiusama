@@ -104,7 +104,7 @@ export default function CreateQRScreen() {
             <QRCode
               value={createdQR.qrNumber}
               size={220}
-              color={Colors.adminBg}
+              color={Colors.black}
               backgroundColor={Colors.white}
               getRef={(ref) => (qrRef.current = ref)}
             />
@@ -140,7 +140,7 @@ export default function CreateQRScreen() {
           <TextInput
             style={styles.input}
             placeholder="Enter unique QR number"
-            placeholderTextColor="#555"
+            placeholderTextColor={Colors.textLight}
             value={qrNumber}
             onChangeText={setQrNumber}
             keyboardType="default"
@@ -157,10 +157,10 @@ export default function CreateQRScreen() {
             }}
             activeOpacity={0.8}
           >
-            <Text style={[styles.pickerText, !selectedVehicle && { color: "#555" }]}>
+            <Text style={[styles.pickerText, !selectedVehicle && { color: Colors.textLight }]}>
               {selectedVehicle ? `${selectedVehicle.name} (${selectedVehicle.points} pts)` : "Select a vehicle..."}
             </Text>
-            <Feather name={showPicker ? "chevron-up" : "chevron-down"} size={20} color="#888" />
+            <Feather name={showPicker ? "chevron-up" : "chevron-down"} size={20} color={Colors.textLight} />
           </TouchableOpacity>
           {showPicker && (
             <View style={styles.dropdown}>
@@ -210,17 +210,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
   scroll: { padding: 20, gap: 20 },
   resultScroll: { padding: 20, alignItems: "center", gap: 20 },
   inputGroup: { gap: 8 },
-  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#aaa" },
+  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
   input: {
     backgroundColor: Colors.adminCard,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   picker: {
     backgroundColor: Colors.adminCard,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -241,14 +241,14 @@ const styles = StyleSheet.create({
   },
   pickerText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.adminText },
   dropdown: {
-    backgroundColor: "#252525",
+    backgroundColor: Colors.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
     overflow: "hidden",
     marginTop: 4,
   },
-  dropdownLoading: { padding: 16, color: "#888", fontFamily: "Inter_400Regular", textAlign: "center" },
+  dropdownLoading: { padding: 16, color: Colors.textSecondary, fontFamily: "Inter_400Regular", textAlign: "center" },
   dropdownItem: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: Colors.border,
   },
   dropdownItemText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.adminText },
   dropdownItemPts: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.adminAccent },
@@ -285,9 +285,9 @@ const styles = StyleSheet.create({
     gap: 6,
     width: "100%",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: Colors.border,
   },
-  resultLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#888", textTransform: "uppercase" },
+  resultLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase" },
   resultValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.adminText, marginBottom: 8 },
   downloadBtn: {
     backgroundColor: Colors.adminAccent,

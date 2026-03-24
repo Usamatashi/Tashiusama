@@ -13,9 +13,9 @@ export const Colors = {
   success: "#27AE60",
   error: "#E74C3C",
   warning: "#F39C12",
-  adminBg: "#1A1A1A",
-  adminCard: "#2A2A2A",
-  adminText: "#FFFFFF",
+  adminBg: "#FFFFFF",
+  adminCard: "#F5F5F5",
+  adminText: "#1A1A1A",
   adminAccent: "#E87722",
 };
 
