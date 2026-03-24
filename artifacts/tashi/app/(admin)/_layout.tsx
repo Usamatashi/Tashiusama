@@ -1,14 +1,20 @@
 import { Redirect } from "expo-router";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
 export default function AdminLayout() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+
   if (!user) return <Redirect href="/login" />;
   if (user.role !== "admin") return <Redirect href="/(user)" />;
+
+  const tabBarHeight = Platform.OS === "web" ? 84 : 56 + insets.bottom;
+  const tabBarPaddingBottom = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
     <Tabs
@@ -17,8 +23,9 @@ export default function AdminLayout() {
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
-          height: Platform.OS === "web" ? 84 : 60,
-          paddingBottom: Platform.OS === "web" ? 34 : 8,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: Colors.adminAccent,
         tabBarInactiveTintColor: Colors.textLight,
