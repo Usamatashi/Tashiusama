@@ -1,0 +1,110 @@
+Build a complete mobile app (Expo / React Native preferred) with role-based authentication, distinct UIs, QR generation, and account management.
+
+🔐 AUTHENTICATION & ROLES
+
+Implement email + password authentication with role-based access.
+
+Roles (4 types):
+Admin (default, highest privileges)
+Salesman
+Mechanic
+Retailer
+All accounts must be stored in the database with:
+role
+email
+password (secure)
+On login, redirect users to UI based on role
+Only Admin can access admin UI
+👑 ADMIN ACCOUNT — DISTINCT UI
+
+When an Admin logs in, show a completely different dashboard UI.
+
+Admin Dashboard UI must include:
+1️⃣ QR Code Creation Icon
+Icon/button labeled “Create QR Code”
+On press → open a new page
+QR Creation Page:
+Input Field 1: Number (used to generate QR code)
+Input Field 2: Assign QR to Vehicle (dropdown or selector)
+On submit:
+Generate a QR code
+Save QR data in database:
+QR number
+Assigned vehicle
+Points
+Status (unused / used)
+After QR creation:
+Show the QR visually
+Provide a Download QR icon/button
+Allow QR to be saved as image (PNG)
+2️⃣ Vehicle & Points Management Icon
+Icon/button labeled “Vehicles & Points”
+On press → open vehicle management page
+Admin can:
+Add vehicle name
+Assign points per vehicle
+Edit / delete vehicles
+Store vehicle list and points in database
+Vehicles are later selectable during QR creation
+3️⃣ Create New Accounts (Bottom Tab)
+A bottom tab/button labeled “Create Account”
+Create Account Page:
+Dropdown: Select Account Type
+Admin
+Salesman
+Mechanic
+Retailer
+Input:
+Email
+Password
+On submit:
+Create user in authentication system
+Store role in database
+All created users must be able to log in with their credentials
+👤 NORMAL USER ACCOUNTS (Salesman, Mechanic, Retailer)
+
+When non-admin users log in, show the standard user UI.
+
+Normal User UI:
+White background
+Original brand logo on top
+Large scrollable banner carousel at top
+Show Total Points only
+Bottom fixed button: “Scan QR Now”
+WhatsApp support icon on top right
+Drawer menu with:
+Profile
+My Points
+Scan History
+Rewards
+Help & Support
+Logout
+QR Scan Logic (Mechanic):
+Scan QR
+Validate QR:
+Must exist
+Must not be already used
+Fetch assigned vehicle
+Add points based on vehicle
+Mark QR as used
+Update points in real time
+🗂 DATABASE REQUIREMENTS
+
+Use Firebase or any backend with collections/tables like:
+
+users (email, role, points)
+vehicles (name, points)
+qrcodes (number, vehicle, points, status)
+scans (userId, qrId, timestamp)
+🎯 UX & TECH RULES
+Admin UI and User UI must be visually distinct
+Clean, simple, mobile-first design
+Role-based routing (no admin access for users)
+Secure authentication
+Modular, readable code
+Optimized for low-end Android devices
+🚫 DO NOT INCLUDE
+No role mixing
+No admin features in user UI
+No complex analytics dashboards
+No dark theme
