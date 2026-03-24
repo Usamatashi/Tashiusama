@@ -22,16 +22,16 @@ const ACTIONS = [
     route: "/(admin)/create-qr" as const,
   },
   {
-    icon: "truck" as const,
-    label: "Vehicles & Points",
-    desc: "Manage vehicle point values",
-    route: "/(admin)/vehicles" as const,
+    icon: "gift" as const,
+    label: "Claim Rewards",
+    desc: "Review and approve reward claims",
+    route: "/(admin)/claims" as const,
   },
   {
-    icon: "user-plus" as const,
-    label: "Create Account",
-    desc: "Add new team members",
-    route: "/(admin)/create-account" as const,
+    icon: "radio" as const,
+    label: "Create Ads",
+    desc: "Create and manage advertisements",
+    route: "/(admin)/create-qr" as const,
   },
 ];
 
@@ -47,17 +47,9 @@ export default function AdminDashboard() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => router.push("/(admin)/claims")}
-            style={styles.headerBtn}
-          >
-            <Feather name="gift" size={22} color={Colors.adminAccent} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={logout} style={styles.headerBtn}>
-            <Feather name="log-out" size={22} color={Colors.adminAccent} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={logout} style={styles.headerBtn}>
+          <Feather name="log-out" size={22} color={Colors.adminAccent} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -100,11 +92,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 100,
     height: 50,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
   headerBtn: {
     padding: 8,
