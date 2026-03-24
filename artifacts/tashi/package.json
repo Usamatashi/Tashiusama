@@ -54,5 +54,10 @@
     "typescript": "~5.9.2",
     "zod": "catalog:",
     "zod-validation-error": "^3.4.0"
+  },
+  "dependencies": {
+    "@react-navigation/drawer": "^7.9.5",
+    "expo-camera": "^17.0.10",
+    "react-native-qrcode-svg": "^6.3.21"
   }
 }

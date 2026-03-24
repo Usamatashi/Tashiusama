@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface Scan {
+  id: number;
+  qrNumber: string;
+  vehicleName: string;
+  pointsEarned: number;
+  scannedAt: string;
 }

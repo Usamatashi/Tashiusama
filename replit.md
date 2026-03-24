@@ -21,7 +21,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server (port 8080, path /api)
+│   └── tashi/              # Expo React Native mobile app (port 19190)
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -90,6 +91,20 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 ### `lib/api-client-react` (`@workspace/api-client-react`)
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+
+### `artifacts/tashi` (`@workspace/tashi`)
+
+Expo React Native mobile app with role-based authentication.
+
+- **Roles**: Admin, Salesman, Mechanic, Retailer
+- **Admin screens**: Dashboard, Create QR Code (with QR display), Vehicles & Points (CRUD), Create Account
+- **User screens**: Home (banner carousel + points display), Profile, My Points, Scan History, Rewards
+- **Mechanic-only**: QR code scanner using `expo-camera` CameraView
+- **Navigation**: Admin uses tabs, non-admin uses drawer with custom header
+- **Auth**: JWT stored in AsyncStorage, auto-restored on app open
+- **API base URL**: `https://${EXPO_PUBLIC_DOMAIN}` (set via dev script env vars)
+- Admin credentials: `admin@tashi.com` / `admin123`
+- Colors: primary `#E87722` (orange), adminBg `#1A1A1A` (dark)
 
 ### `scripts` (`@workspace/scripts`)
 

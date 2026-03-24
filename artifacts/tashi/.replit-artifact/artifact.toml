@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Tashi"
+version = "1.0.0"
+id = "artifacts/tashi"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 19190
+
+[services.development]
+run = "pnpm --filter @workspace/tashi run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tashi", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/tashi", "run", "serve" ]
+
+[services.env]
+PORT = "19190"
+BASE_PATH = "/"

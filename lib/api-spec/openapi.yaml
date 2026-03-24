@@ -1,22 +1,30 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Tashi API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: vehicles
+    description: Vehicle management
+  - name: qrcodes
+    description: QR code management
+  - name: users
+    description: User management
+  - name: scans
+    description: Scan history
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +32,263 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /vehicles:
+    get:
+      operationId: listVehicles
+      tags: [vehicles]
+      summary: List all vehicles
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vehicle"
+    post:
+      operationId: createVehicle
+      tags: [vehicles]
+      summary: Create a vehicle (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVehicleRequest"
+      responses:
+        "201":
+          description: Vehicle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+
+  /vehicles/{id}:
+    put:
+      operationId: updateVehicle
+      tags: [vehicles]
+      summary: Update a vehicle (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVehicleRequest"
+      responses:
+        "200":
+          description: Vehicle updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+    delete:
+      operationId: deleteVehicle
+      tags: [vehicles]
+      summary: Delete a vehicle (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Vehicle deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /qrcodes:
+    get:
+      operationId: listQRCodes
+      tags: [qrcodes]
+      summary: List all QR codes (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of QR codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QRCode"
+    post:
+      operationId: createQRCode
+      tags: [qrcodes]
+      summary: Create a QR code (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQRCodeRequest"
+      responses:
+        "201":
+          description: QR code created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QRCode"
+
+  /qrcodes/scan:
+    post:
+      operationId: scanQRCode
+      tags: [qrcodes]
+      summary: Scan and validate a QR code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanQRCodeRequest"
+      responses:
+        "200":
+          description: QR code scanned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResult"
+        "400":
+          description: Invalid or already used QR code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /scans:
+    get:
+      operationId: listScans
+      tags: [scans]
+      summary: List scan history for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scan"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +298,187 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, salesman, mechanic, retailer]
+        points:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - email
+        - role
+        - points
+        - createdAt
+
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, salesman, mechanic, retailer]
+      required:
+        - email
+        - password
+        - role
+
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        points:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - points
+        - createdAt
+
+    CreateVehicleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        points:
+          type: integer
+      required:
+        - name
+        - points
+
+    QRCode:
+      type: object
+      properties:
+        id:
+          type: integer
+        qrNumber:
+          type: string
+        vehicleId:
+          type: integer
+        vehicleName:
+          type: string
+        points:
+          type: integer
+        status:
+          type: string
+          enum: [unused, used]
+        createdAt:
+          type: string
+      required:
+        - id
+        - qrNumber
+        - vehicleId
+        - vehicleName
+        - points
+        - status
+        - createdAt
+
+    CreateQRCodeRequest:
+      type: object
+      properties:
+        qrNumber:
+          type: string
+        vehicleId:
+          type: integer
+      required:
+        - qrNumber
+        - vehicleId
+
+    ScanQRCodeRequest:
+      type: object
+      properties:
+        qrNumber:
+          type: string
+      required:
+        - qrNumber
+
+    ScanResult:
+      type: object
+      properties:
+        pointsEarned:
+          type: integer
+        totalPoints:
+          type: integer
+        vehicleName:
+          type: string
+        message:
+          type: string
+      required:
+        - pointsEarned
+        - totalPoints
+        - vehicleName
+        - message
+
+    Scan:
+      type: object
+      properties:
+        id:
+          type: integer
+        qrNumber:
+          type: string
+        vehicleName:
+          type: string
+        pointsEarned:
+          type: integer
+        scannedAt:
+          type: string
+      required:
+        - id
+        - qrNumber
+        - vehicleName
+        - pointsEarned
+        - scannedAt

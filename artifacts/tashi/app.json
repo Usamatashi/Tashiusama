@@ -11,12 +11,17 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#E87722"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Tashi uses your camera to scan QR codes and earn points."
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": ["android.permission.CAMERA"]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,7 +33,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Tashi uses your camera to scan QR codes and earn points."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
