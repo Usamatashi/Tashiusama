@@ -42,29 +42,25 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="create-qr"
         options={{
-          title: "Create QR",
-          tabBarIcon: ({ color }) => <Feather name="plus-square" size={22} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="vehicles"
         options={{
-          title: "Vehicles",
-          tabBarIcon: ({ color }) => <Feather name="truck" size={22} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="create-account"
         options={{
-          title: "Add User",
-          tabBarIcon: ({ color }) => <Feather name="user-plus" size={22} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="claims"
         options={{
-          title: "Claims",
-          tabBarIcon: ({ color }) => <Feather name="gift" size={22} color={color} />,
+          href: null,
         }}
       />
     </Tabs>

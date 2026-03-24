@@ -47,9 +47,17 @@ export default function AdminDashboard() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-          <Feather name="log-out" size={20} color={Colors.adminAccent} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => router.push("/(admin)/claims")}
+            style={styles.headerBtn}
+          >
+            <Feather name="gift" size={22} color={Colors.adminAccent} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.headerBtn}>
+            <Feather name="log-out" size={22} color={Colors.adminAccent} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -93,7 +101,12 @@ const styles = StyleSheet.create({
     width: 100,
     height: 50,
   },
-  logoutBtn: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerBtn: {
     padding: 8,
   },
   scroll: {
