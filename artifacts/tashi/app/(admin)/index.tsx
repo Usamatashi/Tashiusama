@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,20 +19,26 @@ const ACTIONS = [
   {
     icon: "plus-square" as const,
     label: "Create QR Code",
-    desc: "Generate and assign QR codes",
+    desc: "Generate and assign QR codes to vehicles",
     route: "/(admin)/create-qr" as const,
+    gradient: ["#E87722", "#F5A54A"] as [string, string],
+    decoration: "#F5A54A",
   },
   {
     icon: "gift" as const,
     label: "Claim Rewards",
     desc: "Review and approve reward claims",
     route: "/(admin)/claims" as const,
+    gradient: ["#7B2FBE", "#A855F7"] as [string, string],
+    decoration: "#A855F7",
   },
   {
     icon: "radio" as const,
     label: "Create Ads",
     desc: "Create and manage advertisements",
     route: "/(admin)/create-qr" as const,
+    gradient: ["#0D9488", "#2DD4BF"] as [string, string],
+    decoration: "#2DD4BF",
   },
 ];
 
@@ -40,7 +47,12 @@ export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) },
+      ]}
+    >
       <View style={styles.header}>
         <Image
           source={require("../../assets/images/tashi-logo.png")}
@@ -52,23 +64,55 @@ export default function AdminDashboard() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.greeting}>Admin Dashboard</Text>
-        <Text style={styles.email}>{user?.email}</Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.greeting}>Welcome back 👋</Text>
+        <Text style={styles.subtitle}>What would you like to do today?</Text>
 
         <View style={styles.cards}>
           {ACTIONS.map((action) => (
             <TouchableOpacity
               key={action.label}
-              style={styles.card}
               onPress={() => router.push(action.route)}
-              activeOpacity={0.8}
+              activeOpacity={0.88}
             >
-              <View style={styles.iconBox}>
-                <Feather name={action.icon} size={28} color={Colors.adminAccent} />
-              </View>
-              <Text style={styles.cardTitle}>{action.label}</Text>
-              <Text style={styles.cardDesc}>{action.desc}</Text>
+              <LinearGradient
+                colors={action.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.card}
+              >
+                {/* Decorative circles */}
+                <View
+                  style={[
+                    styles.decCircleLarge,
+                    { backgroundColor: action.decoration },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.decCircleSmall,
+                    { backgroundColor: action.decoration },
+                  ]}
+                />
+
+                <View style={styles.cardContent}>
+                  <View style={styles.iconWrap}>
+                    <Feather name={action.icon} size={26} color="#fff" />
+                  </View>
+
+                  <View style={styles.textWrap}>
+                    <Text style={styles.cardTitle}>{action.label}</Text>
+                    <Text style={styles.cardDesc}>{action.desc}</Text>
+                  </View>
+
+                  <View style={styles.arrow}>
+                    <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.8)" />
+                  </View>
+                </View>
+              </LinearGradient>
             </TouchableOpacity>
           ))}
         </View>
@@ -80,66 +124,106 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.adminBg,
+    backgroundColor: "#F7F8FA",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   logo: {
     width: 100,
-    height: 50,
+    height: 44,
   },
   headerBtn: {
     padding: 8,
   },
   scroll: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   greeting: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: Colors.adminText,
     marginBottom: 4,
+    marginTop: 8,
   },
-  email: {
+  subtitle: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    color: "#888",
-    marginBottom: 32,
+    color: Colors.textSecondary,
+    marginBottom: 28,
   },
   cards: {
     gap: 16,
   },
   card: {
-    backgroundColor: Colors.adminCard,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  iconBox: {
+  decCircleLarge: {
+    position: "absolute",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    top: -40,
+    right: -30,
+    opacity: 0.3,
+  },
+  decCircleSmall: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    bottom: -30,
+    right: 60,
+    opacity: 0.2,
+  },
+  cardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  iconWrap: {
     width: 52,
     height: 52,
-    borderRadius: 12,
-    backgroundColor: "rgba(232,119,34,0.12)",
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.25)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 4,
+  },
+  textWrap: {
+    flex: 1,
+    gap: 4,
   },
   cardTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.adminText,
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
   cardDesc: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#888",
+    color: "rgba(255,255,255,0.8)",
+  },
+  arrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
