@@ -60,7 +60,8 @@ export default function AdminDashboard() {
           resizeMode="contain"
         />
         <TouchableOpacity onPress={logout} style={styles.headerBtn}>
-          <Feather name="log-out" size={22} color={Colors.adminAccent} />
+          <Feather name="log-out" size={16} color={Colors.adminAccent} />
+          <Text style={styles.headerBtnText}>Log out</Text>
         </TouchableOpacity>
       </View>
 
@@ -137,11 +138,24 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   logo: {
-    width: 100,
-    height: 44,
+    width: 130,
+    height: 56,
   },
   headerBtn: {
-    padding: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(232,119,34,0.1)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(232,119,34,0.25)",
+  },
+  headerBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminAccent,
   },
   scroll: {
     padding: 20,
