@@ -27,7 +27,7 @@ const BANNERS = [
   { id: 3, bg: "#1A1A1A", title: "Track History", subtitle: "View all your scan activity" },
 ];
 
-const WHATSAPP_NUMBER = "601234567890";
+const WHATSAPP_NUMBER = "923055198651";
 
 export default function UserHomeScreen() {
   const { user, refreshUser } = useAuth();
