@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -32,11 +33,9 @@ export default function TickerMarquee({
     if (textWidth === 0) return;
 
     animRef.current?.stop();
-
-    // Travel from natural start (0) to fully off the left edge
-    const duration = (textWidth / speed) * 1000;
-
     translateX.setValue(0);
+
+    const duration = (textWidth / speed) * 1000;
 
     animRef.current = Animated.loop(
       Animated.sequence([
@@ -65,6 +64,22 @@ export default function TickerMarquee({
 
   return (
     <View style={[styles.container, { height, backgroundColor }]}>
+      {/*
+       * Hidden horizontal ScrollView used purely for measurement.
+       * onContentSizeChange always returns the true content width — it is
+       * never constrained by the screen or parent width, unlike onLayout on
+       * a Text element inside a bounded container.
+       */}
+      <ScrollView
+        horizontal
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        style={styles.ruler}
+        onContentSizeChange={(w) => setTextWidth(w)}
+      >
+        <Text style={[styles.text, { color: textColor }]}>{text}</Text>
+      </ScrollView>
+
       {/* LIVE badge */}
       {badge ? (
         <View style={styles.badge}>
@@ -75,19 +90,16 @@ export default function TickerMarquee({
 
       {/* Scrolling track */}
       <View style={styles.track}>
-        {/*
-         * The Animated.Text is position:absolute so React Native sizes it to
-         * its intrinsic content width — no parent constraint applies.
-         * onLayout therefore returns the true pixel width of the text.
-         * The animation starts only once both widths are measured.
-         */}
         <Animated.Text
           style={[
             styles.text,
-            { color: textColor, transform: [{ translateX }] },
+            {
+              color: textColor,
+              width: textWidth || undefined,
+              transform: [{ translateX }],
+            },
           ]}
           numberOfLines={1}
-          onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
         >
           {text}
         </Animated.Text>
@@ -101,6 +113,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     overflow: "hidden",
+  },
+
+  ruler: {
+    position: "absolute",
+    opacity: 0,
+    top: 0,
+    left: 0,
   },
 
   badge: {
