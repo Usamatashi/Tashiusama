@@ -375,12 +375,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "stretch",
-    minHeight: 130,
+    minHeight: 90,
   },
 
   ticketLeft: {
     flex: 1,
-    paddingVertical: 22,
+    paddingVertical: 12,
     paddingLeft: 22,
     paddingRight: 8,
     justifyContent: "center",
@@ -393,14 +393,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   ticketValue: {
-    fontSize: 56,
+    fontSize: 40,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
-    lineHeight: 62,
+    lineHeight: 44,
     includeFontPadding: false,
   },
   ticketUnit: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: "rgba(255,255,255,0.75)",
     marginTop: 2,
