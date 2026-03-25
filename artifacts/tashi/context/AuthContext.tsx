@@ -61,11 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Login failed");
+    let body: any;
+    try {
+      body = await res.json();
+    } catch {
+      throw new Error("Server error. Please try again.");
     }
-    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(body?.error || "Login failed");
+    }
+    const data = body;
     const newToken = data.token as string;
     const newUser = data.user as AuthUser;
     await AsyncStorage.setItem(STORAGE_KEY_TOKEN, newToken);

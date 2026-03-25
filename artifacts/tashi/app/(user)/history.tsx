@@ -38,7 +38,7 @@ export default function HistoryScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setScans(data.reverse());
+      if (Array.isArray(data)) setScans([...data].reverse());
     } catch {}
     finally { setLoading(false); }
   };
