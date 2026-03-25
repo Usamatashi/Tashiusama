@@ -87,14 +87,16 @@ export default function UserHomeScreen() {
     if (user?.points !== undefined) setLocalPoints(user.points);
   }, [user?.points]);
 
+  const activeBanners = adBanners.length > 0 ? adBanners : FALLBACK_BANNERS;
+
   useEffect(() => {
     const interval = setInterval(() => {
-      const next = (bannerIndex + 1) % BANNERS.length;
+      const next = (bannerIndex + 1) % activeBanners.length;
       setBannerIndex(next);
       scrollRef.current?.scrollTo({ x: next * BANNER_WIDTH, animated: true });
     }, 3000);
     return () => clearInterval(interval);
-  }, [bannerIndex, BANNERS.length]);
+  }, [bannerIndex, activeBanners.length]);
 
   const fetchClaimHistory = useCallback(async () => {
     setLoadingHistory(true);
