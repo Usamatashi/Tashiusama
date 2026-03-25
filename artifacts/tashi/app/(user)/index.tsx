@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
@@ -165,7 +166,7 @@ export default function UserHomeScreen() {
           onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
           style={styles.waBtn}
         >
-          <Text style={styles.waBtnText}>💬</Text>
+          <FontAwesome name="whatsapp" size={22} color="#25D366" />
         </TouchableOpacity>
       </View>
 
