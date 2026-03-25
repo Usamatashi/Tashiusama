@@ -390,8 +390,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heroCard: {
-    width: 170,
-    aspectRatio: 1,
+    flex: 1,
+    aspectRatio: undefined,
+    minHeight: 170,
     borderRadius: 24,
     padding: 22,
     justifyContent: "flex-end",
