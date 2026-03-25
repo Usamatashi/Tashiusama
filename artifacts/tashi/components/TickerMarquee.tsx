@@ -86,6 +86,7 @@ export default function TickerMarquee({
             styles.text,
             { color: textColor, transform: [{ translateX }] },
           ]}
+          numberOfLines={1}
           onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
         >
           {text}
