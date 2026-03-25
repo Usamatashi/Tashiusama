@@ -54,10 +54,13 @@ export const insertScanSchema = createInsertSchema(scansTable).omit({ id: true, 
 export type InsertScan = z.infer<typeof insertScanSchema>;
 export type Scan = typeof scansTable.$inferSelect;
 
+export const claimStatusEnum = pgEnum("claim_status", ["pending", "received"]);
+
 export const claimsTable = pgTable("claims", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   pointsClaimed: integer("points_claimed").notNull(),
+  status: claimStatusEnum("status").notNull().default("pending"),
   claimedAt: timestamp("claimed_at").notNull().defaultNow(),
 });
 

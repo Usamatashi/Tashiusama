@@ -26,6 +26,7 @@ const WHATSAPP_NUMBER = "923055198651";
 interface ClaimRecord {
   id: number;
   pointsClaimed: number;
+  status: "pending" | "received";
   claimedAt: string;
 }
 
@@ -301,20 +302,25 @@ export default function UserHomeScreen() {
               <Text style={styles.historyEmpty}>No claims yet</Text>
             ) : (
               <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
-                {claimHistory.map((c) => (
-                  <View key={c.id} style={styles.historyItem}>
-                    <View style={styles.historyLeft}>
-                      <View style={styles.historyDot} />
-                      <View>
-                        <Text style={styles.historyPts}>{c.pointsClaimed} points claimed</Text>
-                        <Text style={styles.historyDate}>{formatDate(c.claimedAt)}</Text>
+                {claimHistory.map((c) => {
+                  const isPending = c.status === "pending";
+                  return (
+                    <View key={c.id} style={styles.historyItem}>
+                      <View style={styles.historyLeft}>
+                        <View style={[styles.historyDot, { backgroundColor: isPending ? Colors.primary : Colors.success }]} />
+                        <View>
+                          <Text style={styles.historyPts}>{c.pointsClaimed} points claimed</Text>
+                          <Text style={styles.historyDate}>{formatDate(c.claimedAt)}</Text>
+                        </View>
+                      </View>
+                      <View style={[styles.statusBadge, isPending ? styles.statusPending : styles.statusReceived]}>
+                        <Text style={[styles.statusText, { color: isPending ? Colors.primary : Colors.success }]}>
+                          {isPending ? "Pending" : "Received"}
+                        </Text>
                       </View>
                     </View>
-                    <View style={styles.historyBadge}>
-                      <Text style={styles.historyBadgeText}>+{c.pointsClaimed}</Text>
-                    </View>
-                  </View>
-                ))}
+                  );
+                })}
               </ScrollView>
             )}
           </View>
@@ -426,6 +432,8 @@ const styles = StyleSheet.create({
   historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.success },
   historyPts: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
   historyDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
-  historyBadge: { backgroundColor: `${Colors.success}15`, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  historyBadgeText: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.success },
+  statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  statusPending: { backgroundColor: `${Colors.primary}15` },
+  statusReceived: { backgroundColor: `${Colors.success}15` },
+  statusText: { fontSize: 12, fontFamily: "Inter_700Bold" },
 });

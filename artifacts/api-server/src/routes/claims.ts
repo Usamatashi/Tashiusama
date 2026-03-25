@@ -54,6 +54,7 @@ router.get("/", requireAuth, async (req, res) => {
         .select({
           id: claimsTable.id,
           pointsClaimed: claimsTable.pointsClaimed,
+          status: claimsTable.status,
           claimedAt: claimsTable.claimedAt,
           userEmail: usersTable.email,
           userRole: usersTable.role,
@@ -66,6 +67,7 @@ router.get("/", requireAuth, async (req, res) => {
       res.json(claims.map(c => ({
         id: c.id,
         pointsClaimed: c.pointsClaimed,
+        status: c.status,
         claimedAt: c.claimedAt.toISOString(),
         userEmail: c.userEmail || "",
         userRole: c.userRole || "",
@@ -81,9 +83,74 @@ router.get("/", requireAuth, async (req, res) => {
       res.json(claims.map(c => ({
         id: c.id,
         pointsClaimed: c.pointsClaimed,
+        status: c.status,
         claimedAt: c.claimedAt.toISOString(),
       })));
     }
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /api/claims/:id - admin marks claim as received
+router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const claimId = Number(req.params.id);
+    if (isNaN(claimId)) {
+      res.status(400).json({ error: "Invalid claim id" });
+      return;
+    }
+
+    const updated = await db
+      .update(claimsTable)
+      .set({ status: "received" })
+      .where(eq(claimsTable.id, claimId))
+      .returning();
+
+    if (!updated.length) {
+      res.status(404).json({ error: "Claim not found" });
+      return;
+    }
+
+    res.json({
+      id: updated[0].id,
+      status: updated[0].status,
+      pointsClaimed: updated[0].pointsClaimed,
+      claimedAt: updated[0].claimedAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/claims/:id/mark-received - admin marks claim as received (alias)
+router.post("/:id/mark-received", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const claimId = Number(req.params.id);
+    if (isNaN(claimId)) {
+      res.status(400).json({ error: "Invalid claim id" });
+      return;
+    }
+
+    const updated = await db
+      .update(claimsTable)
+      .set({ status: "received" })
+      .where(eq(claimsTable.id, claimId))
+      .returning();
+
+    if (!updated.length) {
+      res.status(404).json({ error: "Claim not found" });
+      return;
+    }
+
+    res.json({
+      id: updated[0].id,
+      status: updated[0].status,
+      pointsClaimed: updated[0].pointsClaimed,
+      claimedAt: updated[0].claimedAt.toISOString(),
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
