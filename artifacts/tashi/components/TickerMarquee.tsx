@@ -24,31 +24,27 @@ export default function TickerMarquee({
   badge = "LIVE",
   speed = 55,
 }: TickerMarqueeProps) {
-  const [trackWidth, setTrackWidth] = useState(0);
   const [textWidth, setTextWidth] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    if (trackWidth === 0 || textWidth === 0) return;
+    if (textWidth === 0) return;
 
     animRef.current?.stop();
 
-    const travelPx = trackWidth + textWidth;
-    const duration = (travelPx / speed) * 1000;
+    // Travel from natural start (0) to fully off the left edge
+    const duration = (textWidth / speed) * 1000;
 
-    // Start the text just off the right edge
-    translateX.setValue(trackWidth);
+    translateX.setValue(0);
 
     animRef.current = Animated.loop(
       Animated.sequence([
-        // Instantly reset to start
         Animated.timing(translateX, {
-          toValue: trackWidth,
+          toValue: 0,
           duration: 0,
           useNativeDriver: true,
         }),
-        // Scroll all the way until text is fully off the left edge
         Animated.timing(translateX, {
           toValue: -textWidth,
           duration,
@@ -63,7 +59,7 @@ export default function TickerMarquee({
     return () => {
       animRef.current?.stop();
     };
-  }, [trackWidth, textWidth, speed]);
+  }, [textWidth, speed]);
 
   if (!text) return null;
 
@@ -78,10 +74,7 @@ export default function TickerMarquee({
       ) : null}
 
       {/* Scrolling track */}
-      <View
-        style={styles.track}
-        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-      >
+      <View style={styles.track}>
         {/*
          * The Animated.Text is position:absolute so React Native sizes it to
          * its intrinsic content width — no parent constraint applies.
