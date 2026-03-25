@@ -485,6 +485,7 @@ const styles = StyleSheet.create({
     width: "47%",
     borderRadius: 20, padding: 16,
     gap: 8,
+    alignItems: "center",
   },
   gridIcon: {
     width: 44, height: 44, borderRadius: 14,
@@ -492,8 +493,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   gridIconText: { fontSize: 22 },
-  gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text },
-  gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
+  gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal: {
