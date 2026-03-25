@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
-  Easing,
   Image,
   Linking,
   Modal,
@@ -18,6 +16,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import TickerMarquee from "@/components/TickerMarquee";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
@@ -58,105 +57,6 @@ const FALLBACK_BANNERS = [
   { bg: "#1A2D2D", title: "Redeem Rewards", subtitle: "Turn your points into real benefits" },
 ];
 
-// ─── Marquee ─────────────────────────────────────────────────────────────────
-function Marquee({ text }: { text: string }) {
-  const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
-  const [textWidth, setTextWidth] = useState(0);
-  const animRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  useEffect(() => {
-    if (textWidth === 0) return;
-    animRef.current?.stop();
-    translateX.setValue(SCREEN_WIDTH);
-    const PIXELS_PER_SECOND = 60;
-    const travelDistance = SCREEN_WIDTH + textWidth;
-    const duration = (travelDistance / PIXELS_PER_SECOND) * 1000;
-    animRef.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(translateX, {
-          toValue: SCREEN_WIDTH,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateX, {
-          toValue: -textWidth,
-          duration,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animRef.current.start();
-    return () => animRef.current?.stop();
-  }, [text, textWidth]);
-
-  return (
-    <View style={marqueeStyles.container}>
-      <View style={marqueeStyles.badge}>
-        <Text style={marqueeStyles.badgeText}>LIVE</Text>
-      </View>
-      <View style={marqueeStyles.track}>
-        {/* Unconstrained absolute wrapper — lets Text report its true pixel width */}
-        <View style={marqueeStyles.measureWrapper}>
-          <Text
-            style={marqueeStyles.text}
-            numberOfLines={1}
-            onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-          >
-            {text}
-          </Text>
-        </View>
-        {/* Scrolling text */}
-        <Animated.Text
-          style={[marqueeStyles.text, marqueeStyles.scrollingText, { transform: [{ translateX }] }]}
-          numberOfLines={1}
-        >
-          {text}
-        </Animated.Text>
-      </View>
-    </View>
-  );
-}
-
-const marqueeStyles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-    paddingVertical: 10,
-    paddingLeft: 12,
-  },
-  badge: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderRadius: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    marginRight: 10,
-  },
-  badgeText: {
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-    color: Colors.white,
-    letterSpacing: 0.8,
-  },
-  track: { flex: 1, overflow: "hidden", height: 20 },
-  text: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.white,
-    whiteSpace: "nowrap" as any,
-  },
-  measureWrapper: {
-    position: "absolute",
-    opacity: 0,
-  },
-  scrollingText: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-  },
-});
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function UserHomeScreen() {
@@ -265,7 +165,7 @@ export default function UserHomeScreen() {
       </View>
 
       {/* Ticker marquee — shown only when text exists */}
-      {tickerText.length > 0 && <Marquee text={tickerText} />}
+      {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Points hero */}
