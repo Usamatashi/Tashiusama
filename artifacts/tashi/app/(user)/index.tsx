@@ -63,7 +63,8 @@ function Marquee({ text }: { text: string }) {
   const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
   useEffect(() => {
-    const duration = Math.max(text.length * 120, 6000);
+    const estimatedTextWidth = text.length * 8;
+    const duration = Math.max(text.length * 80, 6000);
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(translateX, {
@@ -72,7 +73,7 @@ function Marquee({ text }: { text: string }) {
           useNativeDriver: true,
         }),
         Animated.timing(translateX, {
-          toValue: -SCREEN_WIDTH * 1.5,
+          toValue: -estimatedTextWidth,
           duration,
           easing: Easing.linear,
           useNativeDriver: true,
