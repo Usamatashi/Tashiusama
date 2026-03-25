@@ -6,16 +6,15 @@ import {
   Text,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
 const TIPS = [
-  { icon: "camera" as const, title: "Scan QR Codes", desc: "Scan after every vehicle service visit to earn points." },
-  { icon: "truck" as const, title: "Vehicle Points", desc: "Each vehicle model carries a different point value." },
-  { icon: "layers" as const, title: "Points Stack", desc: "All your scans accumulate into your total balance." },
-  { icon: "gift" as const, title: "Redeem Anytime", desc: "Claim your points to unlock exclusive rewards." },
+  { step: "01", title: "Scan QR Codes", desc: "Scan after every vehicle service visit to earn points." },
+  { step: "02", title: "Vehicle Points", desc: "Each vehicle model carries a different point value." },
+  { step: "03", title: "Points Stack", desc: "All your scans accumulate into your total balance." },
+  { step: "04", title: "Redeem Anytime", desc: "Claim your points to unlock exclusive rewards." },
 ];
 
 export default function PointsScreen() {
@@ -45,24 +44,21 @@ export default function PointsScreen() {
           <Text style={styles.heroValue}>{pts.toLocaleString()}</Text>
           <Text style={styles.heroUnit}>points</Text>
           <View style={styles.heroDivider} />
-          <View style={styles.heroMeta}>
-            <View style={styles.heroMetaItem}>
-              <Feather name="trending-up" size={14} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.heroMetaText}>Accumulated from all scans</Text>
-            </View>
-          </View>
+          <Text style={styles.heroMetaText}>Accumulated from all your scans</Text>
         </View>
 
         {/* How to earn */}
         <Text style={styles.sectionLabel}>How to Earn Points</Text>
-        <View style={styles.tipsGrid}>
+        <View style={styles.tipsList}>
           {TIPS.map((tip, i) => (
-            <View key={i} style={styles.tipCard}>
-              <View style={styles.tipIconWrap}>
-                <Feather name={tip.icon} size={20} color={Colors.primary} />
+            <View key={i} style={styles.tipRow}>
+              <View style={styles.tipStep}>
+                <Text style={styles.tipStepText}>{tip.step}</Text>
               </View>
-              <Text style={styles.tipTitle}>{tip.title}</Text>
-              <Text style={styles.tipDesc}>{tip.desc}</Text>
+              <View style={styles.tipBody}>
+                <Text style={styles.tipTitle}>{tip.title}</Text>
+                <Text style={styles.tipDesc}>{tip.desc}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -88,31 +84,32 @@ const styles = StyleSheet.create({
   },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   heroEyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)" },
-  liveIndicator: { flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  liveIndicator: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#4AFF91" },
   liveText: { fontSize: 11, fontFamily: "Inter_700Bold", color: Colors.white },
   heroValue: { fontSize: 68, fontFamily: "Inter_700Bold", color: Colors.white, lineHeight: 76 },
   heroUnit: { fontSize: 16, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginTop: -4 },
   heroDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 18 },
-  heroMeta: { gap: 6 },
-  heroMetaItem: { flexDirection: "row", alignItems: "center", gap: 8 },
   heroMetaText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
 
-  sectionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, paddingHorizontal: 2 },
-  tipsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  tipCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 18, padding: 18,
-    width: "47.5%",
-    gap: 8,
+  sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, paddingHorizontal: 2 },
+  tipsList: { gap: 10 },
+  tipRow: {
+    backgroundColor: Colors.white, borderRadius: 18,
     borderWidth: 1, borderColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 16, padding: 16,
   },
-  tipIconWrap: {
+  tipStep: {
     width: 44, height: 44, borderRadius: 12,
     backgroundColor: "#FFF0E6",
     justifyContent: "center", alignItems: "center",
   },
+  tipStepText: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.primary },
+  tipBody: { flex: 1 },
   tipTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  tipDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 17 },
+  tipDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 17, marginTop: 2 },
 });

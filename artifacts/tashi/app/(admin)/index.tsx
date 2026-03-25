@@ -40,6 +40,14 @@ const ACTIONS = [
     gradient: ["#0D9488", "#2DD4BF"] as [string, string],
     decoration: "#2DD4BF",
   },
+  {
+    icon: "type" as const,
+    label: "Create Text",
+    desc: "Add scrolling ticker messages for users",
+    route: "/(admin)/create-text" as const,
+    gradient: ["#D97706", "#FBBF24"] as [string, string],
+    decoration: "#FBBF24",
+  },
 ];
 
 export default function AdminDashboard() {

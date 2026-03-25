@@ -78,3 +78,13 @@ export const adsTable = pgTable("ads", {
 export const insertAdSchema = createInsertSchema(adsTable).omit({ id: true, createdAt: true });
 export type InsertAd = z.infer<typeof insertAdSchema>;
 export type Ad = typeof adsTable.$inferSelect;
+
+export const tickerTable = pgTable("ticker", {
+  id: serial("id").primaryKey(),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertTickerSchema = createInsertSchema(tickerTable).omit({ id: true, createdAt: true });
+export type InsertTicker = z.infer<typeof insertTickerSchema>;
+export type Ticker = typeof tickerTable.$inferSelect;

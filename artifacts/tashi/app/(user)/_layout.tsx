@@ -1,8 +1,6 @@
 import { Slot, Redirect, usePathname, router } from "expo-router";
-import { Feather } from "@expo/vector-icons";
 import {
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,26 +13,24 @@ import { Colors } from "@/constants/colors";
 function CustomTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const { user } = useAuth();
 
-  const isHistory = pathname === "/(user)/history" || pathname === "/history";
-  const isProfile = pathname === "/(user)/profile" || pathname === "/profile";
+  const isHistory = pathname.includes("/history");
+  const isProfile = pathname.includes("/profile");
 
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
 
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
       {/* History tab */}
-      <Pressable
+      <TouchableOpacity
         style={styles.tabItem}
         onPress={() => router.push("/(user)/history")}
-        android_ripple={{ color: "transparent" }}
+        activeOpacity={0.7}
       >
-        <View style={[styles.tabIconWrap, isHistory && styles.tabIconActive]}>
-          <Feather name="clock" size={20} color={isHistory ? Colors.primary : Colors.textLight} />
+        <View style={[styles.tabPill, isHistory && styles.tabPillActive]}>
+          <Text style={[styles.tabLabel, isHistory && styles.tabLabelActive]}>History</Text>
         </View>
-        <Text style={[styles.tabLabel, isHistory && styles.tabLabelActive]}>History</Text>
-      </Pressable>
+      </TouchableOpacity>
 
       {/* Center scan button */}
       <View style={styles.scanBtnWrapper}>
@@ -43,22 +39,20 @@ function CustomTabBar() {
           onPress={() => router.push("/(user)/scan")}
           activeOpacity={0.88}
         >
-          <Feather name="camera" size={28} color={Colors.white} />
+          <Text style={styles.scanBtnInner}>SCAN{"\n"}QR</Text>
         </TouchableOpacity>
-        <Text style={styles.scanBtnLabel}>Scan QR</Text>
       </View>
 
       {/* Profile tab */}
-      <Pressable
+      <TouchableOpacity
         style={styles.tabItem}
         onPress={() => router.push("/(user)/profile")}
-        android_ripple={{ color: "transparent" }}
+        activeOpacity={0.7}
       >
-        <View style={[styles.tabIconWrap, isProfile && styles.tabIconActive]}>
-          <Feather name="user" size={20} color={isProfile ? Colors.primary : Colors.textLight} />
+        <View style={[styles.tabPill, isProfile && styles.tabPillActive]}>
+          <Text style={[styles.tabLabel, isProfile && styles.tabLabelActive]}>Profile</Text>
         </View>
-        <Text style={[styles.tabLabel, isProfile && styles.tabLabelActive]}>Profile</Text>
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -85,8 +79,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingTop: 8,
-    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingHorizontal: 20,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 12,
@@ -97,40 +91,36 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
     paddingBottom: 4,
   },
-  tabIconWrap: {
-    width: 44,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
+  tabPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  tabIconActive: {
-    backgroundColor: `${Colors.primary}14`,
+  tabPillActive: {
+    backgroundColor: `${Colors.primary}15`,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: Colors.textLight,
   },
   tabLabelActive: {
     color: Colors.primary,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
   },
 
   scanBtnWrapper: {
     alignItems: "center",
-    gap: 4,
-    marginTop: -28,
+    marginTop: -30,
     paddingBottom: 4,
     width: 90,
   },
   scanBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
@@ -142,9 +132,11 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: Colors.white,
   },
-  scanBtnLabel: {
+  scanBtnInner: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.primary,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    textAlign: "center",
+    lineHeight: 14,
   },
 });

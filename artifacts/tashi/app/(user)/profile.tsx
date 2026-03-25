@@ -6,7 +6,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
@@ -26,7 +25,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export default function ProfileScreen() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const insets = useSafeAreaInsets();
 
   useEffect(() => { refreshUser(); }, []);
@@ -72,23 +71,22 @@ export default function ProfileScreen() {
 
         {/* Info rows */}
         <View style={styles.infoCard}>
-          <InfoRow icon="mail" label="Email" value={user?.email || "-"} />
-          <InfoRow icon="shield" label="Role" value={roleLabel} valueColor={roleColor} />
-          <InfoRow icon="star" label="Total Points" value={`${user?.points ?? 0} pts`} valueColor={Colors.primary} />
-          <InfoRow icon="calendar" label="Member Since" value={memberSince} last />
+          <InfoRow label="Email" value={user?.email || "-"} />
+          <InfoRow label="Role" value={roleLabel} valueColor={roleColor} />
+          <InfoRow label="Total Points" value={`${user?.points ?? 0} pts`} valueColor={Colors.primary} />
+          <InfoRow label="Member Since" value={memberSince} last />
         </View>
 
-        <View style={styles.noteCard}>
-          <Feather name="info" size={14} color={Colors.textLight} />
-          <Text style={styles.noteText}>Contact your admin to update profile information.</Text>
+        <View style={styles.logoutCard}>
+          <Text style={styles.logoutLabel}>Want to switch accounts?</Text>
+          <Text style={styles.logoutBtn} onPress={logout}>Sign Out</Text>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function InfoRow({ icon, label, value, valueColor, last }: {
-  icon: keyof typeof Feather.glyphMap;
+function InfoRow({ label, value, valueColor, last }: {
   label: string;
   value: string;
   valueColor?: string;
@@ -96,13 +94,8 @@ function InfoRow({ icon, label, value, valueColor, last }: {
 }) {
   return (
     <View style={[styles.row, !last && styles.rowBorder]}>
-      <View style={styles.rowIcon}>
-        <Feather name={icon} size={16} color={Colors.textSecondary} />
-      </View>
-      <View style={styles.rowContent}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={[styles.rowValue, valueColor ? { color: valueColor } : {}]}>{value}</Text>
-      </View>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowValue, valueColor ? { color: valueColor } : {}]}>{value}</Text>
     </View>
   );
 }
@@ -155,20 +148,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderRadius: 20,
     borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
   },
-  row: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 15, gap: 14 },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 15 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  rowIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: "#F5F5F5", justifyContent: "center", alignItems: "center",
-  },
-  rowContent: { flex: 1 },
-  rowLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  rowValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text, marginTop: 1 },
+  rowLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  rowValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
 
-  noteCard: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: Colors.white, borderRadius: 14,
-    padding: 14, borderWidth: 1, borderColor: Colors.border,
+  logoutCard: {
+    backgroundColor: Colors.white, borderRadius: 16,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 16, flexDirection: "row",
+    justifyContent: "space-between", alignItems: "center",
   },
-  noteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  logoutLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  logoutBtn: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.error },
 });

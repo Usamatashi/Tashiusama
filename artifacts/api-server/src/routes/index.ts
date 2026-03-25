@@ -7,6 +7,7 @@ import qrcodesRouter from "./qrcodes";
 import scansRouter from "./scans";
 import claimsRouter from "./claims";
 import adsRouter from "./ads";
+import tickerRouter from "./ticker";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/qrcodes", qrcodesRouter);
 router.use("/scans", scansRouter);
 router.use("/claims", claimsRouter);
 router.use("/ads", adsRouter);
+router.use("/ticker", tickerRouter);
 
 export default router;

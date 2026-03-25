@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
+  Easing,
   Image,
   Linking,
   Modal,
@@ -13,13 +15,12 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
-import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
-const { width } = Dimensions.get("window");
-const BANNER_WIDTH = width - 32;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const BANNER_WIDTH = SCREEN_WIDTH - 32;
 const WHATSAPP_NUMBER = "923055198651";
 
 interface ClaimRecord {
@@ -35,6 +36,11 @@ interface AdBanner {
   title: string | null;
 }
 
+interface TickerItem {
+  id: number;
+  text: string;
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
@@ -47,11 +53,85 @@ async function getToken(): Promise<string> {
 }
 
 const FALLBACK_BANNERS = [
-  { bg: Colors.primary, icon: "zap" as const, title: "Welcome to Tashi!", subtitle: "Earn points with every service visit" },
-  { bg: "#C5611A", icon: "award" as const, title: "Scan & Earn", subtitle: "Scan QR codes after every service" },
-  { bg: "#1A2D2D", icon: "gift" as const, title: "Redeem Rewards", subtitle: "Turn your points into real benefits" },
+  { bg: Colors.primary, title: "Welcome to Tashi!", subtitle: "Earn points with every service visit" },
+  { bg: "#C5611A", title: "Scan & Earn", subtitle: "Scan QR codes after every service" },
+  { bg: "#1A2D2D", title: "Redeem Rewards", subtitle: "Turn your points into real benefits" },
 ];
 
+// ─── Marquee ─────────────────────────────────────────────────────────────────
+function Marquee({ text }: { text: string }) {
+  const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+
+  useEffect(() => {
+    const duration = Math.max(text.length * 120, 6000);
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(translateX, {
+          toValue: SCREEN_WIDTH,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateX, {
+          toValue: -SCREEN_WIDTH * 1.5,
+          duration,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [text]);
+
+  return (
+    <View style={marqueeStyles.container}>
+      <View style={marqueeStyles.badge}>
+        <Text style={marqueeStyles.badgeText}>LIVE</Text>
+      </View>
+      <View style={marqueeStyles.track}>
+        <Animated.Text
+          style={[marqueeStyles.text, { transform: [{ translateX }] }]}
+          numberOfLines={1}
+        >
+          {text}
+        </Animated.Text>
+      </View>
+    </View>
+  );
+}
+
+const marqueeStyles = StyleSheet.create({
+  container: {
+    backgroundColor: Colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+    paddingVertical: 10,
+    paddingLeft: 12,
+  },
+  badge: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    marginRight: 10,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    letterSpacing: 0.8,
+  },
+  track: { flex: 1, overflow: "hidden" },
+  text: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+    whiteSpace: "nowrap" as any,
+  },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function UserHomeScreen() {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
@@ -64,15 +144,22 @@ export default function UserHomeScreen() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [justClaimed, setJustClaimed] = useState<number | null>(null);
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
+  const [tickers, setTickers] = useState<TickerItem[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const token = await getToken();
-        const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ads`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) setAdBanners(await res.json());
+        const [adRes, tickerRes] = await Promise.all([
+          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ads`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ticker`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        if (adRes.ok) setAdBanners(await adRes.json());
+        if (tickerRes.ok) setTickers(await tickerRes.json());
       } catch {}
     })();
   }, []);
@@ -132,6 +219,7 @@ export default function UserHomeScreen() {
   const displayPoints = localPoints ?? user?.points ?? 0;
   const topPadding = insets.top + (Platform.OS === "web" ? 67 : 0);
   const firstName = user?.email?.split("@")[0] || "there";
+  const tickerText = tickers.map((t) => t.text).join("   •   ");
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
@@ -145,9 +233,12 @@ export default function UserHomeScreen() {
           onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
           style={styles.waBtn}
         >
-          <Feather name="message-circle" size={22} color="#25D366" />
+          <Text style={styles.waBtnText}>WA</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Ticker marquee — shown only when text exists */}
+      {tickerText.length > 0 && <Marquee text={tickerText} />}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Points hero */}
@@ -158,10 +249,9 @@ export default function UserHomeScreen() {
             <Text style={styles.pointsHeroUnit}>pts</Text>
           </View>
           <View style={styles.pointsHeroDeco}>
-            <Feather name="star" size={90} color="rgba(255,255,255,0.07)" />
+            <Text style={styles.pointsHeroDecoText}>★</Text>
           </View>
           <TouchableOpacity style={styles.claimHeroBtn} onPress={openClaimModal} activeOpacity={0.85}>
-            <Feather name="gift" size={15} color={Colors.white} />
             <Text style={styles.claimHeroBtnText}>Claim Rewards</Text>
           </TouchableOpacity>
         </View>
@@ -184,9 +274,6 @@ export default function UserHomeScreen() {
               ))
             : FALLBACK_BANNERS.map((b, i) => (
                 <View key={i} style={[styles.banner, { backgroundColor: b.bg, width: BANNER_WIDTH }]}>
-                  <View style={styles.bannerIconBox}>
-                    <Feather name={b.icon} size={20} color="rgba(255,255,255,0.9)" />
-                  </View>
                   <Text style={styles.bannerTitle}>{b.title}</Text>
                   <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>
                 </View>
@@ -202,31 +289,23 @@ export default function UserHomeScreen() {
         <Text style={styles.sectionLabel}>Explore</Text>
         <View style={styles.quickGrid}>
           <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/points")} activeOpacity={0.8}>
-            <View style={[styles.gridIcon, { backgroundColor: "#FFF0E6" }]}>
-              <Feather name="star" size={20} color={Colors.primary} />
-            </View>
-            <Text style={styles.gridLabel}>My Points</Text>
+            <Text style={styles.gridCardTitle}>My Points</Text>
+            <Text style={styles.gridCardDesc}>View your balance</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/rewards")} activeOpacity={0.8}>
-            <View style={[styles.gridIcon, { backgroundColor: "#E8F5E9" }]}>
-              <Feather name="award" size={20} color={Colors.success} />
-            </View>
-            <Text style={styles.gridLabel}>Rewards</Text>
+            <Text style={styles.gridCardTitle}>Rewards</Text>
+            <Text style={styles.gridCardDesc}>Redeem your points</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/history")} activeOpacity={0.8}>
-            <View style={[styles.gridIcon, { backgroundColor: "#FFF3E0" }]}>
-              <Feather name="clock" size={20} color="#F59E0B" />
-            </View>
-            <Text style={styles.gridLabel}>History</Text>
+            <Text style={styles.gridCardTitle}>Scan History</Text>
+            <Text style={styles.gridCardDesc}>All your scans</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/profile")} activeOpacity={0.8}>
-            <View style={[styles.gridIcon, { backgroundColor: "#EDE9FE" }]}>
-              <Feather name="user" size={20} color="#8B5CF6" />
-            </View>
-            <Text style={styles.gridLabel}>Profile</Text>
+            <Text style={styles.gridCardTitle}>Profile</Text>
+            <Text style={styles.gridCardDesc}>Your account info</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -239,14 +318,14 @@ export default function UserHomeScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Claim Rewards</Text>
               <TouchableOpacity onPress={() => setClaimModalVisible(false)} style={styles.closeBtn}>
-                <Feather name="x" size={20} color={Colors.textSecondary} />
+                <Text style={styles.closeBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             {justClaimed !== null ? (
               <View style={styles.successBox}>
                 <View style={styles.successRing}>
-                  <Feather name="check" size={36} color={Colors.success} />
+                  <Text style={styles.successCheck}>✓</Text>
                 </View>
                 <Text style={styles.successTitle}>Claimed Successfully!</Text>
                 <Text style={styles.successPts}>{justClaimed} pts</Text>
@@ -263,9 +342,7 @@ export default function UserHomeScreen() {
                           <Text style={styles.claimPointsNum}>{displayPoints}</Text>
                           <Text style={styles.claimPointsUnit}>pts</Text>
                         </View>
-                        <View style={styles.claimArrow}>
-                          <Feather name="arrow-right" size={18} color={Colors.textLight} />
-                        </View>
+                        <Text style={styles.claimArrow}>→</Text>
                         <View style={[styles.claimPointsBox, styles.claimPointsBoxGreen]}>
                           <Text style={[styles.claimPointsLbl, { color: Colors.success }]}>To Claim</Text>
                           <Text style={[styles.claimPointsNum, { color: Colors.success }]}>{displayPoints}</Text>
@@ -281,15 +358,12 @@ export default function UserHomeScreen() {
                     >
                       {claiming
                         ? <ActivityIndicator color={Colors.white} />
-                        : <><Feather name="gift" size={18} color={Colors.white} /><Text style={styles.claimBtnText}>Claim {displayPoints} Points</Text></>
+                        : <Text style={styles.claimBtnText}>Claim {displayPoints} Points</Text>
                       }
                     </TouchableOpacity>
                   </>
                 ) : (
                   <View style={styles.noPointsBox}>
-                    <View style={styles.noPointsIcon}>
-                      <Feather name="inbox" size={28} color={Colors.textLight} />
-                    </View>
                     <Text style={styles.noPointsTitle}>No Points Yet</Text>
                     <Text style={styles.noPointsTxt}>Scan QR codes after service visits to earn points</Text>
                   </View>
@@ -314,7 +388,9 @@ export default function UserHomeScreen() {
                   return (
                     <View key={c.id} style={styles.historyItem}>
                       <View style={[styles.historyDotWrap, { backgroundColor: isPending ? `${Colors.primary}18` : `${Colors.success}18` }]}>
-                        <Feather name={isPending ? "clock" : "check"} size={14} color={isPending ? Colors.primary : Colors.success} />
+                        <Text style={[styles.historyDotText, { color: isPending ? Colors.primary : Colors.success }]}>
+                          {isPending ? "⏳" : "✓"}
+                        </Text>
                       </View>
                       <View style={styles.historyTextWrap}>
                         <Text style={styles.historyPts}>{c.pointsClaimed} points claimed</Text>
@@ -353,6 +429,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F8EF",
     justifyContent: "center", alignItems: "center",
   },
+  waBtnText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#25D366" },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 18, paddingBottom: 24 },
@@ -365,9 +442,9 @@ const styles = StyleSheet.create({
   pointsHeroLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginBottom: 4 },
   pointsHeroValue: { fontSize: 60, fontFamily: "Inter_700Bold", color: Colors.white, lineHeight: 68 },
   pointsHeroUnit: { fontSize: 15, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginTop: -2, marginBottom: 18 },
-  pointsHeroDeco: { position: "absolute", right: -10, top: -10 },
+  pointsHeroDeco: { position: "absolute", right: 12, top: 12 },
+  pointsHeroDecoText: { fontSize: 80, color: "rgba(255,255,255,0.07)" },
   claimHeroBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 10, alignSelf: "flex-start",
   },
@@ -376,11 +453,6 @@ const styles = StyleSheet.create({
   bannerScroll: { borderRadius: 18 },
   banner: { height: 136, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
   bannerImage: { height: 136, borderRadius: 18 },
-  bannerIconBox: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center", marginBottom: 6,
-  },
   bannerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.white },
   bannerSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)" },
   dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: -8 },
@@ -393,14 +465,11 @@ const styles = StyleSheet.create({
     width: "47%",
     backgroundColor: Colors.white,
     borderRadius: 18, padding: 18,
-    alignItems: "flex-start", gap: 12,
+    gap: 6,
     borderWidth: 1, borderColor: Colors.border,
   },
-  gridIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    justifyContent: "center", alignItems: "center",
-  },
-  gridLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  gridCardTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
+  gridCardDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal: {
@@ -411,6 +480,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#F0F0F0", justifyContent: "center", alignItems: "center" },
+  closeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
 
   successBox: { alignItems: "center", paddingVertical: 24, gap: 8 },
   successRing: {
@@ -419,6 +489,7 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
     backgroundColor: `${Colors.success}10`, marginBottom: 8,
   },
+  successCheck: { fontSize: 32, color: Colors.success },
   successTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   successPts: { fontSize: 44, fontFamily: "Inter_700Bold", color: Colors.success },
   successSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", maxWidth: 240 },
@@ -432,20 +503,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   claimPointsBoxGreen: { borderColor: `${Colors.success}30`, backgroundColor: `${Colors.success}08` },
-  claimArrow: { alignItems: "center", justifyContent: "center" },
+  claimArrow: { fontSize: 20, color: Colors.textLight },
   claimPointsLbl: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   claimPointsNum: { fontSize: 26, fontFamily: "Inter_700Bold", color: Colors.primary },
   claimPointsUnit: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   claimBtn: {
     backgroundColor: Colors.success, borderRadius: 16, paddingVertical: 16,
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    alignItems: "center", justifyContent: "center",
   },
   claimBtnText: { color: Colors.white, fontSize: 16, fontFamily: "Inter_700Bold" },
   noPointsBox: { alignItems: "center", paddingVertical: 24, gap: 8 },
-  noPointsIcon: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: "#F0F0F0", justifyContent: "center", alignItems: "center", marginBottom: 4,
-  },
   noPointsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text },
   noPointsTxt: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", maxWidth: 240 },
 
@@ -460,6 +527,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   historyDotWrap: { width: 32, height: 32, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  historyDotText: { fontSize: 14 },
   historyTextWrap: { flex: 1 },
   historyPts: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
   historyDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },

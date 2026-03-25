@@ -7,7 +7,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
@@ -62,15 +61,13 @@ export default function HistoryScreen() {
       {scans.length > 0 && (
         <View style={styles.summaryBar}>
           <View style={styles.summaryItem}>
-            <Feather name="zap" size={14} color={Colors.primary} />
             <Text style={styles.summaryValue}>{totalPoints}</Text>
-            <Text style={styles.summaryLabel}>total pts</Text>
+            <Text style={styles.summaryLabel}>total points</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Feather name="camera" size={14} color={Colors.primary} />
             <Text style={styles.summaryValue}>{scans.length}</Text>
-            <Text style={styles.summaryLabel}>scans</Text>
+            <Text style={styles.summaryLabel}>total scans</Text>
           </View>
         </View>
       )}
@@ -89,9 +86,6 @@ export default function HistoryScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <View style={styles.emptyIcon}>
-                <Feather name="clock" size={32} color={Colors.textLight} />
-              </View>
               <Text style={styles.emptyTitle}>No Scans Yet</Text>
               <Text style={styles.emptyText}>Your scan history will appear here after your first QR scan.</Text>
             </View>
@@ -105,9 +99,6 @@ export default function HistoryScreen() {
                   {index < scans.length - 1 && <View style={styles.timelineLine} />}
                 </View>
                 <View style={styles.cardContent}>
-                  <View style={styles.cardIconWrap}>
-                    <Feather name="truck" size={18} color={Colors.primary} />
-                  </View>
                   <View style={styles.cardInfo}>
                     <Text style={styles.vehicleName}>{item.vehicleName}</Text>
                     <Text style={styles.scanDate}>{date} · {time}</Text>
@@ -147,20 +138,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12, gap: 24,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  summaryItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  summaryValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
-  summaryLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  summaryDivider: { width: 1, height: 20, backgroundColor: Colors.border },
+  summaryItem: { alignItems: "center", gap: 2 },
+  summaryValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+  summaryLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  summaryDivider: { width: 1, height: 28, backgroundColor: Colors.border },
 
   loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   list: { paddingVertical: 16, paddingHorizontal: 16, paddingBottom: 40 },
 
   empty: { alignItems: "center", paddingTop: 80, gap: 10, paddingHorizontal: 32 },
-  emptyIcon: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.white, justifyContent: "center", alignItems: "center",
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 4,
-  },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
 
@@ -170,7 +156,6 @@ const styles = StyleSheet.create({
     width: 12, height: 12, borderRadius: 6,
     backgroundColor: Colors.primary, marginTop: 18,
     borderWidth: 2, borderColor: Colors.white,
-    shadowColor: Colors.primary, shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 0 },
   },
   timelineLine: { flex: 1, width: 2, backgroundColor: Colors.border, marginVertical: 2 },
 
@@ -179,10 +164,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderRadius: 18,
     padding: 14, marginBottom: 10, marginLeft: 8,
     borderWidth: 1, borderColor: Colors.border,
-  },
-  cardIconWrap: {
-    width: 42, height: 42, borderRadius: 12,
-    backgroundColor: "#FFF0E6", justifyContent: "center", alignItems: "center",
   },
   cardInfo: { flex: 1 },
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
