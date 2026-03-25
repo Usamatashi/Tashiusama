@@ -54,72 +54,75 @@ export default function TickerMarquee({
     );
 
     animRef.current.start();
-
-    return () => {
-      animRef.current?.stop();
-    };
+    return () => animRef.current?.stop();
   }, [textWidth, speed]);
 
   if (!text) return null;
 
   return (
-    <View style={[styles.container, { height, backgroundColor }]}>
-      {/*
-       * Hidden horizontal ScrollView used purely for measurement.
-       * onContentSizeChange always returns the true content width — it is
-       * never constrained by the screen or parent width, unlike onLayout on
-       * a Text element inside a bounded container.
-       */}
+    /**
+     * Outer wrapper has NO overflow:hidden so the hidden ruler ScrollView
+     * (absolutely positioned) is not clipped and can lay out its full content.
+     * The inner bar View carries overflow:hidden to clip the animated text.
+     */
+    <View style={{ height }}>
+      {/* ── Measurement ruler ───────────────────────────────────────────────
+          Rendered outside the overflow:hidden bar so React Native actually
+          lays out the content and fires onContentSizeChange with the real
+          full text width. opacity:0 keeps it invisible.                    */}
       <ScrollView
         horizontal
         scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
+        pointerEvents="none"
         style={styles.ruler}
         onContentSizeChange={(w) => setTextWidth(w)}
       >
         <Text style={[styles.text, { color: textColor }]}>{text}</Text>
       </ScrollView>
 
-      {/* LIVE badge */}
-      {badge ? (
-        <View style={styles.badge}>
-          <View style={styles.liveDot} />
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      ) : null}
+      {/* ── Visible ticker bar ──────────────────────────────────────────── */}
+      <View style={[styles.bar, { height, backgroundColor }]}>
+        {badge ? (
+          <View style={styles.badge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        ) : null}
 
-      {/* Scrolling track */}
-      <View style={styles.track}>
-        <Animated.Text
-          style={[
-            styles.text,
-            {
-              color: textColor,
-              width: textWidth || undefined,
-              transform: [{ translateX }],
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {text}
-        </Animated.Text>
+        <View style={styles.track}>
+          <Animated.Text
+            style={[
+              styles.text,
+              styles.scrollText,
+              {
+                color: textColor,
+                width: textWidth || undefined,
+                transform: [{ translateX }],
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {text}
+          </Animated.Text>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-
   ruler: {
     position: "absolute",
     opacity: 0,
     top: 0,
     left: 0,
+  },
+
+  bar: {
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
   },
 
   badge: {
@@ -158,6 +161,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     lineHeight: 18,
     includeFontPadding: false,
+  },
+
+  scrollText: {
     position: "absolute",
   },
 });
