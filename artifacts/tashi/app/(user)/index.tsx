@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
@@ -57,6 +58,12 @@ const FALLBACK_BANNERS = [
   { bg: "#1A2D2D", title: "Redeem Rewards", subtitle: "Turn your points into real benefits" },
 ];
 
+const QUICK_ACTIONS = [
+  { label: "My Points", desc: "View balance", icon: "🏆", route: "/(user)/points", accent: "#FFF4EC", iconBg: "#FFE0C2" },
+  { label: "Rewards", desc: "Redeem points", icon: "🎁", route: "/(user)/rewards", accent: "#ECF5FF", iconBg: "#C2DCFF" },
+  { label: "Scan History", desc: "All your scans", icon: "📋", route: "/(user)/history", accent: "#EDFBF3", iconBg: "#B8F0CE" },
+  { label: "Profile", desc: "Account info", icon: "👤", route: "/(user)/profile", accent: "#F5F0FF", iconBg: "#DDD0FF" },
+];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function UserHomeScreen() {
@@ -153,30 +160,50 @@ export default function UserHomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerGreet}>Hello, {firstName}</Text>
+          <Text style={styles.headerGreet}>Hello, {firstName} 👋</Text>
           <Text style={styles.headerSub}>Your loyalty dashboard</Text>
         </View>
         <TouchableOpacity
           onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
           style={styles.waBtn}
         >
-          <Text style={styles.waBtnText}>WA</Text>
+          <Text style={styles.waBtnText}>💬</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Ticker marquee — shown only when text exists */}
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Points hero — square card with protruding claim button */}
-        <View style={styles.ticketWrapper}>
-          <View style={styles.ticketCard}>
-            <Text style={styles.ticketLabel}>Available Points</Text>
-            <Text style={styles.ticketValue}>{displayPoints}</Text>
-            <Text style={styles.ticketUnit}>pts</Text>
-          </View>
-          <TouchableOpacity style={styles.ticketClaimBtn} onPress={openClaimModal} activeOpacity={0.8}>
-            <Text style={styles.ticketClaimText}>Claim{"\n"}Rewards</Text>
+
+        {/* ── Points Hero Card ───────────────────────────────────── */}
+        <View style={styles.heroWrapper}>
+          <LinearGradient
+            colors={["#F09135", "#E87722", "#C5611A"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            {/* Decorative circles */}
+            <View style={styles.decCircle1} />
+            <View style={styles.decCircle2} />
+            <View style={styles.decCircle3} />
+
+            <Text style={styles.heroLabel}>Available Points</Text>
+            <Text style={styles.heroValue}>{displayPoints}</Text>
+            <Text style={styles.heroUnit}>points</Text>
+          </LinearGradient>
+
+          {/* Claim button — protrudes from the right */}
+          <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimTabOuter}>
+            <LinearGradient
+              colors={["#C5611A", "#A84E14"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.claimTabInner}
+            >
+              <Text style={styles.claimTabIcon}>🎁</Text>
+              <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -197,10 +224,16 @@ export default function UserHomeScreen() {
                   style={[styles.bannerImage, { width: BANNER_WIDTH }]} resizeMode="cover" />
               ))
             : FALLBACK_BANNERS.map((b, i) => (
-                <View key={i} style={[styles.banner, { backgroundColor: b.bg, width: BANNER_WIDTH }]}>
+                <LinearGradient
+                  key={i}
+                  colors={[b.bg, "#1A1A1A"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.banner, { width: BANNER_WIDTH }]}
+                >
                   <Text style={styles.bannerTitle}>{b.title}</Text>
                   <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>
-                </View>
+                </LinearGradient>
               ))}
         </ScrollView>
         <View style={styles.dots}>
@@ -210,27 +243,22 @@ export default function UserHomeScreen() {
         </View>
 
         {/* Quick actions */}
-        <Text style={styles.sectionLabel}>Explore</Text>
+        <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.quickGrid}>
-          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/points")} activeOpacity={0.8}>
-            <Text style={styles.gridCardTitle}>My Points</Text>
-            <Text style={styles.gridCardDesc}>View your balance</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/rewards")} activeOpacity={0.8}>
-            <Text style={styles.gridCardTitle}>Rewards</Text>
-            <Text style={styles.gridCardDesc}>Redeem your points</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/history")} activeOpacity={0.8}>
-            <Text style={styles.gridCardTitle}>Scan History</Text>
-            <Text style={styles.gridCardDesc}>All your scans</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/profile")} activeOpacity={0.8}>
-            <Text style={styles.gridCardTitle}>Profile</Text>
-            <Text style={styles.gridCardDesc}>Your account info</Text>
-          </TouchableOpacity>
+          {QUICK_ACTIONS.map((action) => (
+            <TouchableOpacity
+              key={action.label}
+              style={[styles.gridCard, { backgroundColor: action.accent }]}
+              onPress={() => router.push(action.route as any)}
+              activeOpacity={0.82}
+            >
+              <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
+                <Text style={styles.gridIconText}>{action.icon}</Text>
+              </View>
+              <Text style={styles.gridCardTitle}>{action.label}</Text>
+              <Text style={styles.gridCardDesc}>{action.desc}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
 
@@ -349,90 +377,125 @@ const styles = StyleSheet.create({
   headerGreet: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
   waBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#E8F8EF",
     justifyContent: "center", alignItems: "center",
   },
-  waBtnText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#25D366" },
+  waBtnText: { fontSize: 20 },
 
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 18, paddingBottom: 24 },
+  scrollContent: { padding: 16, gap: 18, paddingBottom: 32 },
 
-  /* ── Points card with protruding claim button ─────────────────── */
-  ticketWrapper: {
+  /* ── Hero Points Card ─────────────────────────────────────────── */
+  heroWrapper: {
     flexDirection: "row",
     alignItems: "center",
   },
-  ticketCard: {
-    backgroundColor: Colors.primary,
-    borderRadius: 20,
-    padding: 22,
-    width: 160,
+  heroCard: {
+    width: 170,
     aspectRatio: 1,
+    borderRadius: 24,
+    padding: 22,
     justifyContent: "flex-end",
+    overflow: "hidden",
     zIndex: 1,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
-  ticketLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.8)",
-    letterSpacing: 0.5,
+  decCircle1: {
+    position: "absolute", width: 120, height: 120, borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    top: -30, right: -30,
+  },
+  decCircle2: {
+    position: "absolute", width: 80, height: 80, borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    top: 20, right: 10,
+  },
+  decCircle3: {
+    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    bottom: -15, left: -15,
+  },
+  heroLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 1,
+    textTransform: "uppercase",
     marginBottom: 4,
   },
-  ticketValue: {
-    fontSize: 44,
+  heroValue: {
+    fontSize: 48,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
-    lineHeight: 48,
+    lineHeight: 52,
     includeFontPadding: false,
   },
-  ticketUnit: {
+  heroUnit: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.75)",
+    color: "rgba(255,255,255,0.7)",
     marginTop: 2,
   },
-  ticketClaimBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginLeft: -16,
-    zIndex: 0,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 3, height: 3 },
-    elevation: 5,
+
+  /* Claim tab — protrudes from the right edge of the hero card */
+  claimTabOuter: {
+    marginLeft: -2,
+    borderRadius: 14,
+    overflow: "hidden",
+    shadowColor: "#8B3A0A",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 4, height: 4 },
+    elevation: 6,
   },
-  ticketClaimText: {
-    fontSize: 12,
+  claimTabInner: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    gap: 6,
+  },
+  claimTabIcon: { fontSize: 20 },
+  claimTabText: {
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 16,
   },
 
   bannerScroll: { borderRadius: 18 },
-  banner: { height: 136, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
-  bannerImage: { height: 136, borderRadius: 18 },
+  banner: { height: 140, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
+  bannerImage: { height: 140, borderRadius: 18 },
   bannerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.white },
   bannerSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)" },
   dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: -8 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#D9C9BF" },
   dotActive: { backgroundColor: Colors.primary, width: 16 },
 
-  sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, paddingHorizontal: 2, marginBottom: -6 },
+  sectionLabel: {
+    fontSize: 13, fontFamily: "Inter_700Bold",
+    color: Colors.textSecondary, letterSpacing: 0.5,
+    textTransform: "uppercase", marginBottom: -4,
+  },
   quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   gridCard: {
     width: "47%",
-    backgroundColor: Colors.white,
-    borderRadius: 18, padding: 18,
-    gap: 6,
-    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 20, padding: 16,
+    gap: 8,
   },
-  gridCardTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
-  gridCardDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  gridIcon: {
+    width: 44, height: 44, borderRadius: 14,
+    justifyContent: "center", alignItems: "center",
+    marginBottom: 2,
+  },
+  gridIconText: { fontSize: 22 },
+  gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text },
+  gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal: {
