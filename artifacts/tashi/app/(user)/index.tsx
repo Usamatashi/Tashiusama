@@ -59,10 +59,8 @@ const FALLBACK_BANNERS = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: "My Points", desc: "View balance", icon: "🏆", route: "/(user)/points", accent: "#FFF4EC", iconBg: "#FFE0C2" },
   { label: "Rewards", desc: "Redeem points", icon: "🎁", route: "/(user)/rewards", accent: "#ECF5FF", iconBg: "#C2DCFF" },
   { label: "Scan History", desc: "All your scans", icon: "📋", route: "/(user)/history", accent: "#EDFBF3", iconBg: "#B8F0CE" },
-  { label: "Profile", desc: "Account info", icon: "👤", route: "/(user)/profile", accent: "#F5F0FF", iconBg: "#DDD0FF" },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
