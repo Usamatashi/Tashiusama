@@ -61,11 +61,17 @@ const FALLBACK_BANNERS = [
 // ─── Marquee ─────────────────────────────────────────────────────────────────
 function Marquee({ text }: { text: string }) {
   const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const [textWidth, setTextWidth] = useState(0);
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    const estimatedTextWidth = text.length * 14;
-    const duration = Math.max(text.length * 100, 8000);
-    const anim = Animated.loop(
+    if (textWidth === 0) return;
+    animRef.current?.stop();
+    translateX.setValue(SCREEN_WIDTH);
+    const PIXELS_PER_SECOND = 60;
+    const travelDistance = SCREEN_WIDTH + textWidth;
+    const duration = (travelDistance / PIXELS_PER_SECOND) * 1000;
+    animRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(translateX, {
           toValue: SCREEN_WIDTH,
@@ -73,16 +79,16 @@ function Marquee({ text }: { text: string }) {
           useNativeDriver: true,
         }),
         Animated.timing(translateX, {
-          toValue: -estimatedTextWidth,
+          toValue: -textWidth,
           duration,
           easing: Easing.linear,
           useNativeDriver: true,
         }),
       ])
     );
-    anim.start();
-    return () => anim.stop();
-  }, [text]);
+    animRef.current.start();
+    return () => animRef.current?.stop();
+  }, [text, textWidth]);
 
   return (
     <View style={marqueeStyles.container}>
@@ -90,8 +96,17 @@ function Marquee({ text }: { text: string }) {
         <Text style={marqueeStyles.badgeText}>LIVE</Text>
       </View>
       <View style={marqueeStyles.track}>
+        {/* Hidden measurement text — stays in flow to give the track its height */}
+        <Text
+          style={[marqueeStyles.text, marqueeStyles.measureText]}
+          numberOfLines={1}
+          onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+        >
+          {text}
+        </Text>
+        {/* Scrolling text positioned absolutely so it can animate freely */}
         <Animated.Text
-          style={[marqueeStyles.text, { transform: [{ translateX }] }]}
+          style={[marqueeStyles.text, marqueeStyles.scrollingText, { transform: [{ translateX }] }]}
           numberOfLines={1}
         >
           {text}
@@ -129,6 +144,14 @@ const marqueeStyles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: Colors.white,
     whiteSpace: "nowrap" as any,
+  },
+  measureText: {
+    opacity: 0,
+  },
+  scrollingText: {
+    position: "absolute",
+    top: 0,
+    left: 0,
   },
 });
 
