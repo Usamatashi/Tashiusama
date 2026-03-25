@@ -69,7 +69,6 @@ export default function HistoryScreen() {
           <View style={styles.card}>
             <View style={styles.cardLeft}>
               <Text style={styles.vehicle}>{item.vehicleName}</Text>
-              <Text style={styles.qrNum}>QR: {item.qrNumber}</Text>
               <Text style={styles.date}>{formatDate(item.scannedAt)}</Text>
             </View>
             <View style={styles.ptsBox}>
@@ -106,7 +105,6 @@ const styles = StyleSheet.create({
   },
   cardLeft: { flex: 1 },
   vehicle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  qrNum: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   date: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 4 },
   ptsBox: { alignItems: "center", minWidth: 60 },
   ptsValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.primary },
