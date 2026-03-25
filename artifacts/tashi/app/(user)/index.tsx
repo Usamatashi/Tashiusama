@@ -140,7 +140,7 @@ const marqueeStyles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 0.8,
   },
-  track: { flex: 1, overflow: "hidden" },
+  track: { flex: 1, overflow: "hidden", height: 20 },
   text: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
