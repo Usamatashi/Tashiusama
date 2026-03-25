@@ -60,8 +60,8 @@ const FALLBACK_BANNERS = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: "Rewards", desc: "Redeem points", icon: "🎁", route: "/(user)/rewards", accent: "#ECF5FF", iconBg: "#C2DCFF" },
   { label: "Scan History", desc: "All your scans", icon: "📋", route: "/(user)/history", accent: "#EDFBF3", iconBg: "#B8F0CE" },
+  { label: "Rewards", desc: "Redeem points", icon: "🎁", route: "/(user)/rewards", accent: "#ECF5FF", iconBg: "#C2DCFF" },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -244,10 +244,16 @@ export default function UserHomeScreen() {
         {/* Quick actions */}
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.quickGrid}>
-          {QUICK_ACTIONS.map((action) => (
+          {QUICK_ACTIONS.map((action, i) => (
             <TouchableOpacity
               key={action.label}
-              style={[styles.gridCard, { backgroundColor: action.accent }]}
+              style={[
+                styles.gridCard,
+                { backgroundColor: action.accent },
+                i === 0
+                  ? { borderBottomRightRadius: 36 }
+                  : { borderBottomLeftRadius: 36 },
+              ]}
               onPress={() => router.push(action.route as any)}
               activeOpacity={0.82}
             >
