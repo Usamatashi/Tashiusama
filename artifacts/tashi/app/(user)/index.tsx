@@ -436,17 +436,17 @@ const styles = StyleSheet.create({
 
   /* Right claim area */
   ticketRight: {
-    width: 100,
+    width: 72,
     justifyContent: "center",
     alignItems: "center",
-    padding: 14,
+    padding: 8,
   },
   ticketClaimText: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 16,
   },
 
   bannerScroll: { borderRadius: 18 },
