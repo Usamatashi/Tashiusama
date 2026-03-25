@@ -96,15 +96,17 @@ function Marquee({ text }: { text: string }) {
         <Text style={marqueeStyles.badgeText}>LIVE</Text>
       </View>
       <View style={marqueeStyles.track}>
-        {/* Hidden measurement text — stays in flow to give the track its height */}
-        <Text
-          style={[marqueeStyles.text, marqueeStyles.measureText]}
-          numberOfLines={1}
-          onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-        >
-          {text}
-        </Text>
-        {/* Scrolling text positioned absolutely so it can animate freely */}
+        {/* Unconstrained absolute wrapper — lets Text report its true pixel width */}
+        <View style={marqueeStyles.measureWrapper}>
+          <Text
+            style={marqueeStyles.text}
+            numberOfLines={1}
+            onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+          >
+            {text}
+          </Text>
+        </View>
+        {/* Scrolling text */}
         <Animated.Text
           style={[marqueeStyles.text, marqueeStyles.scrollingText, { transform: [{ translateX }] }]}
           numberOfLines={1}
@@ -145,7 +147,8 @@ const marqueeStyles = StyleSheet.create({
     color: Colors.white,
     whiteSpace: "nowrap" as any,
   },
-  measureText: {
+  measureWrapper: {
+    position: "absolute",
     opacity: 0,
   },
   scrollingText: {
