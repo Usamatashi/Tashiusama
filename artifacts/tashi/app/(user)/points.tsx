@@ -6,9 +6,17 @@ import {
   Text,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+
+const TIPS = [
+  { icon: "camera" as const, title: "Scan QR Codes", desc: "Scan after every vehicle service visit to earn points." },
+  { icon: "truck" as const, title: "Vehicle Points", desc: "Each vehicle model carries a different point value." },
+  { icon: "layers" as const, title: "Points Stack", desc: "All your scans accumulate into your total balance." },
+  { icon: "gift" as const, title: "Redeem Anytime", desc: "Claim your points to unlock exclusive rewards." },
+];
 
 export default function PointsScreen() {
   const { user, refreshUser } = useAuth();
@@ -16,29 +24,45 @@ export default function PointsScreen() {
 
   useEffect(() => { refreshUser(); }, []);
 
+  const pts = user?.points ?? 0;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Points</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.pointsHero}>
-          <Text style={styles.heroLabel}>Total Points Earned</Text>
-          <Text style={styles.heroValue}>{user?.points ?? 0}</Text>
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Hero */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <Text style={styles.heroEyebrow}>Total Balance</Text>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Live</Text>
+            </View>
+          </View>
+          <Text style={styles.heroValue}>{pts.toLocaleString()}</Text>
           <Text style={styles.heroUnit}>points</Text>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroMeta}>
+            <View style={styles.heroMetaItem}>
+              <Feather name="trending-up" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.heroMetaText}>Accumulated from all scans</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>How to earn more points</Text>
-          {[
-            "Scan QR codes after every vehicle service",
-            "Each vehicle has a fixed point value",
-            "Points accumulate across all scans",
-            "Redeem points for rewards",
-          ].map((tip, i) => (
-            <View key={i} style={styles.tip}>
-              <View style={styles.tipDot} />
-              <Text style={styles.tipText}>{tip}</Text>
+        {/* How to earn */}
+        <Text style={styles.sectionLabel}>How to Earn Points</Text>
+        <View style={styles.tipsGrid}>
+          {TIPS.map((tip, i) => (
+            <View key={i} style={styles.tipCard}>
+              <View style={styles.tipIconWrap}>
+                <Feather name={tip.icon} size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.tipTitle}>{tip.title}</Text>
+              <Text style={styles.tipDesc}>{tip.desc}</Text>
             </View>
           ))}
         </View>
@@ -48,35 +72,47 @@ export default function PointsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: "#F7F4F1" },
   header: {
     backgroundColor: Colors.white,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
-  scroll: { padding: 20, gap: 20 },
-  pointsHero: {
+  scroll: { padding: 16, gap: 20, paddingBottom: 40 },
+
+  heroCard: {
     backgroundColor: Colors.primary,
-    borderRadius: 24,
-    padding: 40,
-    alignItems: "center",
+    borderRadius: 28, padding: 28,
+    overflow: "hidden",
   },
-  heroLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.85)", marginBottom: 8 },
-  heroValue: { fontSize: 72, fontFamily: "Inter_700Bold", color: Colors.white, lineHeight: 80 },
-  heroUnit: { fontSize: 16, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.85)" },
-  tipsCard: {
+  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  heroEyebrow: { fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)" },
+  liveIndicator: { flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#4AFF91" },
+  liveText: { fontSize: 11, fontFamily: "Inter_700Bold", color: Colors.white },
+  heroValue: { fontSize: 68, fontFamily: "Inter_700Bold", color: Colors.white, lineHeight: 76 },
+  heroUnit: { fontSize: 16, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginTop: -4 },
+  heroDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginVertical: 18 },
+  heroMeta: { gap: 6 },
+  heroMetaItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  heroMetaText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)" },
+
+  sectionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, paddingHorizontal: 2 },
+  tipsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  tipCard: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: 18, padding: 18,
+    width: "47.5%",
+    gap: 8,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  tipsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text, marginBottom: 4 },
-  tip: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  tipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary, marginTop: 7 },
-  tipText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 20 },
+  tipIconWrap: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: "#FFF0E6",
+    justifyContent: "center", alignItems: "center",
+  },
+  tipTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  tipDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 17 },
 });

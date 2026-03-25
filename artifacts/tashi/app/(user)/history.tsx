@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   StyleSheet,
@@ -7,108 +8,186 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
 interface Scan {
   id: number;
-  qrNumber: string;
   vehicleName: string;
   pointsEarned: number;
   scannedAt: string;
 }
 
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  return { date, time };
+}
+
 export default function HistoryScreen() {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
   const [scans, setScans] = useState<Scan[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchScans = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/scans`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       setScans(data.reverse());
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchScans(); }, []);
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  };
+  const totalPoints = scans.reduce((sum, s) => sum + s.pointsEarned, 0);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Scan History</Text>
-      </View>
-      <FlatList
-        data={scans}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
-        refreshing={loading}
-        onRefresh={fetchScans}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Feather name="clock" size={48} color={Colors.border} />
-            <Text style={styles.emptyText}>No scans yet</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardLeft}>
-              <Text style={styles.vehicle}>{item.vehicleName}</Text>
-              <Text style={styles.date}>{formatDate(item.scannedAt)}</Text>
-            </View>
-            <View style={styles.ptsBox}>
-              <Text style={styles.ptsValue}>+{item.pointsEarned}</Text>
-              <Text style={styles.ptsLabel}>pts</Text>
-            </View>
+        {scans.length > 0 && (
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>{scans.length} scans</Text>
           </View>
         )}
-      />
+      </View>
+
+      {scans.length > 0 && (
+        <View style={styles.summaryBar}>
+          <View style={styles.summaryItem}>
+            <Feather name="zap" size={14} color={Colors.primary} />
+            <Text style={styles.summaryValue}>{totalPoints}</Text>
+            <Text style={styles.summaryLabel}>total pts</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Feather name="camera" size={14} color={Colors.primary} />
+            <Text style={styles.summaryValue}>{scans.length}</Text>
+            <Text style={styles.summaryLabel}>scans</Text>
+          </View>
+        </View>
+      )}
+
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={scans}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.list}
+          refreshing={loading}
+          onRefresh={fetchScans}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Feather name="clock" size={32} color={Colors.textLight} />
+              </View>
+              <Text style={styles.emptyTitle}>No Scans Yet</Text>
+              <Text style={styles.emptyText}>Your scan history will appear here after your first QR scan.</Text>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const { date, time } = formatDate(item.scannedAt);
+            return (
+              <View style={styles.card}>
+                <View style={styles.timelineCol}>
+                  <View style={styles.timelineDot} />
+                  {index < scans.length - 1 && <View style={styles.timelineLine} />}
+                </View>
+                <View style={styles.cardContent}>
+                  <View style={styles.cardIconWrap}>
+                    <Feather name="truck" size={18} color={Colors.primary} />
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.vehicleName}>{item.vehicleName}</Text>
+                    <Text style={styles.scanDate}>{date} · {time}</Text>
+                  </View>
+                  <View style={styles.ptsBox}>
+                    <Text style={styles.ptsValue}>+{item.pointsEarned}</Text>
+                    <Text style={styles.ptsLabel}>pts</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: "#F7F4F1" },
   header: {
     backgroundColor: Colors.white,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 10,
   },
-  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
-  list: { padding: 16, gap: 12 },
-  card: {
+  headerTitle: { flex: 1, fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerBadge: {
+    backgroundColor: `${Colors.primary}15`, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  headerBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+
+  summaryBar: {
     backgroundColor: Colors.white,
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 12, gap: 24,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  cardLeft: { flex: 1 },
-  vehicle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  date: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 4 },
-  ptsBox: { alignItems: "center", minWidth: 60 },
-  ptsValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.primary },
-  ptsLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },
-  emptyText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.textLight },
+  summaryItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  summaryValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
+  summaryLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  summaryDivider: { width: 1, height: 20, backgroundColor: Colors.border },
+
+  loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
+  list: { paddingVertical: 16, paddingHorizontal: 16, paddingBottom: 40 },
+
+  empty: { alignItems: "center", paddingTop: 80, gap: 10, paddingHorizontal: 32 },
+  emptyIcon: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: Colors.white, justifyContent: "center", alignItems: "center",
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
+
+  card: { flexDirection: "row", gap: 0, marginBottom: 0 },
+  timelineCol: { alignItems: "center", width: 28 },
+  timelineDot: {
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: Colors.primary, marginTop: 18,
+    borderWidth: 2, borderColor: Colors.white,
+    shadowColor: Colors.primary, shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 0 },
+  },
+  timelineLine: { flex: 1, width: 2, backgroundColor: Colors.border, marginVertical: 2 },
+
+  cardContent: {
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: Colors.white, borderRadius: 18,
+    padding: 14, marginBottom: 10, marginLeft: 8,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  cardIconWrap: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: "#FFF0E6", justifyContent: "center", alignItems: "center",
+  },
+  cardInfo: { flex: 1 },
+  vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  scanDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 3 },
+  ptsBox: { alignItems: "flex-end" },
+  ptsValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.primary },
+  ptsLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
 });
