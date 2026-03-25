@@ -63,8 +63,8 @@ function Marquee({ text }: { text: string }) {
   const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
   useEffect(() => {
-    const estimatedTextWidth = text.length * 8;
-    const duration = Math.max(text.length * 80, 6000);
+    const estimatedTextWidth = text.length * 14;
+    const duration = Math.max(text.length * 100, 8000);
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(translateX, {
@@ -220,7 +220,7 @@ export default function UserHomeScreen() {
   const displayPoints = localPoints ?? user?.points ?? 0;
   const topPadding = insets.top + (Platform.OS === "web" ? 67 : 0);
   const firstName = user?.email?.split("@")[0] || "there";
-  const tickerText = tickers.map((t) => t.text).join("   •   ");
+  const tickerText = tickers.map((t) => t.text).join("          •          ");
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
