@@ -168,18 +168,25 @@ export default function UserHomeScreen() {
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Points hero */}
-        <View style={styles.pointsHero}>
-          <View>
-            <Text style={styles.pointsHeroLabel}>Available Points</Text>
-            <Text style={styles.pointsHeroValue}>{displayPoints}</Text>
-            <Text style={styles.pointsHeroUnit}>pts</Text>
+        {/* Points hero — ticket style */}
+        <View style={styles.ticketCard}>
+          {/* Left: points info */}
+          <View style={styles.ticketLeft}>
+            <Text style={styles.ticketLabel}>Available Points</Text>
+            <Text style={styles.ticketValue}>{displayPoints}</Text>
+            <Text style={styles.ticketUnit}>pts</Text>
           </View>
-          <View style={styles.pointsHeroDeco}>
-            <Text style={styles.pointsHeroDecoText}>★</Text>
+
+          {/* Divider with punched notches */}
+          <View style={styles.ticketSep}>
+            <View style={styles.notchTop} />
+            <View style={styles.notchLine} />
+            <View style={styles.notchBottom} />
           </View>
-          <TouchableOpacity style={styles.claimHeroBtn} onPress={openClaimModal} activeOpacity={0.85}>
-            <Text style={styles.claimHeroBtnText}>Claim Rewards</Text>
+
+          {/* Right: claim button inside notch area */}
+          <TouchableOpacity style={styles.ticketRight} onPress={openClaimModal} activeOpacity={0.8}>
+            <Text style={styles.ticketClaimText}>Claim{"\n"}Rewards</Text>
           </TouchableOpacity>
         </View>
 
@@ -361,21 +368,86 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 18, paddingBottom: 24 },
 
-  pointsHero: {
+  /* ── Ticket-style points card ─────────────────────────────────── */
+  ticketCard: {
     backgroundColor: Colors.primary,
-    borderRadius: 24, padding: 24,
-    overflow: "hidden", position: "relative",
+    borderRadius: 24,
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "stretch",
+    minHeight: 130,
   },
-  pointsHeroLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginBottom: 4 },
-  pointsHeroValue: { fontSize: 60, fontFamily: "Inter_700Bold", color: Colors.white, lineHeight: 68 },
-  pointsHeroUnit: { fontSize: 15, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginTop: -2, marginBottom: 18 },
-  pointsHeroDeco: { position: "absolute", right: 12, top: 12 },
-  pointsHeroDecoText: { fontSize: 80, color: "rgba(255,255,255,0.07)" },
-  claimHeroBtn: {
-    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 10, alignSelf: "flex-start",
+
+  ticketLeft: {
+    flex: 1,
+    paddingVertical: 22,
+    paddingLeft: 22,
+    paddingRight: 8,
+    justifyContent: "center",
   },
-  claimHeroBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  ticketLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.8)",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  ticketValue: {
+    fontSize: 56,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    lineHeight: 62,
+    includeFontPadding: false,
+  },
+  ticketUnit: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
+  },
+
+  /* Separator: notch circles + dashed line */
+  ticketSep: {
+    width: 28,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  notchTop: {
+    width: 28,
+    height: 14,
+    backgroundColor: "#F7F4F1",   /* matches screen background → carves a "bite" */
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  notchLine: {
+    flex: 1,
+    width: 1,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.45)",
+  },
+  notchBottom: {
+    width: 28,
+    height: 14,
+    backgroundColor: "#F7F4F1",
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+  },
+
+  /* Right claim area */
+  ticketRight: {
+    width: 100,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 14,
+  },
+  ticketClaimText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    textAlign: "center",
+    lineHeight: 20,
+  },
 
   bannerScroll: { borderRadius: 18 },
   banner: { height: 136, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
