@@ -168,24 +168,14 @@ export default function UserHomeScreen() {
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Points hero — ticket style */}
-        <View style={styles.ticketCard}>
-          {/* Left: points info */}
-          <View style={styles.ticketLeft}>
+        {/* Points hero — square card with protruding claim button */}
+        <View style={styles.ticketWrapper}>
+          <View style={styles.ticketCard}>
             <Text style={styles.ticketLabel}>Available Points</Text>
             <Text style={styles.ticketValue}>{displayPoints}</Text>
             <Text style={styles.ticketUnit}>pts</Text>
           </View>
-
-          {/* Divider with punched notches */}
-          <View style={styles.ticketSep}>
-            <View style={styles.notchTop} />
-            <View style={styles.notchLine} />
-            <View style={styles.notchBottom} />
-          </View>
-
-          {/* Right: claim button inside notch area */}
-          <TouchableOpacity style={styles.ticketRight} onPress={openClaimModal} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.ticketClaimBtn} onPress={openClaimModal} activeOpacity={0.8}>
             <Text style={styles.ticketClaimText}>Claim{"\n"}Rewards</Text>
           </TouchableOpacity>
         </View>
@@ -368,35 +358,32 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 18, paddingBottom: 24 },
 
-  /* ── Ticket-style points card ─────────────────────────────────── */
+  /* ── Points card with protruding claim button ─────────────────── */
+  ticketWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   ticketCard: {
     backgroundColor: Colors.primary,
-    borderRadius: 24,
-    overflow: "hidden",
-    flexDirection: "row",
-    alignItems: "stretch",
-    minHeight: 90,
-  },
-
-  ticketLeft: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingLeft: 22,
-    paddingRight: 8,
-    justifyContent: "center",
+    borderRadius: 20,
+    padding: 22,
+    width: 160,
+    aspectRatio: 1,
+    justifyContent: "flex-end",
+    zIndex: 1,
   },
   ticketLabel: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: "rgba(255,255,255,0.8)",
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   ticketValue: {
-    fontSize: 40,
+    fontSize: 44,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
-    lineHeight: 44,
+    lineHeight: 48,
     includeFontPadding: false,
   },
   ticketUnit: {
@@ -405,48 +392,25 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     marginTop: 2,
   },
-
-  /* Separator: notch circles + dashed line */
-  ticketSep: {
-    width: 28,
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  notchTop: {
-    width: 28,
-    height: 14,
-    backgroundColor: "#F7F4F1",   /* matches screen background → carves a "bite" */
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-  },
-  notchLine: {
-    flex: 1,
-    width: 1,
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.45)",
-  },
-  notchBottom: {
-    width: 28,
-    height: 14,
-    backgroundColor: "#F7F4F1",
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-  },
-
-  /* Right claim area */
-  ticketRight: {
-    width: 72,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 8,
+  ticketClaimBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginLeft: -16,
+    zIndex: 0,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 3, height: 3 },
+    elevation: 5,
   },
   ticketClaimText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
     textAlign: "center",
-    lineHeight: 16,
+    lineHeight: 18,
   },
 
   bannerScroll: { borderRadius: 18 },
