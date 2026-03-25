@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
-  I18nManager,
   StyleSheet,
   Text,
   View,
@@ -16,8 +15,6 @@ interface TickerMarqueeProps {
   badge?: string;
   speed?: number;
 }
-
-const BADGE_RESERVED = 64;
 
 export default function TickerMarquee({
   text,
@@ -37,22 +34,23 @@ export default function TickerMarquee({
 
     animRef.current?.stop();
 
-    const startX = trackWidth;
-    const endX = -textWidth;
     const travelPx = trackWidth + textWidth;
     const duration = (travelPx / speed) * 1000;
 
-    translateX.setValue(startX);
+    // Start the text just off the right edge
+    translateX.setValue(trackWidth);
 
     animRef.current = Animated.loop(
       Animated.sequence([
+        // Instantly reset to start
         Animated.timing(translateX, {
-          toValue: startX,
+          toValue: trackWidth,
           duration: 0,
           useNativeDriver: true,
         }),
+        // Scroll all the way until text is fully off the left edge
         Animated.timing(translateX, {
-          toValue: endX,
+          toValue: -textWidth,
           duration,
           easing: Easing.linear,
           useNativeDriver: true,
@@ -71,6 +69,7 @@ export default function TickerMarquee({
 
   return (
     <View style={[styles.container, { height, backgroundColor }]}>
+      {/* LIVE badge */}
       {badge ? (
         <View style={styles.badge}>
           <View style={styles.liveDot} />
@@ -78,33 +77,23 @@ export default function TickerMarquee({
         </View>
       ) : null}
 
+      {/* Scrolling track */}
       <View
         style={styles.track}
         onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
       >
         {/*
-         * Measurement layer — absolutely positioned with a very large explicit
-         * width so React Native never clips or wraps the text. The onLayout
-         * callback receives the rendered text width, not the container width.
+         * The Animated.Text is position:absolute so React Native sizes it to
+         * its intrinsic content width — no parent constraint applies.
+         * onLayout therefore returns the true pixel width of the text.
+         * The animation starts only once both widths are measured.
          */}
-        <View style={styles.measureLayer} pointerEvents="none">
-          <Text
-            style={[styles.text, { color: textColor }]}
-            numberOfLines={1}
-            onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-          >
-            {text}
-          </Text>
-        </View>
-
-        {/* Scrolling text */}
         <Animated.Text
           style={[
             styles.text,
-            styles.scrollText,
             { color: textColor, transform: [{ translateX }] },
           ]}
-          numberOfLines={1}
+          onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
         >
           {text}
         </Animated.Text>
@@ -125,9 +114,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 4,
     marginLeft: 10,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingVertical: 4,
+    backgroundColor: "rgba(255,255,255,0.22)",
     borderRadius: 4,
   },
   liveDot: {
@@ -145,16 +134,10 @@ const styles = StyleSheet.create({
 
   track: {
     flex: 1,
+    height: 20,
     overflow: "hidden",
     marginLeft: 8,
-  },
-
-  measureLayer: {
-    position: "absolute",
-    opacity: 0,
-    width: 9999,
-    top: 0,
-    left: 0,
+    justifyContent: "center",
   },
 
   text: {
@@ -162,11 +145,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     lineHeight: 18,
     includeFontPadding: false,
-  },
-
-  scrollText: {
     position: "absolute",
-    top: 0,
-    left: 0,
   },
 });
