@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
@@ -55,7 +54,6 @@ const FALLBACK_BANNERS = [
 
 export default function UserHomeScreen() {
   const { user, refreshUser } = useAuth();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [bannerIndex, setBannerIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -139,31 +137,28 @@ export default function UserHomeScreen() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())} style={styles.menuBtn}>
-          <Feather name="menu" size={22} color={Colors.text} />
-        </TouchableOpacity>
-        <Image source={require("../../assets/images/tashi-logo.png")} style={styles.logo} resizeMode="contain" />
-        <TouchableOpacity onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)} style={styles.waBtn}>
+        <View>
+          <Text style={styles.headerGreet}>Hello, {firstName}</Text>
+          <Text style={styles.headerSub}>Your loyalty dashboard</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
+          style={styles.waBtn}
+        >
           <Feather name="message-circle" size={22} color="#25D366" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Greeting */}
-        <View style={styles.greeting}>
-          <Text style={styles.greetHi}>Hello, {firstName}</Text>
-          <Text style={styles.greetSub}>Your loyalty points summary</Text>
-        </View>
-
         {/* Points hero */}
         <View style={styles.pointsHero}>
-          <View style={styles.pointsHeroInner}>
+          <View>
             <Text style={styles.pointsHeroLabel}>Available Points</Text>
             <Text style={styles.pointsHeroValue}>{displayPoints}</Text>
             <Text style={styles.pointsHeroUnit}>pts</Text>
           </View>
           <View style={styles.pointsHeroDeco}>
-            <Feather name="star" size={80} color="rgba(255,255,255,0.08)" />
+            <Feather name="star" size={90} color="rgba(255,255,255,0.07)" />
           </View>
           <TouchableOpacity style={styles.claimHeroBtn} onPress={openClaimModal} activeOpacity={0.85}>
             <Feather name="gift" size={15} color={Colors.white} />
@@ -190,7 +185,7 @@ export default function UserHomeScreen() {
             : FALLBACK_BANNERS.map((b, i) => (
                 <View key={i} style={[styles.banner, { backgroundColor: b.bg, width: BANNER_WIDTH }]}>
                   <View style={styles.bannerIconBox}>
-                    <Feather name={b.icon} size={22} color="rgba(255,255,255,0.9)" />
+                    <Feather name={b.icon} size={20} color="rgba(255,255,255,0.9)" />
                   </View>
                   <Text style={styles.bannerTitle}>{b.title}</Text>
                   <Text style={styles.bannerSubtitle}>{b.subtitle}</Text>
@@ -204,45 +199,37 @@ export default function UserHomeScreen() {
         </View>
 
         {/* Quick actions */}
-        <Text style={styles.sectionLabel}>Quick Actions</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(user)/history")} activeOpacity={0.8}>
-            <View style={[styles.actionIconWrap, { backgroundColor: "#FFF0E6" }]}>
-              <Feather name="clock" size={22} color={Colors.primary} />
+        <Text style={styles.sectionLabel}>Explore</Text>
+        <View style={styles.quickGrid}>
+          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/points")} activeOpacity={0.8}>
+            <View style={[styles.gridIcon, { backgroundColor: "#FFF0E6" }]}>
+              <Feather name="star" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.actionCardLabel}>Scan History</Text>
-            <Feather name="chevron-right" size={16} color={Colors.textLight} />
+            <Text style={styles.gridLabel}>My Points</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(user)/points")} activeOpacity={0.8}>
-            <View style={[styles.actionIconWrap, { backgroundColor: "#E8F5E9" }]}>
-              <Feather name="star" size={22} color={Colors.success} />
+          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/rewards")} activeOpacity={0.8}>
+            <View style={[styles.gridIcon, { backgroundColor: "#E8F5E9" }]}>
+              <Feather name="award" size={20} color={Colors.success} />
             </View>
-            <Text style={styles.actionCardLabel}>My Points</Text>
-            <Feather name="chevron-right" size={16} color={Colors.textLight} />
+            <Text style={styles.gridLabel}>Rewards</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(user)/rewards")} activeOpacity={0.8}>
-            <View style={[styles.actionIconWrap, { backgroundColor: "#FFF3E0" }]}>
-              <Feather name="award" size={22} color="#F39C12" />
+          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/history")} activeOpacity={0.8}>
+            <View style={[styles.gridIcon, { backgroundColor: "#FFF3E0" }]}>
+              <Feather name="clock" size={20} color="#F59E0B" />
             </View>
-            <Text style={styles.actionCardLabel}>Rewards</Text>
-            <Feather name="chevron-right" size={16} color={Colors.textLight} />
+            <Text style={styles.gridLabel}>History</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.gridCard} onPress={() => router.push("/(user)/profile")} activeOpacity={0.8}>
+            <View style={[styles.gridIcon, { backgroundColor: "#EDE9FE" }]}>
+              <Feather name="user" size={20} color="#8B5CF6" />
+            </View>
+            <Text style={styles.gridLabel}>Profile</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {user?.role === "mechanic" && (
-        <View style={[styles.scanBarWrapper, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 8) }]}>
-          <TouchableOpacity style={styles.scanBar} onPress={() => router.push("/(user)/scan")} activeOpacity={0.85}>
-            <View style={styles.scanIconCircle}>
-              <Feather name="camera" size={20} color={Colors.primary} />
-            </View>
-            <Text style={styles.scanBarText}>Scan QR Code</Text>
-            <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Claim modal */}
       <Modal visible={claimModalVisible} transparent animationType="slide" onRequestClose={() => setClaimModalVisible(false)}>
@@ -352,83 +339,68 @@ export default function UserHomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4F1" },
+
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  menuBtn: { padding: 6 },
-  logo: { width: 90, height: 40 },
-  waBtn: { padding: 6 },
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 18, paddingBottom: 36 },
+  headerGreet: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  waBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#E8F8EF",
+    justifyContent: "center", alignItems: "center",
+  },
 
-  greeting: { paddingHorizontal: 4 },
-  greetHi: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
-  greetSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16, gap: 18, paddingBottom: 24 },
 
   pointsHero: {
     backgroundColor: Colors.primary,
-    borderRadius: 24,
-    padding: 24,
-    overflow: "hidden",
-    position: "relative",
+    borderRadius: 24, padding: 24,
+    overflow: "hidden", position: "relative",
   },
-  pointsHeroInner: { zIndex: 1 },
-  pointsHeroLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginBottom: 4 },
+  pointsHeroLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginBottom: 4 },
   pointsHeroValue: { fontSize: 60, fontFamily: "Inter_700Bold", color: Colors.white, lineHeight: 68 },
-  pointsHeroUnit: { fontSize: 16, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginTop: -2, marginBottom: 16 },
-  pointsHeroDeco: { position: "absolute", right: -8, top: -8, zIndex: 0 },
+  pointsHeroUnit: { fontSize: 15, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.8)", marginTop: -2, marginBottom: 18 },
+  pointsHeroDeco: { position: "absolute", right: -10, top: -10 },
   claimHeroBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 10, alignSelf: "flex-start",
   },
   claimHeroBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
 
   bannerScroll: { borderRadius: 18 },
-  banner: { height: 140, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
-  bannerImage: { height: 140, borderRadius: 18 },
+  banner: { height: 136, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
+  bannerImage: { height: 136, borderRadius: 18 },
   bannerIconBox: {
-    width: 36, height: 36, borderRadius: 10,
+    width: 34, height: 34, borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center",
-    marginBottom: 6,
+    justifyContent: "center", alignItems: "center", marginBottom: 6,
   },
-  bannerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
+  bannerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.white },
   bannerSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)" },
   dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: -8 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#D9C9BF" },
   dotActive: { backgroundColor: Colors.primary, width: 16 },
 
-  sectionLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, paddingHorizontal: 4, marginBottom: -6 },
-  quickActions: { gap: 10 },
-  actionCard: {
+  sectionLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, paddingHorizontal: 2, marginBottom: -6 },
+  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  gridCard: {
+    width: "47%",
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    paddingHorizontal: 16, paddingVertical: 14,
-    flexDirection: "row", alignItems: "center", gap: 14,
+    borderRadius: 18, padding: 18,
+    alignItems: "flex-start", gap: 12,
     borderWidth: 1, borderColor: Colors.border,
   },
-  actionIconWrap: {
+  gridIcon: {
     width: 44, height: 44, borderRadius: 12,
     justifyContent: "center", alignItems: "center",
   },
-  actionCardLabel: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
-
-  scanBarWrapper: {
-    paddingHorizontal: 16, paddingTop: 10,
-    backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  scanBar: {
-    backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 20,
-    flexDirection: "row", alignItems: "center", gap: 12,
-  },
-  scanIconCircle: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: Colors.white, justifyContent: "center", alignItems: "center",
-  },
-  scanBarText: { flex: 1, fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.white },
+  gridLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal: {
@@ -452,9 +424,7 @@ const styles = StyleSheet.create({
   successSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", maxWidth: 240 },
 
   claimSection: { marginBottom: 4 },
-  claimPointsCard: {
-    backgroundColor: "#F7F4F1", borderRadius: 16, padding: 16, marginBottom: 14,
-  },
+  claimPointsCard: { backgroundColor: "#F7F4F1", borderRadius: 16, padding: 16, marginBottom: 14 },
   claimPointsRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   claimPointsBox: {
     flex: 1, backgroundColor: Colors.white, borderRadius: 12,
