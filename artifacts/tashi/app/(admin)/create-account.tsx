@@ -161,7 +161,7 @@ export default function CreateAccountScreen() {
         }}
         onLongPress={() => setSelectedUserId(isSelected ? null : item.id)}
         delayLongPress={300}
-        activeOpacity={0.85}
+        activeOpacity={isSelected ? 1 : 0.85}
       >
         <View style={styles.cardTop}>
           <View style={styles.avatarWrap}>
