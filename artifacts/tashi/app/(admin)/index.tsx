@@ -176,10 +176,7 @@ export default function AdminDashboard() {
                         {loadingCounts ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                          <>
-                            <Text style={styles.countNumber}>{count}</Text>
-                            <Text style={styles.countLabel}>{action.countLabel}</Text>
-                          </>
+                          <Text style={styles.countNumber}>{count}</Text>
                         )}
                       </View>
                     ) : (
@@ -322,27 +319,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   countBadge: {
-    minWidth: 52,
+    minWidth: 44,
+    height: 44,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 22,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    gap: 1,
   },
   countNumber: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
-    color: "#fff",
-    lineHeight: 26,
-  },
-  countLabel: {
-    fontSize: 9,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.85)",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
+    color: "#FF3B30",
+    lineHeight: 24,
   },
   pendingDot: {
     position: "absolute",
