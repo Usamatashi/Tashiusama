@@ -19,6 +19,7 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
         vehicleName: vehiclesTable.name,
+        salesPrice: vehiclesTable.salesPrice,
         retailerName: usersTable.name,
         retailerPhone: usersTable.phone,
         retailerId: ordersTable.retailerId,
@@ -30,7 +31,11 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
       .leftJoin(usersTable, eq(ordersTable.retailerId, usersTable.id))
       .where(caller.role === "admin" ? undefined : eq(ordersTable.salesmanId, caller.userId));
 
-    res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })));
+    res.json(rows.map(r => ({
+      ...r,
+      totalValue: (r.quantity ?? 0) * (r.salesPrice ?? 0),
+      createdAt: r.createdAt.toISOString(),
+    })));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -154,6 +159,7 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
         vehicleName: vehiclesTable.name,
+        salesPrice: vehiclesTable.salesPrice,
         salesmanId: ordersTable.salesmanId,
         retailerId: ordersTable.retailerId,
         vehicleId: ordersTable.vehicleId,
@@ -161,14 +167,18 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
       .from(ordersTable)
       .leftJoin(vehiclesTable, eq(ordersTable.vehicleId, vehiclesTable.id))
       .where(eq(ordersTable.retailerId, caller.userId));
-    res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })));
+    res.json(rows.map(r => ({
+      ...r,
+      totalValue: (r.quantity ?? 0) * (r.salesPrice ?? 0),
+      createdAt: r.createdAt.toISOString(),
+    })));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /orders/my-bonus — salesman bonus summary
+// GET /orders/my-bonus — salesman financial summary
 router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
@@ -181,6 +191,7 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
         vehicleName: vehiclesTable.name,
+        salesPrice: vehiclesTable.salesPrice,
         retailerName: usersTable.name,
         retailerPhone: usersTable.phone,
       })
@@ -191,11 +202,21 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
 
     const totalBonus = rows.reduce((sum, r) => sum + (r.status !== "cancelled" ? r.bonusPoints : 0), 0);
     const confirmedBonus = rows.reduce((sum, r) => sum + (r.status === "confirmed" ? r.bonusPoints : 0), 0);
+    const totalSalesValue = rows.reduce((sum, r) => sum + (r.status !== "cancelled" ? (r.quantity ?? 0) * (r.salesPrice ?? 0) : 0), 0);
+    const confirmedSalesValue = rows.reduce((sum, r) => sum + (r.status === "confirmed" ? (r.quantity ?? 0) * (r.salesPrice ?? 0) : 0), 0);
+    const totalOrders = rows.filter(r => r.status !== "cancelled").length;
 
     res.json({
       totalBonus,
       confirmedBonus,
-      orders: rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })),
+      totalSalesValue,
+      confirmedSalesValue,
+      totalOrders,
+      orders: rows.map(r => ({
+        ...r,
+        totalValue: (r.quantity ?? 0) * (r.salesPrice ?? 0),
+        createdAt: r.createdAt.toISOString(),
+      })),
     });
   } catch (err) {
     req.log.error(err);

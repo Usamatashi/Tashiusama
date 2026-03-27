@@ -23,9 +23,10 @@ import { Colors } from "@/constants/colors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Retailer { id: number; name: string | null; phone: string; city: string | null; }
-interface Vehicle  { id: number; name: string; points: number; }
+interface Vehicle  { id: number; name: string; points: number; salesPrice: number; }
 interface Order {
   id: number; quantity: number; totalPoints: number; bonusPoints: number;
+  salesPrice: number | null; totalValue: number | null;
   status: "pending" | "confirmed" | "cancelled";
   vehicleName: string | null; retailerName: string | null; retailerPhone: string | null;
   createdAt: string;
@@ -97,12 +98,16 @@ function OrderCard({ order }: { order: Order }) {
       </View>
       <View style={styles.orderCardBottom}>
         <View style={styles.orderStat}>
-          <Feather name="star" size={13} color={Colors.primary} />
-          <Text style={styles.orderStatText}>{order.totalPoints} pts customer</Text>
+          <Feather name="dollar-sign" size={13} color="#1B6CA8" />
+          <Text style={[styles.orderStatText, { color: "#1B6CA8", fontWeight: "700" }]}>
+            Rs. {(order.totalValue ?? 0).toLocaleString()}
+          </Text>
         </View>
         <View style={styles.orderStat}>
-          <Feather name="gift" size={13} color="#10B981" />
-          <Text style={[styles.orderStatText, { color: "#10B981" }]}>{order.bonusPoints} bonus pts</Text>
+          <Feather name="tag" size={13} color={Colors.textSecondary} />
+          <Text style={styles.orderStatText}>
+            Rs. {(order.salesPrice ?? 0).toLocaleString()}/unit
+          </Text>
         </View>
       </View>
     </View>
@@ -114,6 +119,8 @@ interface RetailerOrder {
   id: number;
   quantity: number;
   totalPoints: number;
+  salesPrice: number | null;
+  totalValue: number | null;
   status: "pending" | "confirmed" | "cancelled";
   vehicleName: string | null;
   createdAt: string;
@@ -148,8 +155,16 @@ function RetailerOrderCard({ order }: { order: RetailerOrder }) {
       </View>
       <View style={styles.orderCardBottom}>
         <View style={styles.orderStat}>
-          <Feather name="star" size={13} color={Colors.primary} />
-          <Text style={styles.orderStatText}>{order.totalPoints} pts earned</Text>
+          <Feather name="dollar-sign" size={13} color="#059669" />
+          <Text style={[styles.orderStatText, { color: "#059669", fontWeight: "700" }]}>
+            Rs. {(order.totalValue ?? 0).toLocaleString()}
+          </Text>
+        </View>
+        <View style={styles.orderStat}>
+          <Feather name="tag" size={13} color={Colors.textSecondary} />
+          <Text style={styles.orderStatText}>
+            Rs. {(order.salesPrice ?? 0).toLocaleString()}/unit
+          </Text>
         </View>
       </View>
     </View>
@@ -380,7 +395,7 @@ export default function OrdersScreen() {
                       <Text style={[styles.selectCardName, selectedVehicle?.id === v.id && styles.selectCardNameActive]}>
                         {v.name}
                       </Text>
-                      <Text style={styles.selectCardSub}>{v.points} pts/unit</Text>
+                      <Text style={styles.selectCardSub}>Rs. {(v.salesPrice ?? 0).toLocaleString()}/unit</Text>
                     </View>
                     {selectedVehicle?.id === v.id && <Feather name="check-circle" size={18} color={Colors.white} />}
                   </TouchableOpacity>
@@ -424,9 +439,9 @@ export default function OrdersScreen() {
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.summaryRow}>
-                  <Feather name="star" size={15} color={Colors.textSecondary} />
-                  <Text style={styles.summaryLabel}>Points/unit</Text>
-                  <Text style={styles.summaryValue}>{selectedVehicle?.points}</Text>
+                  <Feather name="dollar-sign" size={15} color={Colors.textSecondary} />
+                  <Text style={styles.summaryLabel}>Price/unit</Text>
+                  <Text style={styles.summaryValue}>Rs. {(selectedVehicle?.salesPrice ?? 0).toLocaleString()}</Text>
                 </View>
               </View>
 
@@ -465,15 +480,15 @@ export default function OrdersScreen() {
               {parseInt(quantity, 10) > 0 && selectedVehicle && (
                 <View style={styles.previewCard}>
                   <View style={styles.previewRow}>
-                    <Text style={styles.previewLabel}>Customer Points</Text>
+                    <Text style={styles.previewLabel}>Unit Price</Text>
                     <Text style={styles.previewVal}>
-                      {parseInt(quantity, 10) * selectedVehicle.points}
+                      Rs. {(selectedVehicle.salesPrice ?? 0).toLocaleString()}
                     </Text>
                   </View>
                   <View style={styles.previewRow}>
-                    <Text style={styles.previewLabel}>Your Bonus (10%)</Text>
-                    <Text style={[styles.previewVal, { color: "#10B981" }]}>
-                      {Math.round(parseInt(quantity, 10) * selectedVehicle.points * 0.1)}
+                    <Text style={styles.previewLabel}>Total Order Value</Text>
+                    <Text style={[styles.previewVal, { color: "#1B6CA8", fontWeight: "700" }]}>
+                      Rs. {(parseInt(quantity, 10) * (selectedVehicle.salesPrice ?? 0)).toLocaleString()}
                     </Text>
                   </View>
                 </View>

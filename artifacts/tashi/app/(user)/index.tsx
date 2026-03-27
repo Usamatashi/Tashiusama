@@ -66,7 +66,12 @@ const BASE_QUICK_ACTIONS = [
 
 const RETAILER_QUICK_ACTIONS = [
   { label: "My Orders", desc: "View your orders", icon: "📦", route: "/(user)/orders", accent: "#FEF3C7", iconBg: "#FDE68A" },
-  { label: "Profile", desc: "Your account info", icon: "👤", route: "/(user)/profile", accent: "#F0F4FF", iconBg: "#C7D4FF" },
+  { label: "Profile", desc: "Your account", icon: "👤", route: "/(user)/profile", accent: "#F0F4FF", iconBg: "#C7D4FF" },
+];
+
+const SALESMAN_QUICK_ACTIONS = [
+  { label: "Orders", desc: "Manage your sales", icon: "📋", route: "/(user)/orders", accent: "#EDFBF3", iconBg: "#B8F0CE" },
+  { label: "Profile", desc: "Your account", icon: "👤", route: "/(user)/profile", accent: "#F0F4FF", iconBg: "#C7D4FF" },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -83,6 +88,8 @@ export default function UserHomeScreen() {
   const [justClaimed, setJustClaimed] = useState<number | null>(null);
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
   const [tickers, setTickers] = useState<TickerItem[]>([]);
+  const [salesSummary, setSalesSummary] = useState<{ totalSalesValue: number; confirmedSalesValue: number; totalOrders: number } | null>(null);
+  const [retailTotal, setRetailTotal] = useState<number>(0);
 
   useEffect(() => {
     (async () => {
@@ -106,6 +113,33 @@ export default function UserHomeScreen() {
   useEffect(() => {
     if (user?.points !== undefined) setLocalPoints(user.points);
   }, [user?.points]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (user.role === "salesman") {
+          const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, totalOrders: data.totalOrders });
+          }
+        } else if (user.role === "retailer") {
+          const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const orders: Array<{ totalValue?: number; status: string }> = await res.json();
+            const total = orders.filter(o => o.status !== "cancelled").reduce((s, o) => s + (o.totalValue ?? 0), 0);
+            setRetailTotal(total);
+          }
+        }
+      } catch {}
+    })();
+  }, [user?.role]);
 
   const activeBanners = adBanners.length > 0 ? adBanners : FALLBACK_BANNERS;
 
@@ -160,12 +194,20 @@ export default function UserHomeScreen() {
   const tickerText = tickers.map((t) => t.text).join("          •          ");
 
   const isRetailer = user?.role === "retailer";
+  const isSalesman = user?.role === "salesman";
+  const isMechanic = !isRetailer && !isSalesman;
 
   const quickActions = isRetailer
     ? RETAILER_QUICK_ACTIONS
-    : [
-        ...BASE_QUICK_ACTIONS,
-      ];
+    : isSalesman
+    ? SALESMAN_QUICK_ACTIONS
+    : BASE_QUICK_ACTIONS;
+
+  const headerSub = isSalesman
+    ? "Your sales dashboard"
+    : isRetailer
+    ? "Your order dashboard"
+    : "Your loyalty dashboard";
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
@@ -173,7 +215,7 @@ export default function UserHomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerGreet}>Hello, {firstName} 👋</Text>
-          <Text style={styles.headerSub}>Your loyalty dashboard</Text>
+          <Text style={styles.headerSub}>{headerSub}</Text>
         </View>
         <TouchableOpacity
           onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
@@ -187,8 +229,8 @@ export default function UserHomeScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── Points Hero Card — hidden for retailers ─────────────── */}
-        {!isRetailer && (
+        {/* ── Points Hero Card — mechanics only ─────────────── */}
+        {isMechanic && (
           <View style={styles.heroWrapper}>
             <LinearGradient
               colors={["#F09135", "#E87722", "#C5611A"]}
@@ -215,6 +257,62 @@ export default function UserHomeScreen() {
                 <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
               </LinearGradient>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Sales Financial Hero Card — salesman only ─────────────── */}
+        {isSalesman && (
+          <View style={styles.heroWrapper}>
+            <LinearGradient
+              colors={["#0F4C75", "#1B6CA8", "#187CC2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.decCircle1} />
+              <View style={styles.decCircle2} />
+              <View style={styles.decCircle3} />
+              <Text style={styles.heroLabel}>Total Sales Value</Text>
+              <Text style={[styles.heroValue, { fontSize: 34 }]}>
+                {salesSummary ? `Rs. ${salesSummary.totalSalesValue.toLocaleString()}` : "—"}
+              </Text>
+              <Text style={styles.heroUnit}>
+                {salesSummary ? `${salesSummary.totalOrders} order${salesSummary.totalOrders !== 1 ? "s" : ""} placed` : "loading..."}
+              </Text>
+            </LinearGradient>
+            <View style={[styles.claimTabOuter, { opacity: 1 }]}>
+              <LinearGradient
+                colors={["#0F4C75", "#0A3655"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.claimTabInner}
+              >
+                <Text style={styles.claimTabIcon}>✅</Text>
+                <Text style={styles.claimTabText}>
+                  {"Rs. " + (salesSummary ? salesSummary.confirmedSalesValue.toLocaleString() : "0") + "\n"}
+                  <Text style={{ fontSize: 9 }}>confirmed</Text>
+                </Text>
+              </LinearGradient>
+            </View>
+          </View>
+        )}
+
+        {/* ── Retailer Purchase Hero Card — retailer only ─────────────── */}
+        {isRetailer && (
+          <View style={[styles.heroWrapper, { marginBottom: 4 }]}>
+            <LinearGradient
+              colors={["#065F46", "#047857", "#059669"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.decCircle1} />
+              <View style={styles.decCircle2} />
+              <View style={styles.decCircle3} />
+              <Text style={styles.heroLabel}>Total Purchased</Text>
+              <Text style={[styles.heroValue, { fontSize: 34 }]}>Rs. {retailTotal.toLocaleString()}</Text>
+              <Text style={styles.heroUnit}>cumulative order value</Text>
+            </LinearGradient>
           </View>
         )}
 
