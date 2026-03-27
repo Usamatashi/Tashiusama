@@ -14,7 +14,7 @@ import { Colors } from "@/constants/colors";
 function SalesmanTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const isOrders = pathname.includes("/orders");
+  const isHome = !pathname.includes("/orders") && !pathname.includes("/profile") && !pathname.includes("/history") && !pathname.includes("/scan") && !pathname.includes("/rewards") && !pathname.includes("/points");
   const isProfile = pathname.includes("/profile");
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
 
@@ -22,17 +22,17 @@ function SalesmanTabBar() {
     <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
       <TouchableOpacity
         style={styles.tabItem}
-        onPress={() => router.push("/(user)/orders")}
+        onPress={() => router.push("/(user)/")}
         activeOpacity={0.7}
       >
-        <View style={[styles.tabPill, isOrders && styles.tabPillActive]}>
+        <View style={[styles.tabPill, isHome && styles.tabPillActive]}>
           <Feather
-            name="clipboard"
+            name="home"
             size={16}
-            color={isOrders ? Colors.primary : Colors.textLight}
+            color={isHome ? Colors.primary : Colors.textLight}
             style={{ marginBottom: 2 }}
           />
-          <Text style={[styles.tabLabel, isOrders && styles.tabLabelActive]}>Orders</Text>
+          <Text style={[styles.tabLabel, isHome && styles.tabLabelActive]}>Home</Text>
         </View>
       </TouchableOpacity>
 
