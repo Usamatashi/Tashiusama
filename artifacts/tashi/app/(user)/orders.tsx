@@ -288,7 +288,7 @@ export default function OrdersScreen() {
 
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 20, paddingBottom: botPad + 20 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: botPad + 100 }}
           keyboardShouldPersistTaps="handled"
         >
           {/* STEP 1 — Select retailer */}
