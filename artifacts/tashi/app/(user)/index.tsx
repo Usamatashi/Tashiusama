@@ -64,6 +64,11 @@ const BASE_QUICK_ACTIONS = [
   { label: "Rewards", desc: "Redeem points", icon: "🎁", route: "/(user)/rewards", accent: "#ECF5FF", iconBg: "#C2DCFF" },
 ];
 
+const RETAILER_QUICK_ACTIONS = [
+  { label: "My Orders", desc: "View your orders", icon: "📦", route: "/(user)/orders", accent: "#FEF3C7", iconBg: "#FDE68A" },
+  { label: "Profile", desc: "Your account info", icon: "👤", route: "/(user)/profile", accent: "#F0F4FF", iconBg: "#C7D4FF" },
+];
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function UserHomeScreen() {
   const { user, refreshUser } = useAuth();
@@ -154,12 +159,13 @@ export default function UserHomeScreen() {
   const firstName = user?.name?.split(" ")[0] || user?.phone || "there";
   const tickerText = tickers.map((t) => t.text).join("          •          ");
 
-  const quickActions = [
-    ...BASE_QUICK_ACTIONS,
-    ...(user?.role === "retailer"
-      ? [{ label: "My Orders", desc: "View your orders", icon: "📦", route: "/(user)/orders", accent: "#FEF3C7", iconBg: "#FDE68A" }]
-      : []),
-  ];
+  const isRetailer = user?.role === "retailer";
+
+  const quickActions = isRetailer
+    ? RETAILER_QUICK_ACTIONS
+    : [
+        ...BASE_QUICK_ACTIONS,
+      ];
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
@@ -181,37 +187,36 @@ export default function UserHomeScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── Points Hero Card ───────────────────────────────────── */}
-        <View style={styles.heroWrapper}>
-          <LinearGradient
-            colors={["#F09135", "#E87722", "#C5611A"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            {/* Decorative circles */}
-            <View style={styles.decCircle1} />
-            <View style={styles.decCircle2} />
-            <View style={styles.decCircle3} />
-
-            <Text style={styles.heroLabel}>Available Points</Text>
-            <Text style={styles.heroValue}>{displayPoints}</Text>
-            <Text style={styles.heroUnit}>points</Text>
-          </LinearGradient>
-
-          {/* Claim button — protrudes from the right */}
-          <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimTabOuter}>
+        {/* ── Points Hero Card — hidden for retailers ─────────────── */}
+        {!isRetailer && (
+          <View style={styles.heroWrapper}>
             <LinearGradient
-              colors={["#C5611A", "#A84E14"]}
+              colors={["#F09135", "#E87722", "#C5611A"]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.claimTabInner}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
             >
-              <Text style={styles.claimTabIcon}>🎁</Text>
-              <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
+              <View style={styles.decCircle1} />
+              <View style={styles.decCircle2} />
+              <View style={styles.decCircle3} />
+              <Text style={styles.heroLabel}>Available Points</Text>
+              <Text style={styles.heroValue}>{displayPoints}</Text>
+              <Text style={styles.heroUnit}>points</Text>
             </LinearGradient>
-          </TouchableOpacity>
-        </View>
+
+            <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimTabOuter}>
+              <LinearGradient
+                colors={["#C5611A", "#A84E14"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.claimTabInner}
+              >
+                <Text style={styles.claimTabIcon}>🎁</Text>
+                <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Banner carousel */}
         <ScrollView

@@ -66,6 +66,60 @@ function SalesmanTabBar() {
   );
 }
 
+function RetailerTabBar() {
+  const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const isHome = !pathname.includes("/orders") && !pathname.includes("/profile");
+  const isProfile = pathname.includes("/profile");
+  const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
+
+  return (
+    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => router.push("/(user)/")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.tabPill, isHome && styles.tabPillActive]}>
+          <Feather
+            name="home"
+            size={16}
+            color={isHome ? Colors.primary : Colors.textLight}
+            style={{ marginBottom: 2 }}
+          />
+          <Text style={[styles.tabLabel, isHome && styles.tabLabelActive]}>Home</Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.scanBtnWrapper}>
+        <TouchableOpacity
+          style={styles.scanBtn}
+          onPress={() => router.push("/(user)/orders")}
+          activeOpacity={0.88}
+        >
+          <Feather name="shopping-bag" size={24} color={Colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => router.push("/(user)/profile")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.tabPill, isProfile && styles.tabPillActive]}>
+          <Feather
+            name="user"
+            size={16}
+            color={isProfile ? Colors.primary : Colors.textLight}
+            style={{ marginBottom: 2 }}
+          />
+          <Text style={[styles.tabLabel, isProfile && styles.tabLabelActive]}>Profile</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function DefaultTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
@@ -116,7 +170,7 @@ export default function UserLayout() {
   return (
     <View style={styles.container}>
       <Slot />
-      {user.role === "salesman" ? <SalesmanTabBar /> : <DefaultTabBar />}
+      {user.role === "salesman" ? <SalesmanTabBar /> : user.role === "retailer" ? <RetailerTabBar /> : <DefaultTabBar />}
     </View>
   );
 }
