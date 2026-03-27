@@ -180,12 +180,12 @@ export default function CreateAccountScreen() {
           </View>
         </View>
         <View style={styles.cardBottom}>
-          {item.city ? (
-            <View style={styles.metaChip}>
-              <Feather name="map-pin" size={11} color={Colors.textSecondary} />
-              <Text style={styles.metaChipText}>{item.city}</Text>
-            </View>
-          ) : null}
+          <View style={styles.metaChip}>
+            <Feather name="map-pin" size={11} color={item.city ? Colors.textSecondary : Colors.textLight} />
+            <Text style={[styles.metaChipText, !item.city && { color: Colors.textLight }]}>
+              {item.city || "No city"}
+            </Text>
+          </View>
           <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}15` }]}>
             <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
           </View>
