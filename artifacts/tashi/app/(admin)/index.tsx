@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   ScrollView,
@@ -12,8 +13,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+
+const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 const ACTIONS = [
   {
@@ -23,6 +27,8 @@ const ACTIONS = [
     route: "/(admin)/create-qr" as const,
     gradient: ["#E87722", "#F5A54A"] as [string, string],
     decoration: "#F5A54A",
+    countEndpoint: null as string | null,
+    countLabel: null as string | null,
   },
   {
     icon: "gift" as const,
@@ -31,6 +37,8 @@ const ACTIONS = [
     route: "/(admin)/claims" as const,
     gradient: ["#7B2FBE", "#A855F7"] as [string, string],
     decoration: "#A855F7",
+    countEndpoint: null as string | null,
+    countLabel: null as string | null,
   },
   {
     icon: "radio" as const,
@@ -39,6 +47,8 @@ const ACTIONS = [
     route: "/(admin)/create-ads" as const,
     gradient: ["#0D9488", "#2DD4BF"] as [string, string],
     decoration: "#2DD4BF",
+    countEndpoint: "/ads" as string | null,
+    countLabel: "ads" as string | null,
   },
   {
     icon: "type" as const,
@@ -47,12 +57,46 @@ const ACTIONS = [
     route: "/(admin)/create-text" as const,
     gradient: ["#D97706", "#FBBF24"] as [string, string],
     decoration: "#FBBF24",
+    countEndpoint: "/ticker" as string | null,
+    countLabel: "texts" as string | null,
   },
 ];
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loadingCounts, setLoadingCounts] = useState(true);
+
+  const fetchCounts = useCallback(async () => {
+    try {
+      const token = (await AsyncStorage.getItem("tashi_token")) || "";
+      const headers = { Authorization: `Bearer ${token}` };
+      const endpoints = ACTIONS.filter((a) => a.countEndpoint).map((a) => a.countEndpoint!);
+
+      const results = await Promise.all(
+        endpoints.map((ep) =>
+          fetch(`${BASE}${ep}`, { headers })
+            .then((r) => (r.ok ? r.json() : []))
+            .catch(() => [])
+        )
+      );
+
+      const newCounts: Record<string, number> = {};
+      endpoints.forEach((ep, i) => {
+        newCounts[ep] = Array.isArray(results[i]) ? results[i].length : 0;
+      });
+      setCounts(newCounts);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingCounts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
 
   return (
     <View
@@ -81,49 +125,60 @@ export default function AdminDashboard() {
         <Text style={styles.subtitle}>What would you like to do today?</Text>
 
         <View style={styles.cards}>
-          {ACTIONS.map((action) => (
-            <TouchableOpacity
-              key={action.label}
-              onPress={() => router.push(action.route)}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={action.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.card}
+          {ACTIONS.map((action) => {
+            const hasCount = action.countEndpoint !== null;
+            const count = hasCount ? (counts[action.countEndpoint!] ?? 0) : null;
+
+            return (
+              <TouchableOpacity
+                key={action.label}
+                onPress={() => router.push(action.route)}
+                activeOpacity={0.88}
               >
-                {/* Decorative circles */}
-                <View
-                  style={[
-                    styles.decCircleLarge,
-                    { backgroundColor: action.decoration },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.decCircleSmall,
-                    { backgroundColor: action.decoration },
-                  ]}
-                />
+                <LinearGradient
+                  colors={action.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.card}
+                >
+                  <View
+                    style={[styles.decCircleLarge, { backgroundColor: action.decoration }]}
+                  />
+                  <View
+                    style={[styles.decCircleSmall, { backgroundColor: action.decoration }]}
+                  />
 
-                <View style={styles.cardContent}>
-                  <View style={styles.iconWrap}>
-                    <Feather name={action.icon} size={26} color="#fff" />
-                  </View>
+                  <View style={styles.cardContent}>
+                    <View style={styles.iconWrap}>
+                      <Feather name={action.icon} size={26} color="#fff" />
+                    </View>
 
-                  <View style={styles.textWrap}>
-                    <Text style={styles.cardTitle}>{action.label}</Text>
-                    <Text style={styles.cardDesc}>{action.desc}</Text>
-                  </View>
+                    <View style={styles.textWrap}>
+                      <Text style={styles.cardTitle}>{action.label}</Text>
+                      <Text style={styles.cardDesc}>{action.desc}</Text>
+                    </View>
 
-                  <View style={styles.arrow}>
-                    <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.8)" />
+                    {hasCount ? (
+                      <View style={styles.countBadge}>
+                        {loadingCounts ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <Text style={styles.countNumber}>{count}</Text>
+                            <Text style={styles.countLabel}>{action.countLabel}</Text>
+                          </>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.arrow}>
+                        <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.8)" />
+                      </View>
+                    )}
                   </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
+                </LinearGradient>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
@@ -247,5 +302,28 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  countBadge: {
+    minWidth: 52,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 1,
+  },
+  countNumber: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    lineHeight: 26,
+  },
+  countLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.85)",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
 });
