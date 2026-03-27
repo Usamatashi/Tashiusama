@@ -57,6 +57,7 @@ export default function CreateAccountScreen() {
 
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -149,50 +150,70 @@ export default function CreateAccountScreen() {
     }
   };
 
-  const renderUser = ({ item }: { item: User }) => (
-    <TouchableOpacity style={styles.userCard} onPress={() => openEdit(item)} activeOpacity={0.85}>
-      <View style={styles.cardTop}>
-        <View style={styles.avatarWrap}>
-          <Text style={styles.avatarText}>
-            {(item.name || item.phone).charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName} numberOfLines={1}>
-            {item.name || item.phone}
-          </Text>
-          <Text style={styles.userPhone}>{item.phone}</Text>
-        </View>
-        <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={(e) => { e.stopPropagation?.(); openEdit(item); }}
-            style={[styles.actionBtn, styles.editBtn]}
-            activeOpacity={0.7}
-          >
-            <Feather name="edit-2" size={14} color={Colors.adminAccent} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={(e) => { e.stopPropagation?.(); setConfirmUser(item); }}
-            style={[styles.actionBtn, styles.deleteBtn]}
-            activeOpacity={0.7}
-          >
-            <Feather name="trash-2" size={14} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.cardBottom}>
-        {item.city ? (
-          <View style={styles.metaChip}>
-            <Feather name="map-pin" size={11} color={Colors.textSecondary} />
-            <Text style={styles.metaChipText}>{item.city}</Text>
+  const renderUser = ({ item }: { item: User }) => {
+    const isSelected = selectedUserId === item.id;
+    return (
+      <TouchableOpacity
+        style={[styles.userCard, isSelected && styles.userCardSelected]}
+        onPress={() => {
+          if (isSelected) {
+            setSelectedUserId(null);
+          } else {
+            setSelectedUserId(null);
+          }
+        }}
+        onLongPress={() => setSelectedUserId(isSelected ? null : item.id)}
+        delayLongPress={300}
+        activeOpacity={0.85}
+      >
+        <View style={styles.cardTop}>
+          <View style={styles.avatarWrap}>
+            <Text style={styles.avatarText}>
+              {(item.name || item.phone).charAt(0).toUpperCase()}
+            </Text>
           </View>
-        ) : null}
-        <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}15` }]}>
-          <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
+          <View style={styles.userInfo}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {item.name || item.phone}
+            </Text>
+            <Text style={styles.userPhone}>{item.phone}</Text>
+          </View>
+          {isSelected && (
+            <View style={styles.actions}>
+              <TouchableOpacity
+                onPress={() => { setSelectedUserId(null); openEdit(item); }}
+                style={[styles.actionBtn, styles.editBtn]}
+                activeOpacity={0.7}
+              >
+                <Feather name="edit-2" size={14} color={Colors.adminAccent} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setSelectedUserId(null); setConfirmUser(item); }}
+                style={[styles.actionBtn, styles.deleteBtn]}
+                activeOpacity={0.7}
+              >
+                <Feather name="trash-2" size={14} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.cardBottom}>
+          {item.city ? (
+            <View style={styles.metaChip}>
+              <Feather name="map-pin" size={11} color={Colors.textSecondary} />
+              <Text style={styles.metaChipText}>{item.city}</Text>
+            </View>
+          ) : null}
+          <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}15` }]}>
+            <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
+          </View>
+          {isSelected && (
+            <Text style={styles.longPressHint}>Tap edit or delete</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -422,10 +443,22 @@ const styles = StyleSheet.create({
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   roleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
+  userCardSelected: {
+    borderColor: Colors.adminAccent,
+    borderWidth: 1.5,
+    backgroundColor: `${Colors.adminAccent}06`,
+  },
   actions: { flexDirection: "row", gap: 6, flexShrink: 0 },
   actionBtn: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   editBtn: { backgroundColor: `${Colors.adminAccent}15` },
   deleteBtn: { backgroundColor: "#FEE2E2" },
+  longPressHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminAccent,
+    marginLeft: "auto" as const,
+    opacity: 0.7,
+  },
   empty: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
 
