@@ -173,8 +173,8 @@ export default function CreateAccountScreen() {
             <Text style={styles.userName} numberOfLines={1}>
               {item.name || item.phone}
             </Text>
-            <Text style={styles.userPhone}>{item.phone}</Text>
           </View>
+          <Text style={styles.userPhoneRight} numberOfLines={1}>{item.phone}</Text>
         </View>
         <View style={styles.cardBottom}>
           <View style={styles.metaChip}>
@@ -471,6 +471,13 @@ const styles = StyleSheet.create({
   userName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   userNameMuted: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textLight, fontStyle: "italic" },
   userPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  userPhoneRight: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    flexShrink: 1,
+    textAlign: "right" as const,
+  },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
