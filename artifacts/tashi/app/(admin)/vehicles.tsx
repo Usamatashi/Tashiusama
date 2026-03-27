@@ -19,6 +19,7 @@ interface Vehicle {
   id: number;
   name: string;
   points: number;
+  salesPrice: number;
   createdAt: string;
 }
 
@@ -31,6 +32,7 @@ export default function VehiclesScreen() {
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [name, setName] = useState("");
   const [points, setPoints] = useState("");
+  const [salesPrice, setSalesPrice] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchVehicles = async () => {
@@ -53,6 +55,7 @@ export default function VehiclesScreen() {
     setEditVehicle(null);
     setName("");
     setPoints("");
+    setSalesPrice("");
     setModalVisible(true);
   };
 
@@ -60,6 +63,7 @@ export default function VehiclesScreen() {
     setEditVehicle(v);
     setName(v.name);
     setPoints(String(v.points));
+    setSalesPrice(String(v.salesPrice ?? 0));
     setModalVisible(true);
   };
 
@@ -76,7 +80,7 @@ export default function VehiclesScreen() {
       const res = await fetch(url, {
         method: editVehicle ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: name.trim(), points: Number(points) }),
+        body: JSON.stringify({ name: name.trim(), points: Number(points), salesPrice: Number(salesPrice) || 0 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -135,7 +139,10 @@ export default function VehiclesScreen() {
           <View style={styles.card}>
             <View style={styles.cardLeft}>
               <Text style={styles.vehicleName}>{item.name}</Text>
-              <Text style={styles.vehiclePts}>{item.points} points</Text>
+              <Text style={styles.vehiclePts}>{item.points} pts/unit</Text>
+              {item.salesPrice > 0 && (
+                <Text style={styles.vehiclePrice}>Rs. {item.salesPrice.toLocaleString()} sale price</Text>
+              )}
             </View>
             <View style={styles.cardActions}>
               <TouchableOpacity onPress={() => openEdit(item)} style={styles.iconBtn}>
@@ -166,6 +173,14 @@ export default function VehiclesScreen() {
               placeholderTextColor={Colors.textLight}
               value={points}
               onChangeText={setPoints}
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Sales price (Rs.)"
+              placeholderTextColor={Colors.textLight}
+              value={salesPrice}
+              onChangeText={setSalesPrice}
               keyboardType="numeric"
             />
             <View style={styles.modalBtns}>
@@ -221,6 +236,7 @@ const styles = StyleSheet.create({
   cardLeft: { flex: 1 },
   vehicleName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   vehiclePts: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.adminAccent, marginTop: 4 },
+  vehiclePrice: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   cardActions: { flexDirection: "row", gap: 12 },
   iconBtn: { padding: 8 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },

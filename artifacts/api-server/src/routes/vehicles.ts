@@ -17,12 +17,12 @@ router.get("/", requireAuth, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, points } = req.body;
+    const { name, points, salesPrice } = req.body;
     if (!name || points === undefined) {
       res.status(400).json({ error: "Name and points are required" });
       return;
     }
-    const inserted = await db.insert(vehiclesTable).values({ name, points: Number(points) }).returning();
+    const inserted = await db.insert(vehiclesTable).values({ name, points: Number(points), salesPrice: Number(salesPrice) || 0 }).returning();
     const vehicle = inserted[0];
     res.status(201).json({ ...vehicle, createdAt: vehicle.createdAt.toISOString() });
   } catch (err) {
@@ -34,12 +34,12 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
 router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, points } = req.body;
+    const { name, points, salesPrice } = req.body;
     if (!name || points === undefined) {
       res.status(400).json({ error: "Name and points are required" });
       return;
     }
-    const updated = await db.update(vehiclesTable).set({ name, points: Number(points) }).where(eq(vehiclesTable.id, id)).returning();
+    const updated = await db.update(vehiclesTable).set({ name, points: Number(points), salesPrice: Number(salesPrice) || 0 }).where(eq(vehiclesTable.id, id)).returning();
     if (!updated[0]) {
       res.status(404).json({ error: "Vehicle not found" });
       return;

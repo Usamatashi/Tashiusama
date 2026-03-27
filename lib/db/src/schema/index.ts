@@ -21,6 +21,7 @@ export const vehiclesTable = pgTable("vehicles", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   points: integer("points").notNull().default(0),
+  salesPrice: integer("sales_price").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
