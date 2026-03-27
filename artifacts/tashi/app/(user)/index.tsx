@@ -59,7 +59,7 @@ const FALLBACK_BANNERS = [
   { bg: "#1A2D2D", title: "Redeem Rewards", subtitle: "Turn your points into real benefits" },
 ];
 
-const QUICK_ACTIONS = [
+const BASE_QUICK_ACTIONS = [
   { label: "Scan History", desc: "All your scans", icon: "📋", route: "/(user)/history", accent: "#EDFBF3", iconBg: "#B8F0CE" },
   { label: "Rewards", desc: "Redeem points", icon: "🎁", route: "/(user)/rewards", accent: "#ECF5FF", iconBg: "#C2DCFF" },
 ];
@@ -151,8 +151,15 @@ export default function UserHomeScreen() {
 
   const displayPoints = localPoints ?? user?.points ?? 0;
   const topPadding = insets.top + (Platform.OS === "web" ? 67 : 0);
-  const firstName = user?.email?.split("@")[0] || "there";
+  const firstName = user?.name?.split(" ")[0] || user?.phone || "there";
   const tickerText = tickers.map((t) => t.text).join("          •          ");
+
+  const quickActions = [
+    ...BASE_QUICK_ACTIONS,
+    ...(user?.role === "retailer"
+      ? [{ label: "My Orders", desc: "View your orders", icon: "📦", route: "/(user)/orders", accent: "#FEF3C7", iconBg: "#FDE68A" }]
+      : []),
+  ];
 
   return (
     <View style={[styles.container, { paddingTop: topPadding }]}>
@@ -244,7 +251,7 @@ export default function UserHomeScreen() {
         {/* Quick actions */}
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         <View style={styles.quickGrid}>
-          {QUICK_ACTIONS.map((action, i) => (
+          {quickActions.map((action, i) => (
             <TouchableOpacity
               key={action.label}
               style={[

@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +18,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -107,8 +109,99 @@ function OrderCard({ order }: { order: Order }) {
   );
 }
 
+// ─── Retailer Order Card ─────────────────────────────────────────────────────
+interface RetailerOrder {
+  id: number;
+  quantity: number;
+  totalPoints: number;
+  status: "pending" | "confirmed" | "cancelled";
+  vehicleName: string | null;
+  createdAt: string;
+}
+
+const RET_STATUS_COLOR: Record<string, string> = {
+  pending: "#F59E0B", confirmed: "#10B981", cancelled: "#EF4444",
+};
+const RET_STATUS_BG: Record<string, string> = {
+  pending: "#FEF3C7", confirmed: "#D1FAE5", cancelled: "#FEE2E2",
+};
+
+function RetailerOrderCard({ order }: { order: RetailerOrder }) {
+  const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+  return (
+    <View style={styles.orderCard}>
+      <View style={styles.orderCardTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.orderVehicle}>{order.vehicleName ?? "—"}</Text>
+          <Text style={styles.orderDate}>{date}</Text>
+        </View>
+        <View style={styles.orderRight}>
+          <View style={[styles.statusBadge, { backgroundColor: RET_STATUS_BG[order.status] }]}>
+            <Text style={[styles.statusText, { color: RET_STATUS_COLOR[order.status] }]}>
+              {order.status.toUpperCase()}
+            </Text>
+          </View>
+          <Text style={styles.orderQty}>×{order.quantity} units</Text>
+        </View>
+      </View>
+      <View style={styles.orderCardBottom}>
+        <View style={styles.orderStat}>
+          <Feather name="star" size={13} color={Colors.primary} />
+          <Text style={styles.orderStatText}>{order.totalPoints} pts earned</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function RetailerOrdersScreen() {
+  const insets = useSafeAreaInsets();
+  const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
+  const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+
+  const { data: orders = [], isLoading, refetch, isRefetching } = useQuery<RetailerOrder[]>({
+    queryKey: ["retailer-orders"],
+    queryFn: () => apiFetch("/orders/my-retail-orders"),
+  });
+
+  return (
+    <View style={[styles.root, { backgroundColor: "#F7F4F1" }]}>
+      <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <Text style={styles.headerTitle}>My Orders</Text>
+      </View>
+
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.center}>
+          <Feather name="clipboard" size={52} color={Colors.border} />
+          <Text style={styles.emptyTitle}>No orders yet</Text>
+          <Text style={styles.emptyText}>Orders placed by your salesman will appear here</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={orders}
+          keyExtractor={item => String(item.id)}
+          renderItem={({ item }) => <RetailerOrderCard order={item} />}
+          contentContainerStyle={{ padding: 16, paddingBottom: botPad + 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
+          }
+        />
+      )}
+    </View>
+  );
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function OrdersScreen() {
+  const { user } = useAuth();
+  if (user?.role === "retailer") return <RetailerOrdersScreen />;
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
 

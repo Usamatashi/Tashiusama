@@ -30,6 +30,19 @@ const ACTIONS = [
     countEndpoint: null as string | null,
     countLabel: null as string | null,
     showPendingDot: false,
+    showOrdersPending: false,
+  },
+  {
+    icon: "clipboard" as const,
+    label: "Orders",
+    desc: "Review and manage sales orders",
+    route: "/(admin)/orders" as const,
+    gradient: ["#2563EB", "#60A5FA"] as [string, string],
+    decoration: "#60A5FA",
+    countEndpoint: null as string | null,
+    countLabel: null as string | null,
+    showPendingDot: false,
+    showOrdersPending: true,
   },
   {
     icon: "gift" as const,
@@ -41,6 +54,7 @@ const ACTIONS = [
     countEndpoint: null as string | null,
     countLabel: null as string | null,
     showPendingDot: true,
+    showOrdersPending: false,
   },
   {
     icon: "radio" as const,
@@ -52,6 +66,7 @@ const ACTIONS = [
     countEndpoint: "/ads" as string | null,
     countLabel: "ads" as string | null,
     showPendingDot: false,
+    showOrdersPending: false,
   },
   {
     icon: "type" as const,
@@ -63,6 +78,7 @@ const ACTIONS = [
     countEndpoint: "/ticker" as string | null,
     countLabel: "texts" as string | null,
     showPendingDot: false,
+    showOrdersPending: false,
   },
 ];
 
@@ -71,6 +87,7 @@ export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [pendingClaims, setPendingClaims] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
   const [loadingCounts, setLoadingCounts] = useState(true);
 
   const fetchCounts = useCallback(async () => {
@@ -79,8 +96,11 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
       const endpoints = ACTIONS.filter((a) => a.countEndpoint).map((a) => a.countEndpoint!);
 
-      const [claimsRes, ...countResults] = await Promise.all([
+      const [claimsRes, ordersRes, ...countResults] = await Promise.all([
         fetch(`${BASE}/claims`, { headers })
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        fetch(`${BASE}/orders`, { headers })
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
         ...endpoints.map((ep) =>
@@ -94,6 +114,11 @@ export default function AdminDashboard() {
         ? claimsRes.filter((c: { status: string }) => c.status === "pending").length
         : 0;
       setPendingClaims(pending);
+
+      const pendingOrd = Array.isArray(ordersRes)
+        ? ordersRes.filter((o: { status: string }) => o.status === "pending").length
+        : 0;
+      setPendingOrders(pendingOrd);
 
       const newCounts: Record<string, number> = {};
       endpoints.forEach((ep, i) => {
@@ -185,6 +210,9 @@ export default function AdminDashboard() {
                           <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.8)" />
                         </View>
                         {action.showPendingDot && !loadingCounts && pendingClaims > 0 && (
+                          <View style={styles.pendingDot} />
+                        )}
+                        {action.showOrdersPending && !loadingCounts && pendingOrders > 0 && (
                           <View style={styles.pendingDot} />
                         )}
                       </View>

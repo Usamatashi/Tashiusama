@@ -7,21 +7,74 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
-function CustomTabBar() {
+function SalesmanTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-
-  const isHistory = pathname.includes("/history");
+  const isOrders = pathname.includes("/orders");
   const isProfile = pathname.includes("/profile");
-
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
 
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-      {/* History tab */}
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => router.push("/(user)/orders")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.tabPill, isOrders && styles.tabPillActive]}>
+          <Feather
+            name="clipboard"
+            size={16}
+            color={isOrders ? Colors.primary : Colors.textLight}
+            style={{ marginBottom: 2 }}
+          />
+          <Text style={[styles.tabLabel, isOrders && styles.tabLabelActive]}>Orders</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Center new-order button */}
+      <View style={styles.scanBtnWrapper}>
+        <TouchableOpacity
+          style={styles.scanBtn}
+          onPress={() => router.push("/(user)/orders")}
+          activeOpacity={0.88}
+        >
+          <Feather name="plus" size={24} color={Colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => router.push("/(user)/profile")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.tabPill, isProfile && styles.tabPillActive]}>
+          <Feather
+            name="user"
+            size={16}
+            color={isProfile ? Colors.primary : Colors.textLight}
+            style={{ marginBottom: 2 }}
+          />
+          <Text style={[styles.tabLabel, isProfile && styles.tabLabelActive]}>Profile</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function DefaultTabBar() {
+  const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const isHistory = pathname.includes("/history");
+  const isProfile = pathname.includes("/profile");
+  const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
+
+  return (
+    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
       <TouchableOpacity
         style={styles.tabItem}
         onPress={() => router.push("/(user)/history")}
@@ -32,7 +85,6 @@ function CustomTabBar() {
         </View>
       </TouchableOpacity>
 
-      {/* Center scan button */}
       <View style={styles.scanBtnWrapper}>
         <TouchableOpacity
           style={styles.scanBtn}
@@ -43,7 +95,6 @@ function CustomTabBar() {
         </TouchableOpacity>
       </View>
 
-      {/* Profile tab */}
       <TouchableOpacity
         style={styles.tabItem}
         onPress={() => router.push("/(user)/profile")}
@@ -65,7 +116,7 @@ export default function UserLayout() {
   return (
     <View style={styles.container}>
       <Slot />
-      <CustomTabBar />
+      {user.role === "salesman" ? <SalesmanTabBar /> : <DefaultTabBar />}
     </View>
   );
 }
@@ -95,14 +146,15 @@ const styles = StyleSheet.create({
   },
   tabPill: {
     paddingHorizontal: 18,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
+    alignItems: "center",
   },
   tabPillActive: {
     backgroundColor: `${Colors.primary}15`,
   },
   tabLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: Colors.textLight,
   },

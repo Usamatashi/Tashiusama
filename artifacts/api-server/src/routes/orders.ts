@@ -138,6 +138,36 @@ router.get("/retailers", requireAuth, requireSalesman, async (req, res) => {
   }
 });
 
+// GET /orders/my-retail-orders — retailer sees their own orders
+router.get("/my-retail-orders", requireAuth, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+    if (caller.role !== "retailer" && caller.role !== "admin") {
+      res.status(403).json({ error: "Retailer access required" });
+      return;
+    }
+    const rows = await db
+      .select({
+        id: ordersTable.id,
+        quantity: ordersTable.quantity,
+        totalPoints: ordersTable.totalPoints,
+        status: ordersTable.status,
+        createdAt: ordersTable.createdAt,
+        vehicleName: vehiclesTable.name,
+        salesmanId: ordersTable.salesmanId,
+        retailerId: ordersTable.retailerId,
+        vehicleId: ordersTable.vehicleId,
+      })
+      .from(ordersTable)
+      .leftJoin(vehiclesTable, eq(ordersTable.vehicleId, vehiclesTable.id))
+      .where(eq(ordersTable.retailerId, caller.userId));
+    res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /orders/my-bonus — salesman bonus summary
 router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
   try {
