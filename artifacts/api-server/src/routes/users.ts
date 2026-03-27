@@ -11,6 +11,9 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
       id: usersTable.id,
       email: usersTable.email,
       role: usersTable.role,
+      name: usersTable.name,
+      phone: usersTable.phone,
+      city: usersTable.city,
       points: usersTable.points,
       createdAt: usersTable.createdAt,
     }).from(usersTable);
@@ -23,7 +26,7 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, name, phone, city } = req.body;
     if (!email || !password || !role) {
       res.status(400).json({ error: "Email, password, and role are required" });
       return;
@@ -38,6 +41,9 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       email: email.toLowerCase(),
       passwordHash,
       role,
+      name: name?.trim() || null,
+      phone: phone?.trim() || null,
+      city: city?.trim() || null,
       points: 0,
     }).returning();
     const user = inserted[0];
@@ -45,6 +51,9 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      name: user.name,
+      phone: user.phone,
+      city: user.city,
       points: user.points,
       createdAt: user.createdAt.toISOString(),
     });
