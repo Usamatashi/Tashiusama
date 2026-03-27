@@ -169,13 +169,15 @@ export default function CreateAccountScreen() {
         <View style={styles.cardTop}>
           <View style={styles.avatarWrap}>
             <Text style={styles.avatarText}>
-              {(item.name || item.phone).charAt(0).toUpperCase()}
+              {item.name ? item.name.charAt(0).toUpperCase() : "#"}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {item.name || item.phone}
-            </Text>
+            {item.name ? (
+              <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+            ) : (
+              <Text style={styles.userNameMuted} numberOfLines={1}>No name</Text>
+            )}
             <Text style={styles.userPhone}>{item.phone}</Text>
           </View>
         </View>
@@ -472,6 +474,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.adminAccent },
   userInfo: { flex: 1, gap: 2 },
   userName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
+  userNameMuted: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textLight, fontStyle: "italic" },
   userPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
