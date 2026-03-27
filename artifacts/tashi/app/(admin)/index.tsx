@@ -29,6 +29,7 @@ const ACTIONS = [
     decoration: "#F5A54A",
     countEndpoint: null as string | null,
     countLabel: null as string | null,
+    showPendingDot: false,
   },
   {
     icon: "gift" as const,
@@ -39,6 +40,7 @@ const ACTIONS = [
     decoration: "#A855F7",
     countEndpoint: null as string | null,
     countLabel: null as string | null,
+    showPendingDot: true,
   },
   {
     icon: "radio" as const,
@@ -49,6 +51,7 @@ const ACTIONS = [
     decoration: "#2DD4BF",
     countEndpoint: "/ads" as string | null,
     countLabel: "ads" as string | null,
+    showPendingDot: false,
   },
   {
     icon: "type" as const,
@@ -59,6 +62,7 @@ const ACTIONS = [
     decoration: "#FBBF24",
     countEndpoint: "/ticker" as string | null,
     countLabel: "texts" as string | null,
+    showPendingDot: false,
   },
 ];
 
@@ -66,6 +70,7 @@ export default function AdminDashboard() {
   const { logout } = useAuth();
   const insets = useSafeAreaInsets();
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [pendingClaims, setPendingClaims] = useState(0);
   const [loadingCounts, setLoadingCounts] = useState(true);
 
   const fetchCounts = useCallback(async () => {
@@ -74,17 +79,25 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
       const endpoints = ACTIONS.filter((a) => a.countEndpoint).map((a) => a.countEndpoint!);
 
-      const results = await Promise.all(
-        endpoints.map((ep) =>
+      const [claimsRes, ...countResults] = await Promise.all([
+        fetch(`${BASE}/claims`, { headers })
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        ...endpoints.map((ep) =>
           fetch(`${BASE}${ep}`, { headers })
             .then((r) => (r.ok ? r.json() : []))
             .catch(() => [])
-        )
-      );
+        ),
+      ]);
+
+      const pending = Array.isArray(claimsRes)
+        ? claimsRes.filter((c: { status: string }) => c.status === "pending").length
+        : 0;
+      setPendingClaims(pending);
 
       const newCounts: Record<string, number> = {};
       endpoints.forEach((ep, i) => {
-        newCounts[ep] = Array.isArray(results[i]) ? results[i].length : 0;
+        newCounts[ep] = Array.isArray(countResults[i]) ? countResults[i].length : 0;
       });
       setCounts(newCounts);
     } catch {
@@ -170,8 +183,13 @@ export default function AdminDashboard() {
                         )}
                       </View>
                     ) : (
-                      <View style={styles.arrow}>
-                        <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.8)" />
+                      <View>
+                        <View style={styles.arrow}>
+                          <Feather name="arrow-right" size={18} color="rgba(255,255,255,0.8)" />
+                        </View>
+                        {action.showPendingDot && !loadingCounts && pendingClaims > 0 && (
+                          <View style={styles.pendingDot} />
+                        )}
                       </View>
                     )}
                   </View>
@@ -325,5 +343,16 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.85)",
     textTransform: "uppercase",
     letterSpacing: 0.6,
+  },
+  pendingDot: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#FF3B30",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
 });
