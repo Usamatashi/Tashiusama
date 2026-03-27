@@ -8,6 +8,7 @@ import scansRouter from "./scans";
 import claimsRouter from "./claims";
 import adsRouter from "./ads";
 import tickerRouter from "./ticker";
+import ordersRouter from "./orders";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/scans", scansRouter);
 router.use("/claims", claimsRouter);
 router.use("/ads", adsRouter);
 router.use("/ticker", tickerRouter);
+router.use("/orders", ordersRouter);
 
 export default router;

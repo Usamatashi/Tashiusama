@@ -91,3 +91,21 @@ export const tickerTable = pgTable("ticker", {
 export const insertTickerSchema = createInsertSchema(tickerTable).omit({ id: true, createdAt: true });
 export type InsertTicker = z.infer<typeof insertTickerSchema>;
 export type Ticker = typeof tickerTable.$inferSelect;
+
+export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "cancelled"]);
+
+export const ordersTable = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  salesmanId: integer("salesman_id").notNull().references(() => usersTable.id),
+  retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
+  vehicleId: integer("vehicle_id").notNull().references(() => vehiclesTable.id),
+  quantity: integer("quantity").notNull(),
+  totalPoints: integer("total_points").notNull().default(0),
+  bonusPoints: integer("bonus_points").notNull().default(0),
+  status: orderStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true });
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type Order = typeof ordersTable.$inferSelect;

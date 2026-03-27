@@ -182,6 +182,99 @@ export const CreateAdBody = zod.object({
 });
 
 /**
+ * @summary List orders for current salesman (or all if admin)
+ */
+export const ListOrdersResponseItem = zod.object({
+  id: zod.number(),
+  salesmanId: zod.number(),
+  retailerId: zod.number(),
+  vehicleId: zod.number(),
+  quantity: zod.number(),
+  totalPoints: zod.number(),
+  bonusPoints: zod.number(),
+  status: zod.enum(["pending", "confirmed", "cancelled"]),
+  vehicleName: zod.string().nullish(),
+  retailerName: zod.string().nullish(),
+  retailerPhone: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
+
+/**
+ * @summary Create a new order (salesman only)
+ */
+export const CreateOrderBody = zod.object({
+  retailerId: zod.number(),
+  vehicleId: zod.number(),
+  quantity: zod.number(),
+});
+
+/**
+ * @summary Search retailers for order creation
+ */
+export const ListRetailersQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+});
+
+export const ListRetailersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  phone: zod.string(),
+  city: zod.string().nullish(),
+});
+export const ListRetailersResponse = zod.array(ListRetailersResponseItem);
+
+/**
+ * @summary Get salesman bonus summary
+ */
+export const GetMyBonusResponse = zod.object({
+  totalBonus: zod.number(),
+  confirmedBonus: zod.number(),
+  orders: zod.array(
+    zod.object({
+      id: zod.number(),
+      salesmanId: zod.number(),
+      retailerId: zod.number(),
+      vehicleId: zod.number(),
+      quantity: zod.number(),
+      totalPoints: zod.number(),
+      bonusPoints: zod.number(),
+      status: zod.enum(["pending", "confirmed", "cancelled"]),
+      vehicleName: zod.string().nullish(),
+      retailerName: zod.string().nullish(),
+      retailerPhone: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update order status (admin only)
+ */
+export const UpdateOrderStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOrderStatusBody = zod.object({
+  status: zod.enum(["pending", "confirmed", "cancelled"]),
+});
+
+export const UpdateOrderStatusResponse = zod.object({
+  id: zod.number(),
+  salesmanId: zod.number(),
+  retailerId: zod.number(),
+  vehicleId: zod.number(),
+  quantity: zod.number(),
+  totalPoints: zod.number(),
+  bonusPoints: zod.number(),
+  status: zod.enum(["pending", "confirmed", "cancelled"]),
+  vehicleName: zod.string().nullish(),
+  retailerName: zod.string().nullish(),
+  retailerPhone: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary Delete an ad banner (admin only)
  */
 export const DeleteAdParams = zod.object({

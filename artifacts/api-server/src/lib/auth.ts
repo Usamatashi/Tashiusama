@@ -41,3 +41,12 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   }
   next();
 }
+
+export function requireSalesman(req: Request, res: Response, next: NextFunction): void {
+  const user = (req as any).user as JwtPayload;
+  if (!user || (user.role !== "salesman" && user.role !== "admin")) {
+    res.status(403).json({ error: "Salesman access required" });
+    return;
+  }
+  next();
+}

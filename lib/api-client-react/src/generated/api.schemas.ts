@@ -124,3 +124,62 @@ export interface CreateAdRequest {
   imageBase64: string;
   title?: string;
 }
+
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+
+export const OrderStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  cancelled: "cancelled",
+} as const;
+
+export interface Order {
+  id: number;
+  salesmanId: number;
+  retailerId: number;
+  vehicleId: number;
+  quantity: number;
+  totalPoints: number;
+  bonusPoints: number;
+  status: OrderStatus;
+  vehicleName?: string | null;
+  retailerName?: string | null;
+  retailerPhone?: string | null;
+  createdAt: string;
+}
+
+export interface CreateOrderRequest {
+  retailerId: number;
+  vehicleId: number;
+  quantity: number;
+}
+
+export type UpdateOrderStatusRequestStatus =
+  (typeof UpdateOrderStatusRequestStatus)[keyof typeof UpdateOrderStatusRequestStatus];
+
+export const UpdateOrderStatusRequestStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  cancelled: "cancelled",
+} as const;
+
+export interface UpdateOrderStatusRequest {
+  status: UpdateOrderStatusRequestStatus;
+}
+
+export interface RetailerSummary {
+  id: number;
+  name?: string | null;
+  phone: string;
+  city?: string | null;
+}
+
+export interface BonusSummary {
+  totalBonus: number;
+  confirmedBonus: number;
+  orders: Order[];
+}
+
+export type ListRetailersParams = {
+  search?: string;
+};
