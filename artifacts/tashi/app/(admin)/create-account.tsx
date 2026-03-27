@@ -178,24 +178,6 @@ export default function CreateAccountScreen() {
             </Text>
             <Text style={styles.userPhone}>{item.phone}</Text>
           </View>
-          {isSelected && (
-            <View style={styles.actions}>
-              <TouchableOpacity
-                onPress={() => { setSelectedUserId(null); openEdit(item); }}
-                style={[styles.actionBtn, styles.editBtn]}
-                activeOpacity={0.7}
-              >
-                <Feather name="edit-2" size={14} color={Colors.adminAccent} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => { setSelectedUserId(null); setConfirmUser(item); }}
-                style={[styles.actionBtn, styles.deleteBtn]}
-                activeOpacity={0.7}
-              >
-                <Feather name="trash-2" size={14} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
         <View style={styles.cardBottom}>
           {item.city ? (
@@ -207,13 +189,12 @@ export default function CreateAccountScreen() {
           <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}15` }]}>
             <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
           </View>
-          {isSelected && (
-            <Text style={styles.longPressHint}>Tap edit or delete</Text>
-          )}
         </View>
       </TouchableOpacity>
     );
   };
+
+  const selectedUser = users.find((u) => u.id === selectedUserId) ?? null;
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -221,10 +202,43 @@ export default function CreateAccountScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Accounts</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
-          <Feather name="plus" size={20} color={Colors.white} />
-        </TouchableOpacity>
+        {selectedUser ? (
+          <>
+            <TouchableOpacity
+              style={styles.cancelSelBtn}
+              onPress={() => setSelectedUserId(null)}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={18} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitleSelected} numberOfLines={1}>
+              {selectedUser.name || selectedUser.phone}
+            </Text>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={[styles.headerActionBtn, styles.editHeaderBtn]}
+                onPress={() => { setSelectedUserId(null); openEdit(selectedUser); }}
+                activeOpacity={0.8}
+              >
+                <Feather name="edit-2" size={16} color={Colors.adminAccent} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerActionBtn, styles.deleteHeaderBtn]}
+                onPress={() => { setSelectedUserId(null); setConfirmUser(selectedUser); }}
+                activeOpacity={0.8}
+              >
+                <Feather name="trash-2" size={16} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.headerTitle}>Accounts</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
+              <Feather name="plus" size={20} color={Colors.white} />
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       <FlatList
@@ -407,6 +421,26 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
+  headerTitleSelected: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminText,
+    marginHorizontal: 10,
+  },
+  cancelSelBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.background,
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  headerActions: { flexDirection: "row", gap: 8, flexShrink: 0 },
+  headerActionBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
+  },
+  editHeaderBtn: { backgroundColor: `${Colors.adminAccent}18` },
+  deleteHeaderBtn: { backgroundColor: "#FEE2E2" },
   addBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: Colors.adminAccent,
