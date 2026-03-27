@@ -19,18 +19,18 @@ import { Colors } from "@/constants/colors";
 export default function LoginScreen() {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter email and password");
+    if (!phone.trim() || !password.trim()) {
+      Alert.alert("Error", "Please enter phone number and password");
       return;
     }
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(phone.trim(), password);
       router.replace("/");
     } catch (err: any) {
       Alert.alert("Login Failed", err.message || "Invalid credentials");
@@ -61,15 +61,14 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Phone Number</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
+              placeholder="Enter your phone number"
               placeholderTextColor={Colors.textLight}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
               autoCorrect={false}
             />
           </View>

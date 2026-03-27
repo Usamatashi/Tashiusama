@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "tashi-secret-key-change-in-product
 export interface JwtPayload {
   userId: number;
   role: string;
-  email: string;
+  phone: string;
 }
 
 export function signToken(payload: JwtPayload): string {

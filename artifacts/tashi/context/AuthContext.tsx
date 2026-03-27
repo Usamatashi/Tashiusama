@@ -4,7 +4,8 @@ import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
 export interface AuthUser {
   id: number;
-  email: string;
+  phone: string;
+  name: string | null;
   role: "admin" | "salesman" | "mechanic" | "retailer";
   points: number;
   createdAt: string;
@@ -14,7 +15,7 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -55,11 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restore();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (phone: string, password: string) => {
     const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ phone, password }),
     });
     let body: any;
     try {

@@ -7,11 +7,11 @@ export const qrStatusEnum = pgEnum("qr_status", ["unused", "used"]);
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
-  email: text("email").notNull().unique(),
+  phone: text("phone").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: roleEnum("role").notNull().default("retailer"),
   name: text("name"),
-  phone: text("phone"),
+  email: text("email"),
   city: text("city"),
   points: integer("points").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

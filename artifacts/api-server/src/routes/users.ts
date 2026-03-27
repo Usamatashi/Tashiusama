@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 
 const router = Router();
@@ -9,10 +10,10 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
   try {
     const users = await db.select({
       id: usersTable.id,
+      phone: usersTable.phone,
       email: usersTable.email,
       role: usersTable.role,
       name: usersTable.name,
-      phone: usersTable.phone,
       city: usersTable.city,
       points: usersTable.points,
       createdAt: usersTable.createdAt,
@@ -26,9 +27,9 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { email, password, role, name, phone, city } = req.body;
-    if (!email || !password || !role) {
-      res.status(400).json({ error: "Email, password, and role are required" });
+    const { phone, password, role, name, email, city } = req.body;
+    if (!phone || !password || !role) {
+      res.status(400).json({ error: "Phone, password, and role are required" });
       return;
     }
     const validRoles = ["admin", "salesman", "mechanic", "retailer"];
@@ -36,32 +37,83 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       res.status(400).json({ error: "Invalid role" });
       return;
     }
+    if (password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
+      return;
+    }
     const passwordHash = await bcrypt.hash(password, 10);
     const inserted = await db.insert(usersTable).values({
-      email: email.toLowerCase(),
+      phone: phone.trim(),
       passwordHash,
       role,
       name: name?.trim() || null,
-      phone: phone?.trim() || null,
+      email: email?.trim() || null,
       city: city?.trim() || null,
       points: 0,
     }).returning();
     const user = inserted[0];
     res.status(201).json({
       id: user.id,
+      phone: user.phone,
       email: user.email,
       role: user.role,
       name: user.name,
-      phone: user.phone,
       city: user.city,
       points: user.points,
       createdAt: user.createdAt.toISOString(),
     });
   } catch (err: any) {
     if (err.code === "23505") {
-      res.status(400).json({ error: "Email already exists" });
+      res.status(400).json({ error: "Phone number already exists" });
       return;
     }
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user id" }); return; }
+    const { phone, role, name, email, city, password } = req.body;
+    const validRoles = ["admin", "salesman", "mechanic", "retailer"];
+    if (role && !validRoles.includes(role)) {
+      res.status(400).json({ error: "Invalid role" }); return;
+    }
+    const updates: Record<string, any> = {};
+    if (phone) updates.phone = phone.trim();
+    if (role) updates.role = role;
+    if (name !== undefined) updates.name = name?.trim() || null;
+    if (email !== undefined) updates.email = email?.trim() || null;
+    if (city !== undefined) updates.city = city?.trim() || null;
+    if (password) {
+      if (password.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
+      updates.passwordHash = await bcrypt.hash(password, 10);
+    }
+    const updated = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+    if (!updated.length) { res.status(404).json({ error: "User not found" }); return; }
+    const user = updated[0];
+    res.json({
+      id: user.id, phone: user.phone, email: user.email, role: user.role,
+      name: user.name, city: user.city, points: user.points,
+      createdAt: user.createdAt.toISOString(),
+    });
+  } catch (err: any) {
+    if (err.code === "23505") { res.status(400).json({ error: "Phone number already exists" }); return; }
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid user id" }); return; }
+    const deleted = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
+    if (!deleted.length) { res.status(404).json({ error: "User not found" }); return; }
+    res.json({ success: true });
+  } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }

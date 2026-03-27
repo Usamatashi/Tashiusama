@@ -37,10 +37,10 @@ const ROLE_COLORS: Record<Role, string> = {
 
 interface User {
   id: number;
-  email: string;
+  phone: string;
+  email: string | null;
   role: Role;
   name: string | null;
-  phone: string | null;
   city: string | null;
   points: number;
   createdAt: string;
@@ -53,6 +53,7 @@ export default function CreateAccountScreen() {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -77,29 +78,45 @@ export default function CreateAccountScreen() {
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const openAdd = () => {
-    setName(""); setPhone(""); setCity("");
-    setEmail(""); setPassword(""); setRole("retailer");
+    setEditingUser(null);
+    setName(""); setPhone(""); setCity(""); setEmail(""); setPassword(""); setRole("retailer");
     setModalVisible(true);
   };
 
-  const handleCreate = async () => {
-    if (!name.trim()) { Alert.alert("Error", "Name is required"); return; }
-    if (!email.trim()) { Alert.alert("Error", "Email is required"); return; }
-    if (!password.trim() || password.length < 6) {
+  const openEdit = (user: User) => {
+    setEditingUser(user);
+    setName(user.name || "");
+    setPhone(user.phone);
+    setCity(user.city || "");
+    setEmail(user.email || "");
+    setPassword("");
+    setRole(user.role);
+    setModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    if (!phone.trim()) { Alert.alert("Error", "Phone number is required"); return; }
+    if (!editingUser && (!password.trim() || password.length < 6)) {
       Alert.alert("Error", "Password must be at least 6 characters"); return;
     }
     setSaving(true);
     try {
-      const res = await fetch(`${BASE}/users`, {
-        method: "POST",
+      const body: Record<string, any> = {
+        name: name.trim(), phone: phone.trim(), city: city.trim(),
+        email: email.trim(), role,
+      };
+      if (password.trim()) body.password = password;
+
+      const url = editingUser ? `${BASE}/users/${editingUser.id}` : `${BASE}/users`;
+      const method = editingUser ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          name: name.trim(), phone: phone.trim(), city: city.trim(),
-          email: email.trim(), password, role,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create account");
+      if (!res.ok) throw new Error(data.error || "Failed to save account");
       setModalVisible(false);
       fetchUsers();
     } catch (err: any) {
@@ -109,32 +126,59 @@ export default function CreateAccountScreen() {
     }
   };
 
+  const handleDelete = (user: User) => {
+    Alert.alert(
+      "Delete Account",
+      `Are you sure you want to delete ${user.name || user.phone}? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete", style: "destructive", onPress: async () => {
+            try {
+              const res = await fetch(`${BASE}/users/${user.id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to delete");
+              }
+              fetchUsers();
+            } catch (err: any) {
+              Alert.alert("Error", err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderUser = ({ item }: { item: User }) => (
     <View style={styles.userCard}>
       <View style={styles.avatarWrap}>
         <Text style={styles.avatarText}>
-          {(item.name || item.email).charAt(0).toUpperCase()}
+          {(item.name || item.phone).charAt(0).toUpperCase()}
         </Text>
       </View>
       <View style={styles.userInfo}>
         <Text style={styles.userName} numberOfLines={1}>
-          {item.name || item.email}
+          {item.name || item.phone}
         </Text>
-        {item.phone ? (
-          <Text style={styles.userPhone}>{item.phone}</Text>
-        ) : (
-          <Text style={styles.userEmail} numberOfLines={1}>{item.email}</Text>
-        )}
+        <Text style={styles.userPhone}>{item.phone}</Text>
       </View>
       <View style={styles.userRight}>
-        {item.city ? (
-          <Text style={styles.userCity} numberOfLines={1}>{item.city}</Text>
-        ) : null}
+        {item.city ? <Text style={styles.userCity} numberOfLines={1}>{item.city}</Text> : null}
         <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}18` }]}>
-          <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>
-            {item.role}
-          </Text>
+          <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
         </View>
+      </View>
+      <View style={styles.actions}>
+        <TouchableOpacity onPress={() => openEdit(item)} style={styles.actionBtn} activeOpacity={0.7}>
+          <Feather name="edit-2" size={15} color={Colors.adminAccent} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDelete(item)} style={styles.actionBtn} activeOpacity={0.7}>
+          <Feather name="trash-2" size={15} color="#EF4444" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -176,7 +220,7 @@ export default function CreateAccountScreen() {
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setModalVisible(false)} />
           <View style={[styles.modal, { paddingBottom: bottomPad + 16 }]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>New Account</Text>
+            <Text style={styles.modalTitle}>{editingUser ? "Edit Account" : "New Account"}</Text>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.modalFields}>
@@ -196,7 +240,17 @@ export default function CreateAccountScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.fieldLabel}>Full Name *</Text>
+                <Text style={styles.fieldLabel}>Phone Number *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="e.g. 03001234567"
+                  placeholderTextColor={Colors.textLight}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={styles.fieldLabel}>Full Name</Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="e.g. Ahmed Khan"
@@ -204,16 +258,6 @@ export default function CreateAccountScreen() {
                   value={name}
                   onChangeText={setName}
                   autoCorrect={false}
-                />
-
-                <Text style={styles.fieldLabel}>Phone</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="e.g. +92 300 1234567"
-                  placeholderTextColor={Colors.textLight}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
                 />
 
                 <Text style={styles.fieldLabel}>City</Text>
@@ -226,7 +270,7 @@ export default function CreateAccountScreen() {
                   autoCorrect={false}
                 />
 
-                <Text style={styles.fieldLabel}>Email *</Text>
+                <Text style={styles.fieldLabel}>Email (optional)</Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="email@example.com"
@@ -238,10 +282,12 @@ export default function CreateAccountScreen() {
                   autoCorrect={false}
                 />
 
-                <Text style={styles.fieldLabel}>Password *</Text>
+                <Text style={styles.fieldLabel}>
+                  {editingUser ? "New Password (leave blank to keep)" : "Password *"}
+                </Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Min. 6 characters"
+                  placeholder={editingUser ? "Leave blank to keep current" : "Min. 6 characters"}
                   placeholderTextColor={Colors.textLight}
                   value={password}
                   onChangeText={setPassword}
@@ -256,11 +302,13 @@ export default function CreateAccountScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-                onPress={handleCreate}
+                onPress={handleSave}
                 disabled={saving}
                 activeOpacity={0.8}
               >
-                <Text style={styles.saveBtnText}>{saving ? "Creating..." : "Create"}</Text>
+                <Text style={styles.saveBtnText}>
+                  {saving ? (editingUser ? "Saving..." : "Creating...") : (editingUser ? "Save" : "Create")}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -284,12 +332,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
   addBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: Colors.adminAccent,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
   list: { padding: 16, gap: 10 },
   userCard: {
@@ -298,7 +343,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 14,
-    gap: 12,
+    gap: 10,
     borderWidth: 1,
     borderColor: Colors.border,
     shadowColor: "#000",
@@ -308,128 +353,64 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatarWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: `${Colors.adminAccent}18`,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
-  avatarText: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: Colors.adminAccent,
-  },
+  avatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.adminAccent },
   userInfo: { flex: 1, gap: 3 },
-  userName: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.adminText,
-  },
-  userPhone: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary,
-  },
-  userEmail: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary,
-  },
+  userName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
+  userPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   userRight: { alignItems: "flex-end", gap: 5 },
-  userCity: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.adminText,
-  },
-  rolePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  roleText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "capitalize",
+  userCity: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.adminText },
+  rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  roleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
+  actions: { flexDirection: "column", gap: 4 },
+  actionBtn: {
+    width: 30, height: 30, borderRadius: 8,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center", justifyContent: "center",
   },
   empty: { alignItems: "center", paddingTop: 80, gap: 12 },
-  emptyText: {
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-    textAlign: "center",
-  },
+  emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modal: {
     backgroundColor: Colors.white,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    gap: 16,
-    maxHeight: "90%",
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, gap: 16, maxHeight: "90%",
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.border,
-    alignSelf: "center",
-    marginBottom: 4,
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.border, alignSelf: "center", marginBottom: 4,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: Colors.text,
-  },
+  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   modalFields: { gap: 8 },
   fieldLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.textSecondary,
-    marginTop: 8,
+    fontSize: 13, fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary, marginTop: 8,
   },
   roleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   roleBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: "transparent",
+    paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.border, backgroundColor: "transparent",
   },
-  roleBtnText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.textSecondary,
-  },
+  roleBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
   roleBtnTextActive: { color: Colors.white },
   modalInput: {
     backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: Colors.text,
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.text,
   },
   modalBtns: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
+    flex: 1, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 12, paddingVertical: 14, alignItems: "center",
   },
   cancelBtnText: { color: Colors.textSecondary, fontFamily: "Inter_600SemiBold", fontSize: 15 },
   saveBtn: {
-    flex: 1,
-    backgroundColor: Colors.adminAccent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
+    flex: 1, backgroundColor: Colors.adminAccent,
+    borderRadius: 12, paddingVertical: 14, alignItems: "center",
   },
   saveBtnText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 15 },
 });

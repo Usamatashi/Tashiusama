@@ -8,28 +8,29 @@ const router = Router();
 
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res.status(400).json({ error: "Email and password required" });
+    const { phone, password } = req.body;
+    if (!phone || !password) {
+      res.status(400).json({ error: "Phone and password required" });
       return;
     }
-    const users = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+    const users = await db.select().from(usersTable).where(eq(usersTable.phone, phone.trim()));
     const user = users[0];
     if (!user) {
-      res.status(401).json({ error: "Invalid email or password" });
+      res.status(401).json({ error: "Invalid phone or password" });
       return;
     }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      res.status(401).json({ error: "Invalid email or password" });
+      res.status(401).json({ error: "Invalid phone or password" });
       return;
     }
-    const token = signToken({ userId: user.id, role: user.role, email: user.email });
+    const token = signToken({ userId: user.id, role: user.role, phone: user.phone });
     res.json({
       token,
       user: {
         id: user.id,
-        email: user.email,
+        phone: user.phone,
+        name: user.name,
         role: user.role,
         points: user.points,
         createdAt: user.createdAt.toISOString(),
@@ -52,7 +53,8 @@ router.get("/me", requireAuth, async (req, res) => {
     }
     res.json({
       id: user.id,
-      email: user.email,
+      phone: user.phone,
+      name: user.name,
       role: user.role,
       points: user.points,
       createdAt: user.createdAt.toISOString(),
