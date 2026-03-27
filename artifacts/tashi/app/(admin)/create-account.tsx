@@ -176,14 +176,16 @@ export default function CreateAccountScreen() {
           </View>
           <Text style={styles.userPhoneRight} numberOfLines={1}>{item.phone}</Text>
         </View>
+        <View style={styles.cardDivider} />
         <View style={styles.cardBottom}>
           <View style={styles.metaChip}>
-            <Feather name="map-pin" size={11} color={item.city ? Colors.textSecondary : Colors.textLight} />
+            <Feather name="map-pin" size={11} color={item.city ? Colors.adminAccent : Colors.textLight} />
             <Text style={[styles.metaChipText, !item.city && { color: Colors.textLight }]}>
               {item.city || "No city"}
             </Text>
           </View>
-          <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}15` }]}>
+          <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}12` }]}>
+            <View style={[styles.roleDot, { backgroundColor: ROLE_COLORS[item.role] }]} />
             <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
           </View>
         </View>
@@ -460,7 +462,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  cardBottom: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 54 },
+  cardDivider: { height: 1, backgroundColor: Colors.border, marginTop: 8, marginHorizontal: -2 },
+  cardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 8,
+  },
   avatarWrap: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: `${Colors.adminAccent}18`,
@@ -480,7 +488,15 @@ const styles = StyleSheet.create({
   },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  rolePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  roleDot: { width: 6, height: 6, borderRadius: 3 },
   roleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
   userCardSelected: {
     borderColor: Colors.adminAccent,
