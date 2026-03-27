@@ -146,21 +146,17 @@ export default function VehiclesScreen() {
         </View>
         <View style={styles.cardLeft}>
           <Text style={styles.vehicleName}>{item.name}</Text>
-          <View style={styles.cardMeta}>
-            <View style={styles.metaChip}>
-              <Feather name="star" size={11} color={Colors.adminAccent} />
-              <Text style={styles.metaChipText}>{item.points} pts/unit</Text>
-            </View>
-            {item.salesPrice > 0 && (
-              <View style={styles.metaChip}>
-                <Feather name="tag" size={11} color={Colors.textSecondary} />
-                <Text style={[styles.metaChipText, { color: Colors.textSecondary }]}>
-                  Rs. {item.salesPrice.toLocaleString()}
-                </Text>
-              </View>
-            )}
+          <View style={styles.metaChip}>
+            <Feather name="star" size={11} color={Colors.adminAccent} />
+            <Text style={styles.metaChipText}>{item.points} pts/unit</Text>
           </View>
         </View>
+        {item.salesPrice > 0 && (
+          <View style={styles.priceWrap}>
+            <Text style={styles.priceCurrency}>Rs.</Text>
+            <Text style={styles.priceValue}>{item.salesPrice.toLocaleString()}</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -402,9 +398,21 @@ const styles = StyleSheet.create({
   },
   cardLeft: { flex: 1, gap: 6 },
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
-  cardMeta: { flexDirection: "row", gap: 12 },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.adminAccent },
+  priceWrap: { alignItems: "flex-end", justifyContent: "center", flexShrink: 0 },
+  priceCurrency: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary,
+    letterSpacing: 0.3,
+  },
+  priceValue: {
+    fontSize: 19,
+    fontFamily: "Inter_700Bold",
+    color: Colors.adminText,
+    letterSpacing: -0.5,
+  },
   empty: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
 
