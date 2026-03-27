@@ -154,33 +154,40 @@ export default function CreateAccountScreen() {
   };
 
   const renderUser = ({ item }: { item: User }) => (
-    <View style={styles.userCard}>
-      <View style={styles.avatarWrap}>
-        <Text style={styles.avatarText}>
-          {(item.name || item.phone).charAt(0).toUpperCase()}
-        </Text>
+    <TouchableOpacity style={styles.userCard} onPress={() => openEdit(item)} activeOpacity={0.85}>
+      <View style={styles.cardTop}>
+        <View style={styles.avatarWrap}>
+          <Text style={styles.avatarText}>
+            {(item.name || item.phone).charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName} numberOfLines={1}>
+            {item.name || item.phone}
+          </Text>
+          <Text style={styles.userPhone}>{item.phone}</Text>
+        </View>
+        <View style={styles.actions}>
+          <TouchableOpacity onPress={() => openEdit(item)} style={[styles.actionBtn, styles.editBtn]} activeOpacity={0.7}>
+            <Feather name="edit-2" size={14} color={Colors.adminAccent} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionBtn, styles.deleteBtn]} activeOpacity={0.7}>
+            <Feather name="trash-2" size={14} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.userInfo}>
-        <Text style={styles.userName} numberOfLines={1}>
-          {item.name || item.phone}
-        </Text>
-        <Text style={styles.userPhone}>{item.phone}</Text>
-      </View>
-      <View style={styles.userRight}>
-        {item.city ? <Text style={styles.userCity} numberOfLines={1}>{item.city}</Text> : null}
-        <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}18` }]}>
+      <View style={styles.cardBottom}>
+        {item.city ? (
+          <View style={styles.metaChip}>
+            <Feather name="map-pin" size={11} color={Colors.textSecondary} />
+            <Text style={styles.metaChipText}>{item.city}</Text>
+          </View>
+        ) : null}
+        <View style={[styles.rolePill, { backgroundColor: `${ROLE_COLORS[item.role]}15` }]}>
           <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
         </View>
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity onPress={() => openEdit(item)} style={styles.actionBtn} activeOpacity={0.7}>
-          <Feather name="edit-2" size={15} color={Colors.adminAccent} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item)} style={styles.actionBtn} activeOpacity={0.7}>
-          <Feather name="trash-2" size={15} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -338,11 +345,11 @@ const styles = StyleSheet.create({
   },
   list: { padding: 16, gap: 10 },
   userCard: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: Colors.white,
     borderRadius: 16,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
     gap: 10,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -352,25 +359,38 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  cardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingLeft: 54,
+  },
   avatarWrap: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: `${Colors.adminAccent}18`,
     alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
   },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.adminAccent },
-  userInfo: { flex: 1, gap: 3 },
+  userInfo: { flex: 1, gap: 2 },
   userName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   userPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  userRight: { alignItems: "flex-end", gap: 5 },
-  userCity: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.adminText },
+  metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
+  metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   roleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
-  actions: { flexDirection: "column", gap: 4 },
+  actions: { flexDirection: "row", gap: 6, flexShrink: 0 },
   actionBtn: {
     width: 30, height: 30, borderRadius: 8,
-    backgroundColor: "#F3F4F6",
     alignItems: "center", justifyContent: "center",
   },
+  editBtn: { backgroundColor: `${Colors.adminAccent}15` },
+  deleteBtn: { backgroundColor: "#FEE2E2" },
   empty: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
