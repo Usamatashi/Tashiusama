@@ -5,7 +5,7 @@ import { logger } from "./logger";
 
 export async function seedAdminUser() {
   try {
-    const phone = "01231231231";
+    const phone = "03055198651";
     const password = "khan0112";
 
     const existing = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
