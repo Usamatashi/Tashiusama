@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -54,6 +53,10 @@ export default function CreateAccountScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const [confirmUser, setConfirmUser] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -69,7 +72,6 @@ export default function CreateAccountScreen() {
       });
       if (res.ok) setUsers(await res.json());
     } catch {
-      Alert.alert("Error", "Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -79,12 +81,14 @@ export default function CreateAccountScreen() {
 
   const openAdd = () => {
     setEditingUser(null);
+    setErrorMsg("");
     setName(""); setPhone(""); setCity(""); setEmail(""); setPassword(""); setRole("retailer");
     setModalVisible(true);
   };
 
   const openEdit = (user: User) => {
     setEditingUser(user);
+    setErrorMsg("");
     setName(user.name || "");
     setPhone(user.phone);
     setCity(user.city || "");
@@ -95,10 +99,11 @@ export default function CreateAccountScreen() {
   };
 
   const handleSave = async () => {
-    if (!phone.trim()) { Alert.alert("Error", "Phone number is required"); return; }
+    if (!phone.trim()) { setErrorMsg("Phone number is required"); return; }
     if (!editingUser && (!password.trim() || password.length < 6)) {
-      Alert.alert("Error", "Password must be at least 6 characters"); return;
+      setErrorMsg("Password must be at least 6 characters"); return;
     }
+    setErrorMsg("");
     setSaving(true);
     try {
       const body: Record<string, any> = {
@@ -116,41 +121,32 @@ export default function CreateAccountScreen() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save account");
+      if (!res.ok) { setErrorMsg(data.error || "Failed to save account"); return; }
       setModalVisible(false);
       fetchUsers();
-    } catch (err: any) {
-      Alert.alert("Error", err.message);
+    } catch {
+      setErrorMsg("Network error. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = (user: User) => {
-    Alert.alert(
-      "Delete Account",
-      `Are you sure you want to delete ${user.name || user.phone}? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete", style: "destructive", onPress: async () => {
-            try {
-              const res = await fetch(`${BASE}/users/${user.id}`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Failed to delete");
-              }
-              fetchUsers();
-            } catch (err: any) {
-              Alert.alert("Error", err.message);
-            }
-          },
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    if (!confirmUser) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${BASE}/users/${confirmUser.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setConfirmUser(null);
+        fetchUsers();
+      }
+    } catch {
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const renderUser = ({ item }: { item: User }) => (
@@ -168,10 +164,18 @@ export default function CreateAccountScreen() {
           <Text style={styles.userPhone}>{item.phone}</Text>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity onPress={() => openEdit(item)} style={[styles.actionBtn, styles.editBtn]} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); openEdit(item); }}
+            style={[styles.actionBtn, styles.editBtn]}
+            activeOpacity={0.7}
+          >
             <Feather name="edit-2" size={14} color={Colors.adminAccent} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionBtn, styles.deleteBtn]} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); setConfirmUser(item); }}
+            style={[styles.actionBtn, styles.deleteBtn]}
+            activeOpacity={0.7}
+          >
             <Feather name="trash-2" size={14} color="#EF4444" />
           </TouchableOpacity>
         </View>
@@ -219,6 +223,7 @@ export default function CreateAccountScreen() {
         renderItem={renderUser}
       />
 
+      {/* Edit / Create Modal */}
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -300,6 +305,13 @@ export default function CreateAccountScreen() {
                   onChangeText={setPassword}
                   secureTextEntry
                 />
+
+                {errorMsg ? (
+                  <View style={styles.errorBox}>
+                    <Feather name="alert-circle" size={14} color="#EF4444" />
+                    <Text style={styles.errorText}>{errorMsg}</Text>
+                  </View>
+                ) : null}
               </View>
             </ScrollView>
 
@@ -320,6 +332,42 @@ export default function CreateAccountScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal visible={!!confirmUser} transparent animationType="fade" onRequestClose={() => setConfirmUser(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={styles.confirmIcon}>
+              <Feather name="trash-2" size={28} color="#EF4444" />
+            </View>
+            <Text style={styles.confirmTitle}>Delete Account</Text>
+            <Text style={styles.confirmMsg}>
+              Are you sure you want to delete{"\n"}
+              <Text style={{ fontFamily: "Inter_600SemiBold" }}>
+                {confirmUser?.name || confirmUser?.phone}
+              </Text>
+              ?{"\n"}This cannot be undone.
+            </Text>
+            <View style={styles.confirmBtns}>
+              <TouchableOpacity
+                style={styles.confirmCancel}
+                onPress={() => setConfirmUser(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmDelete, deleting && { opacity: 0.6 }]}
+                onPress={confirmDelete}
+                disabled={deleting}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmDeleteText}>{deleting ? "Deleting..." : "Delete"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -359,22 +407,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  cardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  cardBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingLeft: 54,
-  },
+  cardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cardBottom: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 54 },
   avatarWrap: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: `${Colors.adminAccent}18`,
-    alignItems: "center", justifyContent: "center",
-    flexShrink: 0,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.adminAccent },
   userInfo: { flex: 1, gap: 2 },
@@ -385,14 +423,12 @@ const styles = StyleSheet.create({
   rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   roleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
   actions: { flexDirection: "row", gap: 6, flexShrink: 0 },
-  actionBtn: {
-    width: 30, height: 30, borderRadius: 8,
-    alignItems: "center", justifyContent: "center",
-  },
+  actionBtn: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   editBtn: { backgroundColor: `${Colors.adminAccent}15` },
   deleteBtn: { backgroundColor: "#FEE2E2" },
   empty: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
+
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modal: {
     backgroundColor: Colors.white,
@@ -405,10 +441,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   modalFields: { gap: 8 },
-  fieldLabel: {
-    fontSize: 13, fontFamily: "Inter_600SemiBold",
-    color: Colors.textSecondary, marginTop: 8,
-  },
+  fieldLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginTop: 8 },
   roleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   roleBtn: {
     paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10,
@@ -422,6 +455,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 13,
     fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.text,
   },
+  errorBox: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "#FEF2F2", borderRadius: 10,
+    padding: 12, marginTop: 8,
+  },
+  errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#EF4444", flex: 1 },
   modalBtns: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelBtn: {
     flex: 1, borderWidth: 1, borderColor: Colors.border,
@@ -433,4 +472,33 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingVertical: 14, alignItems: "center",
   },
   saveBtnText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 15 },
+
+  confirmOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center", justifyContent: "center", padding: 24,
+  },
+  confirmBox: {
+    backgroundColor: Colors.white, borderRadius: 24,
+    padding: 28, alignItems: "center", gap: 12, width: "100%", maxWidth: 340,
+  },
+  confirmIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center",
+  },
+  confirmTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+  confirmMsg: {
+    fontSize: 14, fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary, textAlign: "center", lineHeight: 22,
+  },
+  confirmBtns: { flexDirection: "row", gap: 12, width: "100%", marginTop: 4 },
+  confirmCancel: {
+    flex: 1, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 12, paddingVertical: 13, alignItems: "center",
+  },
+  confirmCancelText: { color: Colors.textSecondary, fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  confirmDelete: {
+    flex: 1, backgroundColor: "#EF4444",
+    borderRadius: 12, paddingVertical: 13, alignItems: "center",
+  },
+  confirmDeleteText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 15 },
 });
