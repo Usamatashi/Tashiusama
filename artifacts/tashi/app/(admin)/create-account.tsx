@@ -156,11 +156,8 @@ export default function CreateAccountScreen() {
       <TouchableOpacity
         style={[styles.userCard, isSelected && styles.userCardSelected]}
         onPress={() => {
-          if (isSelected) {
-            setSelectedUserId(null);
-          } else {
-            setSelectedUserId(null);
-          }
+          setSelectedUserId(null);
+          openEdit(item);
         }}
         onLongPress={() => setSelectedUserId(isSelected ? null : item.id)}
         delayLongPress={300}
@@ -169,15 +166,13 @@ export default function CreateAccountScreen() {
         <View style={styles.cardTop}>
           <View style={styles.avatarWrap}>
             <Text style={styles.avatarText}>
-              {item.name ? item.name.charAt(0).toUpperCase() : "#"}
+              {(item.name || item.phone).charAt(0).toUpperCase()}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            {item.name ? (
-              <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
-            ) : (
-              <Text style={styles.userNameMuted} numberOfLines={1}>No name</Text>
-            )}
+            <Text style={styles.userName} numberOfLines={1}>
+              {item.name || item.phone}
+            </Text>
             <Text style={styles.userPhone}>{item.phone}</Text>
           </View>
         </View>
