@@ -37,7 +37,6 @@ const ROLE_COLORS: Record<Role, string> = {
 interface User {
   id: number;
   phone: string;
-  email: string | null;
   role: Role;
   name: string | null;
   city: string | null;
@@ -62,7 +61,6 @@ export default function CreateAccountScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("retailer");
 
@@ -83,7 +81,7 @@ export default function CreateAccountScreen() {
   const openAdd = () => {
     setEditingUser(null);
     setErrorMsg("");
-    setName(""); setPhone(""); setCity(""); setEmail(""); setPassword(""); setRole("retailer");
+    setName(""); setPhone(""); setCity(""); setPassword(""); setRole("retailer");
     setModalVisible(true);
   };
 
@@ -93,7 +91,6 @@ export default function CreateAccountScreen() {
     setName(user.name || "");
     setPhone(user.phone);
     setCity(user.city || "");
-    setEmail(user.email || "");
     setPassword("");
     setRole(user.role);
     setModalVisible(true);
@@ -108,8 +105,7 @@ export default function CreateAccountScreen() {
     setSaving(true);
     try {
       const body: Record<string, any> = {
-        name: name.trim(), phone: phone.trim(), city: city.trim(),
-        email: email.trim(), role,
+        name: name.trim(), phone: phone.trim(), city: city.trim(), role,
       };
       if (password.trim()) body.password = password;
 
@@ -313,18 +309,6 @@ export default function CreateAccountScreen() {
                   placeholderTextColor={Colors.textLight}
                   value={city}
                   onChangeText={setCity}
-                  autoCorrect={false}
-                />
-
-                <Text style={styles.fieldLabel}>Email (optional)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="email@example.com"
-                  placeholderTextColor={Colors.textLight}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
                   autoCorrect={false}
                 />
 

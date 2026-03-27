@@ -56,7 +56,7 @@ router.get("/", requireAuth, async (req, res) => {
           pointsClaimed: claimsTable.pointsClaimed,
           status: claimsTable.status,
           claimedAt: claimsTable.claimedAt,
-          userEmail: usersTable.email,
+          userName: usersTable.name,
           userRole: usersTable.role,
           userId: usersTable.id,
         })
@@ -69,7 +69,7 @@ router.get("/", requireAuth, async (req, res) => {
         pointsClaimed: c.pointsClaimed,
         status: c.status,
         claimedAt: c.claimedAt.toISOString(),
-        userEmail: c.userEmail || "",
+        userName: c.userName || "",
         userRole: c.userRole || "",
         userId: c.userId || 0,
       })));

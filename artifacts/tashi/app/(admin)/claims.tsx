@@ -21,7 +21,7 @@ interface Claim {
   pointsClaimed: number;
   status: "pending" | "received";
   claimedAt: string;
-  userEmail: string;
+  userName: string;
   userRole: string;
   userId: number;
 }
@@ -142,10 +142,10 @@ export default function AdminClaimsScreen() {
               >
                 <View style={styles.cardLeft}>
                   <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarText}>{item.userEmail?.[0]?.toUpperCase() || "?"}</Text>
+                    <Text style={styles.avatarText}>{item.userName?.[0]?.toUpperCase() || "?"}</Text>
                   </View>
                   <View style={styles.cardInfo}>
-                    <Text style={styles.cardEmail} numberOfLines={1}>{item.userEmail}</Text>
+                    <Text style={styles.cardEmail} numberOfLines={1}>{item.userName || "—"}</Text>
                     <Text style={styles.cardRole}>{item.userRole?.toUpperCase()}</Text>
                     <Text style={styles.cardDate}>{formatDate(item.claimedAt)}</Text>
                   </View>
@@ -182,7 +182,7 @@ export default function AdminClaimsScreen() {
             <Text style={styles.popupTitle}>Payment Made?</Text>
             <Text style={styles.popupSub}>Confirm that payment has been processed for:</Text>
             <View style={styles.popupDetail}>
-              <Text style={styles.popupEmail}>{selectedClaim?.userEmail}</Text>
+              <Text style={styles.popupEmail}>{selectedClaim?.userName || "—"}</Text>
               <Text style={styles.popupPts}>{selectedClaim?.pointsClaimed} pts</Text>
             </View>
             <View style={styles.popupActions}>

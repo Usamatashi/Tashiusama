@@ -32,7 +32,7 @@ export default function ProfileScreen() {
 
   const roleColor = ROLE_COLORS[user?.role || ""] || Colors.primary;
   const roleLabel = ROLE_LABELS[user?.role || ""] || user?.role || "-";
-  const initial = user?.email?.[0]?.toUpperCase() || "U";
+  const initial = user?.name?.[0]?.toUpperCase() || user?.phone?.[0]?.toUpperCase() || "U";
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long" })
     : "-";
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
               <Text style={styles.avatarText}>{initial}</Text>
             </View>
           </View>
-          <Text style={styles.heroEmail}>{user?.email}</Text>
+          <Text style={styles.heroEmail}>{user?.name || user?.phone}</Text>
           <View style={[styles.rolePill, { backgroundColor: `${roleColor}18` }]}>
             <View style={[styles.roleDot, { backgroundColor: roleColor }]} />
             <Text style={[styles.rolePillText, { color: roleColor }]}>{roleLabel}</Text>
@@ -71,7 +71,8 @@ export default function ProfileScreen() {
 
         {/* Info rows */}
         <View style={styles.infoCard}>
-          <InfoRow label="Email" value={user?.email || "-"} />
+          <InfoRow label="Name" value={user?.name || "-"} />
+          <InfoRow label="Phone" value={user?.phone || "-"} />
           <InfoRow label="Role" value={roleLabel} valueColor={roleColor} />
           <InfoRow label="Total Points" value={`${user?.points ?? 0} pts`} valueColor={Colors.primary} />
           <InfoRow label="Member Since" value={memberSince} last />
