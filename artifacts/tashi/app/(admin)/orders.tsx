@@ -18,19 +18,28 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Colors } from "@/constants/colors";
 
-interface Order {
-  id: number;
+interface OrderItem {
+  vehicleId: number;
+  vehicleName: string;
   quantity: number;
+  unitPrice: number;
   totalPoints: number;
   bonusPoints: number;
-  salesPrice: number | null;
-  totalValue: number | null;
+  totalValue: number;
+}
+
+interface Order {
+  id: number;
+  salesmanId: number;
+  retailerId: number;
   status: "pending" | "confirmed" | "cancelled";
-  vehicleName: string | null;
+  createdAt: string;
   retailerName: string | null;
   retailerPhone: string | null;
-  salesmanId: number;
-  createdAt: string;
+  totalPoints: number;
+  bonusPoints: number;
+  totalValue: number;
+  items: OrderItem[];
 }
 
 async function getToken() {
@@ -79,8 +88,9 @@ function OrderCard({
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
-  const unitPrice = order.salesPrice ?? 0;
-  const total = order.totalValue ?? (order.quantity * unitPrice);
+
+  const items = order.items ?? [];
+  const grandTotal = order.totalValue ?? items.reduce((s, i) => s + i.totalValue, 0);
 
   return (
     <View style={styles.card}>
@@ -107,31 +117,59 @@ function OrderCard({
         {/* Column headers */}
         <View style={styles.tableRow}>
           <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
-          <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+          <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
         </View>
         <View style={styles.tableDivider} />
-        {/* Data row */}
-        <View style={[styles.tableRow, { paddingVertical: 12 }]}>
-          <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>
-            {order.vehicleName ?? "—"}
-          </Text>
-          <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>
-            {order.quantity}
-          </Text>
-          <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-            {unitPrice > 0 ? unitPrice.toLocaleString() : "—"}
-          </Text>
-          <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
-            {total > 0 ? total.toLocaleString() : "—"}
-          </Text>
+
+        {/* Item rows */}
+        {items.length === 0 ? (
+          <View style={[styles.tableRow, { paddingVertical: 12 }]}>
+            <Text style={[styles.colVal, { color: Colors.textLight }]}>No items</Text>
+          </View>
+        ) : (
+          items.map((item, idx) => (
+            <View key={idx} style={[styles.tableRow, { paddingVertical: 10 }]}>
+              <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>
+                {item.vehicleName || "—"}
+              </Text>
+              <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>
+                {item.quantity}
+              </Text>
+              <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+                {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
+              </Text>
+              <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
+                {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
+              </Text>
+            </View>
+          ))
+        )}
+
+        {/* Points row */}
+        <View style={styles.pointsRow}>
+          <View style={styles.pointsBadge}>
+            <Feather name="star" size={11} color={Colors.primary} />
+            <Text style={styles.pointsBadgeText}>
+              {order.totalPoints.toLocaleString()} pts
+            </Text>
+          </View>
+          {order.bonusPoints > 0 && (
+            <View style={[styles.pointsBadge, { backgroundColor: "#FEF3C7" }]}>
+              <Feather name="gift" size={11} color="#D97706" />
+              <Text style={[styles.pointsBadgeText, { color: "#D97706" }]}>
+                +{order.bonusPoints.toLocaleString()} bonus
+              </Text>
+            </View>
+          )}
         </View>
+
         {/* Total footer */}
         <View style={styles.totalFooter}>
           <Text style={styles.totalFooterLabel}>Order Total</Text>
           <Text style={styles.totalFooterValue}>
-            Rs. {total.toLocaleString()}
+            Rs. {grandTotal.toLocaleString()}
           </Text>
         </View>
       </View>
@@ -350,10 +388,25 @@ const styles = StyleSheet.create({
   colCenter: { textAlign: "center" },
   colRight: { textAlign: "right" },
   colTotal: { color: Colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 },
+
+  pointsRow: {
+    flexDirection: "row", gap: 8, paddingTop: 10, paddingBottom: 4,
+    borderTopWidth: 1, borderTopColor: "#F0F0F0", marginTop: 4,
+  },
+  pointsBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: `${Colors.primary}12`,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20,
+  },
+  pointsBadgeText: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.primary,
+  },
+
   totalFooter: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     borderTopWidth: 1, borderTopColor: "#EEEEEE",
-    marginTop: 4, paddingTop: 12, paddingBottom: 14,
+    marginTop: 8, paddingTop: 12, paddingBottom: 14,
   },
   totalFooterLabel: {
     fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary,
