@@ -34,24 +34,24 @@ args = "Start Tashi"
 name = "Start Backend"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "console"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "PORT=8080 pnpm --filter @workspace/api-server run dev"
 waitForPort = 8080
 
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[workflows.workflow]]
 name = "Start Tashi"
 author = "agent"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Tashi"
+
 [workflows.workflow.metadata]
 outputType = "console"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=19190 pnpm --filter @workspace/tashi run dev"
 
 [agent]
 stack = "PNPM_WORKSPACE"
