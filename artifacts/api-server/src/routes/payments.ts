@@ -1,0 +1,249 @@
+import { Router } from "express";
+import { db, usersTable, ordersTable, orderItemsTable, paymentsTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
+import { requireAuth, requireSalesman } from "../lib/auth";
+import type { JwtPayload } from "../lib/auth";
+
+const router = Router();
+
+// ─── Helper: compute totalValue for a set of orders ──────────────────────────
+async function computeOrderValues(orderRows: {
+  id: number; vehicleId: number | null; quantity: number | null; salesPrice: number | null;
+}[]): Promise<Record<number, number>> {
+  if (!orderRows.length) return {};
+  const ids = orderRows.map(o => o.id);
+  const items = await db
+    .select({ orderId: orderItemsTable.orderId, qty: orderItemsTable.quantity, price: orderItemsTable.unitPrice })
+    .from(orderItemsTable)
+    .where(inArray(orderItemsTable.orderId, ids));
+
+  const itemMap: Record<number, number> = {};
+  for (const r of items) {
+    itemMap[r.orderId] = (itemMap[r.orderId] ?? 0) + r.qty * r.price;
+  }
+  // fallback for old single-vehicle orders
+  for (const o of orderRows) {
+    if (!itemMap[o.id] && o.quantity && o.salesPrice) {
+      itemMap[o.id] = o.quantity * o.salesPrice;
+    }
+  }
+  return itemMap;
+}
+
+// ─── Helper: get balance for a list of retailer IDs ──────────────────────────
+async function getBalances(retailerIds: number[]) {
+  if (!retailerIds.length) return {} as Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }>;
+
+  // confirmed orders
+  const orders = await db
+    .select({ id: ordersTable.id, retailerId: ordersTable.retailerId, vehicleId: ordersTable.vehicleId, quantity: ordersTable.quantity })
+    .from(ordersTable)
+    .where(and(eq(ordersTable.status, "confirmed"), inArray(ordersTable.retailerId, retailerIds)));
+
+  const salesPriceMap: Record<number, number> = {};
+  const ordersWithPrice = orders.map(o => ({ ...o, salesPrice: salesPriceMap[o.vehicleId ?? 0] ?? 0 }));
+  const valueMap = await computeOrderValues(ordersWithPrice);
+
+  const debtByRetailer: Record<number, number> = {};
+  for (const o of orders) {
+    debtByRetailer[o.retailerId] = (debtByRetailer[o.retailerId] ?? 0) + (valueMap[o.id] ?? 0);
+  }
+
+  // payments
+  const payments = await db
+    .select({ retailerId: paymentsTable.retailerId, amount: paymentsTable.amount })
+    .from(paymentsTable)
+    .where(inArray(paymentsTable.retailerId, retailerIds));
+
+  const paidByRetailer: Record<number, number> = {};
+  for (const p of payments) {
+    paidByRetailer[p.retailerId] = (paidByRetailer[p.retailerId] ?? 0) + p.amount;
+  }
+
+  const result: Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }> = {};
+  for (const id of retailerIds) {
+    const totalOrdered = debtByRetailer[id] ?? 0;
+    const totalPaid = paidByRetailer[id] ?? 0;
+    result[id] = { totalOrdered, totalPaid, outstanding: totalOrdered - totalPaid };
+  }
+  return result;
+}
+
+// ─── GET /payments/retailer-balances ─────────────────────────────────────────
+// Admin: all retailer balances | Salesman: their retailers only
+router.get("/retailer-balances", requireAuth, requireSalesman, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+
+    // Get retailer IDs based on role
+    let retailerIds: number[];
+    if (caller.role === "admin") {
+      const rows = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "retailer"));
+      retailerIds = rows.map(r => r.id);
+    } else {
+      // Salesman: retailers they've dealt with via orders
+      const rows = await db
+        .select({ retailerId: ordersTable.retailerId })
+        .from(ordersTable)
+        .where(eq(ordersTable.salesmanId, caller.userId));
+      retailerIds = [...new Set(rows.map(r => r.retailerId))];
+    }
+
+    if (!retailerIds.length) { res.json([]); return; }
+
+    const retailers = await db
+      .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, city: usersTable.city })
+      .from(usersTable)
+      .where(inArray(usersTable.id, retailerIds));
+
+    const balances = await getBalances(retailerIds);
+
+    res.json(retailers.map(r => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      city: r.city,
+      ...balances[r.id] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 },
+    })));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── GET /payments/my-balance ─────────────────────────────────────────────────
+// Retailer: own balance summary
+router.get("/my-balance", requireAuth, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+    if (caller.role !== "retailer") { res.status(403).json({ error: "Retailer access only" }); return; }
+
+    const balances = await getBalances([caller.userId]);
+    const balance = balances[caller.userId] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 };
+
+    // Also get payment history
+    const payments = await db
+      .select({
+        id: paymentsTable.id,
+        amount: paymentsTable.amount,
+        notes: paymentsTable.notes,
+        createdAt: paymentsTable.createdAt,
+        collectorName: usersTable.name,
+        collectorPhone: usersTable.phone,
+      })
+      .from(paymentsTable)
+      .leftJoin(usersTable, eq(paymentsTable.receivedBy, usersTable.id))
+      .where(eq(paymentsTable.retailerId, caller.userId));
+
+    res.json({
+      ...balance,
+      payments: payments.map(p => ({
+        id: p.id,
+        amount: p.amount,
+        notes: p.notes,
+        createdAt: p.createdAt.toISOString(),
+        collectorName: p.collectorName,
+        collectorPhone: p.collectorPhone,
+      })),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── GET /payments ─────────────────────────────────────────────────────────────
+// Admin: all payments | Salesman: payments they collected | Retailer: their payments
+router.get("/", requireAuth, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+
+    const retailerAlias = usersTable;
+    const rows = await db
+      .select({
+        id: paymentsTable.id,
+        amount: paymentsTable.amount,
+        notes: paymentsTable.notes,
+        createdAt: paymentsTable.createdAt,
+        retailerId: paymentsTable.retailerId,
+        receivedBy: paymentsTable.receivedBy,
+      })
+      .from(paymentsTable);
+
+    // Filter based on role
+    const filtered = rows.filter(p => {
+      if (caller.role === "admin") return true;
+      if (caller.role === "salesman") return p.receivedBy === caller.userId;
+      if (caller.role === "retailer") return p.retailerId === caller.userId;
+      return false;
+    });
+
+    if (!filtered.length) { res.json([]); return; }
+
+    // Enrich with names
+    const allUserIds = [...new Set([...filtered.map(p => p.retailerId), ...filtered.map(p => p.receivedBy)])];
+    const users = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
+      .from(usersTable).where(inArray(usersTable.id, allUserIds));
+    const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    res.json(filtered.map(p => ({
+      id: p.id,
+      amount: p.amount,
+      notes: p.notes,
+      createdAt: p.createdAt.toISOString(),
+      retailerId: p.retailerId,
+      retailerName: userMap[p.retailerId]?.name ?? null,
+      retailerPhone: userMap[p.retailerId]?.phone ?? null,
+      receivedBy: p.receivedBy,
+      collectorName: userMap[p.receivedBy]?.name ?? null,
+      collectorPhone: userMap[p.receivedBy]?.phone ?? null,
+    })));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── POST /payments ────────────────────────────────────────────────────────────
+// Salesman or Admin records a cash payment received from a retailer
+router.post("/", requireAuth, requireSalesman, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+    const { retailerId, amount, notes } = req.body;
+
+    if (!retailerId || !amount || Number(amount) <= 0) {
+      res.status(400).json({ error: "retailerId and a positive amount are required" });
+      return;
+    }
+
+    const retailer = await db.select().from(usersTable).where(eq(usersTable.id, Number(retailerId)));
+    if (!retailer.length || retailer[0].role !== "retailer") {
+      res.status(400).json({ error: "Retailer not found" });
+      return;
+    }
+
+    const inserted = await db.insert(paymentsTable).values({
+      retailerId: Number(retailerId),
+      receivedBy: caller.userId,
+      amount: Math.round(Number(amount)),
+      notes: notes ?? null,
+    }).returning();
+
+    const p = inserted[0];
+    res.status(201).json({
+      id: p.id,
+      retailerId: p.retailerId,
+      retailerName: retailer[0].name,
+      retailerPhone: retailer[0].phone,
+      receivedBy: p.receivedBy,
+      amount: p.amount,
+      notes: p.notes,
+      createdAt: p.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+export default router;

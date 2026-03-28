@@ -11,6 +11,7 @@ const TAB_ITEMS = [
   { name: "index", label: "Dashboard", icon: "grid" as const },
   { name: "vehicles", label: "Vehicles", icon: "truck" as const },
   { name: "create-account", label: "Users", icon: "users" as const },
+  { name: "payments", label: "Payments", icon: "dollar-sign" as const },
 ];
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -85,6 +86,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="vehicles" />
       <Tabs.Screen name="create-account" />
+      <Tabs.Screen name="payments" />
       <Tabs.Screen name="create-qr" options={{ href: null }} />
       <Tabs.Screen name="claims" options={{ href: null }} />
       <Tabs.Screen name="create-ads" options={{ href: null }} />

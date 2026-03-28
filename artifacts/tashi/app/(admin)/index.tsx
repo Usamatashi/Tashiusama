@@ -80,6 +80,18 @@ const ACTIONS = [
     showPendingDot: false,
     showOrdersPending: false,
   },
+  {
+    icon: "dollar-sign" as const,
+    label: "Payments",
+    desc: "Track retailer balances and cash collections",
+    route: "/(admin)/payments" as const,
+    gradient: ["#047857", "#10B981"] as [string, string],
+    decoration: "#10B981",
+    countEndpoint: null as string | null,
+    countLabel: null as string | null,
+    showPendingDot: false,
+    showOrdersPending: false,
+  },
 ];
 
 export default function AdminDashboard() {

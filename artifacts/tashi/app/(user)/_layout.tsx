@@ -14,7 +14,8 @@ import { Colors } from "@/constants/colors";
 function SalesmanTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const isHome = !pathname.includes("/orders") && !pathname.includes("/profile") && !pathname.includes("/history") && !pathname.includes("/scan") && !pathname.includes("/rewards") && !pathname.includes("/points");
+  const isHome = !pathname.includes("/orders") && !pathname.includes("/profile") && !pathname.includes("/history") && !pathname.includes("/scan") && !pathname.includes("/rewards") && !pathname.includes("/points") && !pathname.includes("/payments");
+  const isPayments = pathname.includes("/payments");
   const isProfile = pathname.includes("/profile");
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
 
@@ -26,23 +27,25 @@ function SalesmanTabBar() {
         activeOpacity={0.7}
       >
         <View style={[styles.tabPill, isHome && styles.tabPillActive]}>
-          <Feather
-            name="home"
-            size={16}
-            color={isHome ? Colors.primary : Colors.textLight}
-            style={{ marginBottom: 2 }}
-          />
+          <Feather name="home" size={16} color={isHome ? Colors.primary : Colors.textLight} style={{ marginBottom: 2 }} />
           <Text style={[styles.tabLabel, isHome && styles.tabLabelActive]}>Home</Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => router.push("/(user)/payments")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.tabPill, isPayments && styles.tabPillActive]}>
+          <Feather name="credit-card" size={16} color={isPayments ? Colors.primary : Colors.textLight} style={{ marginBottom: 2 }} />
+          <Text style={[styles.tabLabel, isPayments && styles.tabLabelActive]}>Payments</Text>
         </View>
       </TouchableOpacity>
 
       {/* Center new-order button */}
       <View style={styles.scanBtnWrapper}>
-        <TouchableOpacity
-          style={styles.scanBtn}
-          onPress={() => router.push("/(user)/orders")}
-          activeOpacity={0.88}
-        >
+        <TouchableOpacity style={styles.scanBtn} onPress={() => router.push("/(user)/orders")} activeOpacity={0.88}>
           <Feather name="plus" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>
@@ -53,12 +56,7 @@ function SalesmanTabBar() {
         activeOpacity={0.7}
       >
         <View style={[styles.tabPill, isProfile && styles.tabPillActive]}>
-          <Feather
-            name="user"
-            size={16}
-            color={isProfile ? Colors.primary : Colors.textLight}
-            style={{ marginBottom: 2 }}
-          />
+          <Feather name="user" size={16} color={isProfile ? Colors.primary : Colors.textLight} style={{ marginBottom: 2 }} />
           <Text style={[styles.tabLabel, isProfile && styles.tabLabelActive]}>Profile</Text>
         </View>
       </TouchableOpacity>
@@ -69,7 +67,8 @@ function SalesmanTabBar() {
 function RetailerTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const isHome = !pathname.includes("/orders") && !pathname.includes("/profile");
+  const isHome = !pathname.includes("/orders") && !pathname.includes("/profile") && !pathname.includes("/payments");
+  const isPayments = pathname.includes("/payments");
   const isProfile = pathname.includes("/profile");
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 8 : 0);
 
@@ -81,22 +80,24 @@ function RetailerTabBar() {
         activeOpacity={0.7}
       >
         <View style={[styles.tabPill, isHome && styles.tabPillActive]}>
-          <Feather
-            name="home"
-            size={16}
-            color={isHome ? Colors.primary : Colors.textLight}
-            style={{ marginBottom: 2 }}
-          />
+          <Feather name="home" size={16} color={isHome ? Colors.primary : Colors.textLight} style={{ marginBottom: 2 }} />
           <Text style={[styles.tabLabel, isHome && styles.tabLabelActive]}>Home</Text>
         </View>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.tabItem}
+        onPress={() => router.push("/(user)/payments")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.tabPill, isPayments && styles.tabPillActive]}>
+          <Feather name="credit-card" size={16} color={isPayments ? Colors.primary : Colors.textLight} style={{ marginBottom: 2 }} />
+          <Text style={[styles.tabLabel, isPayments && styles.tabLabelActive]}>Account</Text>
+        </View>
+      </TouchableOpacity>
+
       <View style={styles.scanBtnWrapper}>
-        <TouchableOpacity
-          style={styles.scanBtn}
-          onPress={() => router.push("/(user)/orders")}
-          activeOpacity={0.88}
-        >
+        <TouchableOpacity style={styles.scanBtn} onPress={() => router.push("/(user)/orders")} activeOpacity={0.88}>
           <Feather name="shopping-bag" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>
@@ -107,12 +108,7 @@ function RetailerTabBar() {
         activeOpacity={0.7}
       >
         <View style={[styles.tabPill, isProfile && styles.tabPillActive]}>
-          <Feather
-            name="user"
-            size={16}
-            color={isProfile ? Colors.primary : Colors.textLight}
-            style={{ marginBottom: 2 }}
-          />
+          <Feather name="user" size={16} color={isProfile ? Colors.primary : Colors.textLight} style={{ marginBottom: 2 }} />
           <Text style={[styles.tabLabel, isProfile && styles.tabLabelActive]}>Profile</Text>
         </View>
       </TouchableOpacity>

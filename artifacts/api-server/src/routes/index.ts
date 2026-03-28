@@ -9,6 +9,7 @@ import claimsRouter from "./claims";
 import adsRouter from "./ads";
 import tickerRouter from "./ticker";
 import ordersRouter from "./orders";
+import paymentsRouter from "./payments";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/claims", claimsRouter);
 router.use("/ads", adsRouter);
 router.use("/ticker", tickerRouter);
 router.use("/orders", ordersRouter);
+router.use("/payments", paymentsRouter);
 
 export default router;

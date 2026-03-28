@@ -99,7 +99,6 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   salesmanId: integer("salesman_id").notNull().references(() => usersTable.id),
   retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
-  // nullable for multi-item orders (items stored in order_items table)
   vehicleId: integer("vehicle_id").references(() => vehiclesTable.id),
   quantity: integer("quantity"),
   totalPoints: integer("total_points").notNull().default(0),
@@ -125,3 +124,17 @@ export type Order = typeof ordersTable.$inferSelect;
 export const insertOrderItemSchema = createInsertSchema(orderItemsTable).omit({ id: true });
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type OrderItem = typeof orderItemsTable.$inferSelect;
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+export const paymentsTable = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
+  receivedBy: integer("received_by").notNull().references(() => usersTable.id),
+  amount: integer("amount").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPaymentSchema = createInsertSchema(paymentsTable).omit({ id: true, createdAt: true });
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof paymentsTable.$inferSelect;
