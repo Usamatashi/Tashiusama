@@ -27,7 +27,7 @@ interface Props {
 
 export function BrakePadCard({ leftAction, rightAction, centerRoute }: Props) {
   return (
-    <View style={{ width: W, height: H, alignSelf: "center", marginBottom: -24 }}>
+    <View style={{ width: W, height: H, alignSelf: "center", marginTop: 10, marginBottom: -16 }}>
       <Image
         source={require("../assets/images/quick-actions-card.jpg")}
         style={styles.image}
