@@ -147,24 +147,6 @@ function OrderCard({
           ))
         )}
 
-        {/* Points row */}
-        <View style={styles.pointsRow}>
-          <View style={styles.pointsBadge}>
-            <Feather name="star" size={11} color={Colors.primary} />
-            <Text style={styles.pointsBadgeText}>
-              {order.totalPoints.toLocaleString()} pts
-            </Text>
-          </View>
-          {order.bonusPoints > 0 && (
-            <View style={[styles.pointsBadge, { backgroundColor: "#FEF3C7" }]}>
-              <Feather name="gift" size={11} color="#D97706" />
-              <Text style={[styles.pointsBadgeText, { color: "#D97706" }]}>
-                +{order.bonusPoints.toLocaleString()} bonus
-              </Text>
-            </View>
-          )}
-        </View>
-
         {/* Total footer */}
         <View style={styles.totalFooter}>
           <Text style={styles.totalFooterLabel}>Order Total</Text>
