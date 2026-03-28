@@ -161,7 +161,7 @@ function InvoiceCard({
         ))}
         <View style={styles.totalFooter}>
           <Text style={styles.totalFooterLabel}>Order Total</Text>
-          <Text style={styles.totalFooterValue}>{grandTotal.toLocaleString()}</Text>
+          <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
         </View>
       </View>
     </View>
