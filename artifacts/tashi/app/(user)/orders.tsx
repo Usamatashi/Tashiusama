@@ -152,16 +152,16 @@ function InvoiceCard({
             <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.vehicleName}</Text>
             <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
             <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-              {item.unitPrice > 0 ? `Rs.\u00A0${item.unitPrice.toLocaleString()}` : "—"}
+              {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
             </Text>
             <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-              {item.totalValue > 0 ? `Rs.\u00A0${item.totalValue.toLocaleString()}` : "—"}
+              {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
             </Text>
           </View>
         ))}
         <View style={styles.totalFooter}>
           <Text style={styles.totalFooterLabel}>Order Total</Text>
-          <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
+          <Text style={styles.totalFooterValue}>{grandTotal.toLocaleString()}</Text>
         </View>
       </View>
     </View>
@@ -452,7 +452,7 @@ export default function OrdersScreen() {
               ))}
               <View style={styles.totalFooter}>
                 <Text style={styles.totalFooterLabel}>Grand Total</Text>
-                <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
+                <Text style={styles.totalFooterValue}>{grandTotal.toLocaleString()}</Text>
               </View>
             </View>
           </View>
