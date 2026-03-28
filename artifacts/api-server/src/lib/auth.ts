@@ -35,8 +35,17 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   const user = (req as any).user as JwtPayload;
-  if (!user || user.role !== "admin") {
+  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
     res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  next();
+}
+
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
+  const user = (req as any).user as JwtPayload;
+  if (!user || user.role !== "super_admin") {
+    res.status(403).json({ error: "Super admin access required" });
     return;
   }
   next();
@@ -44,7 +53,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
 
 export function requireSalesman(req: Request, res: Response, next: NextFunction): void {
   const user = (req as any).user as JwtPayload;
-  if (!user || (user.role !== "salesman" && user.role !== "admin")) {
+  if (!user || (user.role !== "salesman" && user.role !== "admin" && user.role !== "super_admin")) {
     res.status(403).json({ error: "Salesman access required" });
     return;
   }

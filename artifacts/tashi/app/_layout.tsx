@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/context/AuthContext";
+import { AdminSettingsProvider } from "@/context/AdminSettingsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,12 +40,14 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="login" />
-              <Stack.Screen name="(admin)" />
-              <Stack.Screen name="(user)" />
-            </Stack>
+            <AdminSettingsProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="login" />
+                <Stack.Screen name="(admin)" />
+                <Stack.Screen name="(user)" />
+              </Stack>
+            </AdminSettingsProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

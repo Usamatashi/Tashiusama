@@ -15,6 +15,6 @@ export default function Index() {
   }
 
   if (!user) return <Redirect href="/login" />;
-  if (user.role === "admin") return <Redirect href="/(admin)" />;
+  if (user.role === "super_admin" || user.role === "admin") return <Redirect href="/(admin)" />;
   return <Redirect href="/(user)" />;
 }

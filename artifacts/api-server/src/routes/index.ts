@@ -10,6 +10,7 @@ import adsRouter from "./ads";
 import tickerRouter from "./ticker";
 import ordersRouter from "./orders";
 import paymentsRouter from "./payments";
+import adminSettingsRouter from "./admin-settings";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/ads", adsRouter);
 router.use("/ticker", tickerRouter);
 router.use("/orders", ordersRouter);
 router.use("/payments", paymentsRouter);
+router.use("/admin-settings", adminSettingsRouter);
 
 export default router;

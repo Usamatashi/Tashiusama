@@ -15,6 +15,7 @@ import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminSettings, type AdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
@@ -94,9 +95,26 @@ const ACTIONS = [
   },
 ];
 
+const CARD_KEY_MAP: Record<string, keyof AdminSettings> = {
+  "Create QR Code": "card_create_qr",
+  "Orders": "card_orders",
+  "Claim Rewards": "card_claims",
+  "Create Ads": "card_create_ads",
+  "Create Text": "card_create_text",
+  "Payments": "card_payments",
+};
+
 export default function AdminDashboard() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { settings } = useAdminSettings();
   const insets = useSafeAreaInsets();
+  const isSuperAdmin = user?.role === "super_admin";
+  const visibleActions = isSuperAdmin
+    ? ACTIONS
+    : ACTIONS.filter((a) => {
+        const key = CARD_KEY_MAP[a.label];
+        return key ? settings[key] : true;
+      });
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [pendingClaims, setPendingClaims] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
@@ -175,7 +193,7 @@ export default function AdminDashboard() {
         <Text style={styles.subtitle}>What would you like to do today?</Text>
 
         <View style={styles.cards}>
-          {ACTIONS.map((action) => {
+          {visibleActions.map((action) => {
             const hasCount = action.countEndpoint !== null;
             const count = hasCount ? (counts[action.countEndpoint!] ?? 0) : null;
 

@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/p
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const roleEnum = pgEnum("role", ["admin", "salesman", "mechanic", "retailer"]);
+export const roleEnum = pgEnum("role", ["admin", "super_admin", "salesman", "mechanic", "retailer"]);
 export const qrStatusEnum = pgEnum("qr_status", ["unused", "used"]);
 
 export const usersTable = pgTable("users", {
@@ -125,7 +125,6 @@ export const insertOrderItemSchema = createInsertSchema(orderItemsTable).omit({ 
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type OrderItem = typeof orderItemsTable.$inferSelect;
 
-// ─── Payments ─────────────────────────────────────────────────────────────────
 export const paymentsTable = pgTable("payments", {
   id: serial("id").primaryKey(),
   retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
@@ -138,3 +137,8 @@ export const paymentsTable = pgTable("payments", {
 export const insertPaymentSchema = createInsertSchema(paymentsTable).omit({ id: true, createdAt: true });
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof paymentsTable.$inferSelect;
+
+export const adminSettingsTable = pgTable("admin_settings", {
+  id: serial("id").primaryKey(),
+  settingsJson: text("settings_json").notNull().default("{}"),
+});

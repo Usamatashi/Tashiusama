@@ -1,34 +1,59 @@
-import { Redirect } from "expo-router";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
-const TAB_ITEMS = [
-  { name: "index", label: "Dashboard", icon: "grid" as const },
-  { name: "vehicles", label: "Vehicles", icon: "truck" as const },
-  { name: "create-account", label: "Users", icon: "users" as const },
-  { name: "payments", label: "Payments", icon: "dollar-sign" as const },
+const SUPER_ACCENT = "#7B2FBE";
+
+type TabItem = {
+  name: string;
+  label: string;
+  icon: React.ComponentProps<typeof Feather>["name"];
+  superAdminOnly?: boolean;
+};
+
+const ALL_TAB_ITEMS: TabItem[] = [
+  { name: "index", label: "Dashboard", icon: "grid" },
+  { name: "vehicles", label: "Vehicles", icon: "truck" },
+  { name: "create-account", label: "Users", icon: "users" },
+  { name: "payments", label: "Payments", icon: "dollar-sign" },
+  { name: "super-config", label: "Config", icon: "sliders", superAdminOnly: true },
 ];
 
-function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSettings>["settings"]> = {
+  index: "tab_dashboard",
+  vehicles: "tab_vehicles",
+  "create-account": "tab_users",
+  payments: "tab_payments",
+};
+
+type CustomTabBarProps = BottomTabBarProps & {
+  tabItems: TabItem[];
+  isSuperAdmin: boolean;
+};
+
+function CustomTabBar({ state, navigation, tabItems, isSuperAdmin }: CustomTabBarProps) {
   const insets = useSafeAreaInsets();
   const paddingBottom = Platform.OS === "web" ? 34 : insets.bottom;
 
   const visibleRoutes = state.routes.filter((r) =>
-    TAB_ITEMS.some((t) => t.name === r.name)
+    tabItems.some((t) => t.name === r.name)
   );
 
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom }]}>
       <View style={styles.tabBar}>
         {visibleRoutes.map((route) => {
-          const tabItem = TAB_ITEMS.find((t) => t.name === route.name);
+          const tabItem = tabItems.find((t) => t.name === route.name);
           if (!tabItem) return null;
 
+          const isConfigTab = route.name === "super-config";
+          const accent = isConfigTab ? SUPER_ACCENT : Colors.adminAccent;
           const isFocused = state.index === state.routes.indexOf(route);
 
           const onPress = () => {
@@ -49,7 +74,16 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               activeOpacity={0.85}
               style={styles.tabItem}
             >
-              <View style={[styles.tabPill, isFocused && styles.tabPillActive]}>
+              <View
+                style={[
+                  styles.tabPill,
+                  isFocused && {
+                    ...styles.tabPillActive,
+                    backgroundColor: accent,
+                    shadowColor: accent,
+                  },
+                ]}
+              >
                 <Feather
                   name={tabItem.icon}
                   size={20}
@@ -59,7 +93,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               <Text
                 style={[
                   styles.tabLabel,
-                  isFocused && styles.tabLabelActive,
+                  isFocused && { color: accent, fontFamily: "Inter_600SemiBold" },
                 ]}
               >
                 {tabItem.label}
@@ -74,22 +108,39 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
 export default function AdminLayout() {
   const { user } = useAuth();
+  const { settings } = useAdminSettings();
 
   if (!user) return <Redirect href="/login" />;
-  if (user.role !== "admin") return <Redirect href="/(user)" />;
+  if (user.role !== "admin" && user.role !== "super_admin") return <Redirect href="/(user)" />;
+
+  const isSuperAdmin = user.role === "super_admin";
+
+  const visibleTabItems = ALL_TAB_ITEMS.filter((item) => {
+    if (item.superAdminOnly) return isSuperAdmin;
+    if (isSuperAdmin) return true;
+    const settingKey = SETTINGS_KEY_MAP[item.name];
+    return settingKey ? settings[settingKey] : true;
+  });
+
+  const isTabVisible = (name: string) => visibleTabItems.some((t) => t.name === name);
+
+  const renderTabBar = (props: BottomTabBarProps) => (
+    <CustomTabBar {...props} tabItems={visibleTabItems} isSuperAdmin={isSuperAdmin} />
+  );
 
   return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="vehicles" />
-      <Tabs.Screen name="create-account" />
-      <Tabs.Screen name="payments" />
+    <Tabs tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" options={{ href: isTabVisible("index") ? undefined : null }} />
+      <Tabs.Screen name="vehicles" options={{ href: isTabVisible("vehicles") ? undefined : null }} />
+      <Tabs.Screen name="create-account" options={{ href: isTabVisible("create-account") ? undefined : null }} />
+      <Tabs.Screen name="payments" options={{ href: isTabVisible("payments") ? undefined : null }} />
+      <Tabs.Screen name="super-config" options={{ href: isTabVisible("super-config") ? undefined : null }} />
       <Tabs.Screen name="create-qr" options={{ href: null }} />
       <Tabs.Screen name="claims" options={{ href: null }} />
       <Tabs.Screen name="create-ads" options={{ href: null }} />
+      <Tabs.Screen name="create-text" options={{ href: null }} />
+      <Tabs.Screen name="orders" options={{ href: null }} />
+      <Tabs.Screen name="history" options={{ href: null }} />
     </Tabs>
   );
 }
@@ -121,8 +172,6 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   tabPillActive: {
-    backgroundColor: Colors.adminAccent,
-    shadowColor: Colors.adminAccent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -132,9 +181,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: Colors.textLight,
-  },
-  tabLabelActive: {
-    color: Colors.adminAccent,
-    fontFamily: "Inter_600SemiBold",
   },
 });

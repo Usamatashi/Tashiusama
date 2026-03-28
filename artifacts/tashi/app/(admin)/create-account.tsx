@@ -18,19 +18,21 @@ import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
-const ROLES = [
+const ALL_ROLES = [
+  { value: "super_admin", label: "Super Admin" },
   { value: "admin", label: "Admin" },
   { value: "salesman", label: "Salesman" },
   { value: "mechanic", label: "Mechanic" },
   { value: "retailer", label: "Retailer" },
 ] as const;
 
-type Role = typeof ROLES[number]["value"];
+type Role = typeof ALL_ROLES[number]["value"];
 
 const ROLE_COLORS: Record<Role, string> = {
+  super_admin: "#7B2FBE",
   admin: "#E87722",
   salesman: "#0D9488",
-  mechanic: "#7B2FBE",
+  mechanic: "#9333EA",
   retailer: "#2563EB",
 };
 
@@ -45,8 +47,11 @@ interface User {
 }
 
 export default function CreateAccountScreen() {
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const insets = useSafeAreaInsets();
+  const ROLES = ALL_ROLES.filter(
+    (r) => r.value !== "super_admin" || currentUser?.role === "super_admin"
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);

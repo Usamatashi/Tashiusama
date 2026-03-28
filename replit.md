@@ -96,15 +96,18 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 Expo React Native mobile app with role-based authentication.
 
-- **Roles**: Admin, Salesman, Mechanic, Retailer
-- **Admin screens**: Dashboard, Create QR Code (with QR display), Vehicles & Points (CRUD), Create Account
+- **Roles**: Super Admin, Admin, Salesman, Mechanic, Retailer
+- **Super Admin**: Has all admin powers + exclusive "Config" tab to control which tabs/cards are visible to regular admins
+- **Admin screens**: Dashboard (with filtered cards), Create QR Code, Vehicles & Points (CRUD), Create Account, Payments
+- **Super Admin config**: Toggle visibility of 4 bottom tabs + 6 dashboard cards for regular admins (`/(admin)/super-config`)
 - **User screens**: Home (banner carousel + points display), Profile, My Points, Scan History, Rewards
 - **Mechanic-only**: QR code scanner using `expo-camera` CameraView
-- **Navigation**: Admin uses tabs, non-admin uses drawer with custom header
+- **Navigation**: Admin/Super Admin uses tabs, non-admin uses drawer with custom header
 - **Auth**: JWT stored in AsyncStorage, auto-restored on app open
 - **API base URL**: `https://${EXPO_PUBLIC_DOMAIN}` (set via dev script env vars)
-- Admin credentials: `admin@tashi.com` / `admin123`
-- Colors: primary `#E87722` (orange), adminBg `#1A1A1A` (dark)
+- Super Admin credentials: phone `03055198651` / password `khan0112`
+- Colors: primary `#E87722` (orange), superAdmin `#7B2FBE` (purple)
+- Admin settings stored in `admin_settings` DB table (JSON blob)
 
 ### `scripts` (`@workspace/scripts`)
 

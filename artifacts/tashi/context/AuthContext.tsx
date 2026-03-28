@@ -6,7 +6,7 @@ export interface AuthUser {
   id: number;
   phone: string;
   name: string | null;
-  role: "admin" | "salesman" | "mechanic" | "retailer";
+  role: "super_admin" | "admin" | "salesman" | "mechanic" | "retailer";
   points: number;
   createdAt: string;
 }
