@@ -142,3 +142,10 @@ export const adminSettingsTable = pgTable("admin_settings", {
   id: serial("id").primaryKey(),
   settingsJson: text("settings_json").notNull().default("{}"),
 });
+
+export const adminUserSettingsTable = pgTable("admin_user_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => usersTable.id, { onDelete: "cascade" }),
+  settingsJson: text("settings_json").notNull().default("{}"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

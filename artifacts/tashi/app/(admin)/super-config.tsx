@@ -7,11 +7,17 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAdminSettings, type AdminSettings } from "@/context/AdminSettingsContext";
+import {
+  useAdminSettings,
+  type AdminSettings,
+  type AdminUserEntry,
+  DEFAULT_SETTINGS,
+} from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 
 const SUPER_ACCENT = "#7B2FBE";
@@ -38,6 +44,8 @@ const CARD_SETTINGS: SettingItem[] = [
   { key: "card_create_text", label: "Create Text", desc: "Add scrolling ticker messages for users", icon: "type" },
   { key: "card_payments", label: "Payments Card", desc: "Shortcut to the payments section", icon: "dollar-sign" },
 ];
+
+const ALL_SETTINGS = [...TAB_SETTINGS, ...CARD_SETTINGS];
 
 type RoleDefinition = {
   role: string;
@@ -66,7 +74,7 @@ const ROLE_DEFINITIONS: RoleDefinition[] = [
     icon: "user-check",
     color: "#E87722",
     bg: "#E8772214",
-    description: "Access is controlled by the toggles above. Only enabled items appear.",
+    description: "Access is controlled by the global toggles above and/or per-admin overrides below.",
     staticAccess: [],
     dynamic: true,
   },
@@ -213,6 +221,361 @@ const roleStyles = StyleSheet.create({
   },
 });
 
+// ─── Per-Admin Access Panel ───────────────────────────────────────────────────
+
+function PerAdminPanel() {
+  const { adminUsers, isLoadingAdmins, fetchAdminUsers, updateAdminUserSettings } = useAdminSettings();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [localSettings, setLocalSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [saveAllLoading, setSaveAllLoading] = useState(false);
+
+  useEffect(() => {
+    fetchAdminUsers();
+  }, [fetchAdminUsers]);
+
+  const selectedAdmin = adminUsers.find((a) => a.id === selectedId) ?? null;
+
+  const handleSelect = (admin: AdminUserEntry) => {
+    setSelectedId(admin.id);
+    setLocalSettings({ ...DEFAULT_SETTINGS, ...admin.settings });
+  };
+
+  const handleToggle = useCallback(async (key: keyof AdminSettings) => {
+    if (!selectedId) return;
+    const newSettings = { ...localSettings, [key]: !localSettings[key] };
+    setLocalSettings(newSettings);
+    setSavingKey(key);
+    try {
+      await updateAdminUserSettings(selectedId, newSettings);
+    } catch {
+      setLocalSettings(localSettings);
+      Alert.alert("Error", "Failed to save. Please try again.");
+    } finally {
+      setSavingKey(null);
+    }
+  }, [selectedId, localSettings, updateAdminUserSettings]);
+
+  const handleGrantAll = useCallback(async () => {
+    if (!selectedId) return;
+    const all: AdminSettings = {
+      tab_dashboard: true, tab_vehicles: true, tab_users: true, tab_payments: true,
+      card_create_qr: true, card_orders: true, card_claims: true,
+      card_create_ads: true, card_create_text: true, card_payments: true,
+    };
+    setLocalSettings(all);
+    setSaveAllLoading(true);
+    try {
+      await updateAdminUserSettings(selectedId, all);
+    } catch {
+      Alert.alert("Error", "Failed to save.");
+    } finally {
+      setSaveAllLoading(false);
+    }
+  }, [selectedId, updateAdminUserSettings]);
+
+  const handleRevokeAll = useCallback(async () => {
+    if (!selectedId) return;
+    const none: AdminSettings = {
+      tab_dashboard: false, tab_vehicles: false, tab_users: false, tab_payments: false,
+      card_create_qr: false, card_orders: false, card_claims: false,
+      card_create_ads: false, card_create_text: false, card_payments: false,
+    };
+    setLocalSettings(none);
+    setSaveAllLoading(true);
+    try {
+      await updateAdminUserSettings(selectedId, none);
+    } catch {
+      Alert.alert("Error", "Failed to save.");
+    } finally {
+      setSaveAllLoading(false);
+    }
+  }, [selectedId, updateAdminUserSettings]);
+
+  if (isLoadingAdmins) {
+    return (
+      <View style={perAdminStyles.loadingBox}>
+        <ActivityIndicator color={SUPER_ACCENT} />
+        <Text style={perAdminStyles.loadingText}>Loading admins…</Text>
+      </View>
+    );
+  }
+
+  if (adminUsers.length === 0) {
+    return (
+      <View style={perAdminStyles.emptyBox}>
+        <Feather name="users" size={22} color={Colors.textSecondary} />
+        <Text style={perAdminStyles.emptyText}>No admin accounts found. Create admins under the Users tab.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={perAdminStyles.root}>
+      {/* Admin selector */}
+      <Text style={perAdminStyles.pickerLabel}>Select Admin</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={perAdminStyles.chipScroll} contentContainerStyle={perAdminStyles.chipRow}>
+        {adminUsers.map((admin) => {
+          const isActive = admin.id === selectedId;
+          return (
+            <TouchableOpacity
+              key={admin.id}
+              onPress={() => handleSelect(admin)}
+              activeOpacity={0.8}
+              style={[
+                perAdminStyles.chip,
+                isActive && { backgroundColor: SUPER_ACCENT, borderColor: SUPER_ACCENT },
+              ]}
+            >
+              <Feather name="user" size={13} color={isActive ? "#fff" : Colors.textSecondary} />
+              <Text style={[perAdminStyles.chipText, isActive && { color: "#fff" }]}>
+                {admin.name ?? admin.phone}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {selectedAdmin ? (
+        <View style={perAdminStyles.panelCard}>
+          {/* Header row */}
+          <View style={perAdminStyles.panelHeader}>
+            <View style={perAdminStyles.panelTitleWrap}>
+              <Feather name="user-check" size={16} color={SUPER_ACCENT} />
+              <Text style={perAdminStyles.panelTitle}>
+                {selectedAdmin.name ?? selectedAdmin.phone}
+              </Text>
+            </View>
+            <View style={perAdminStyles.quickBtns}>
+              <TouchableOpacity
+                style={[perAdminStyles.quickBtn, { borderColor: "#4CAF50" }]}
+                onPress={handleGrantAll}
+                disabled={saveAllLoading}
+              >
+                <Text style={[perAdminStyles.quickBtnText, { color: "#4CAF50" }]}>All</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[perAdminStyles.quickBtn, { borderColor: "#FF3B30" }]}
+                onPress={handleRevokeAll}
+                disabled={saveAllLoading}
+              >
+                <Text style={[perAdminStyles.quickBtnText, { color: "#FF3B30" }]}>None</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Tabs sub-section */}
+          <Text style={perAdminStyles.subSection}>Navigation Tabs</Text>
+          {TAB_SETTINGS.map((item, idx) => (
+            <View key={item.key}>
+              {idx > 0 && <View style={perAdminStyles.sep} />}
+              <View style={perAdminStyles.row}>
+                <View style={[perAdminStyles.rowIcon, { backgroundColor: `${SUPER_ACCENT}14` }]}>
+                  <Feather name={item.icon} size={15} color={SUPER_ACCENT} />
+                </View>
+                <Text style={perAdminStyles.rowLabel}>{item.label}</Text>
+                {savingKey === item.key || saveAllLoading ? (
+                  <ActivityIndicator size="small" color={SUPER_ACCENT} style={perAdminStyles.spinner} />
+                ) : (
+                  <Switch
+                    value={localSettings[item.key]}
+                    onValueChange={() => handleToggle(item.key)}
+                    trackColor={{ false: Colors.border, true: `${SUPER_ACCENT}55` }}
+                    thumbColor={localSettings[item.key] ? SUPER_ACCENT : "#ccc"}
+                    ios_backgroundColor={Colors.border}
+                  />
+                )}
+              </View>
+            </View>
+          ))}
+
+          {/* Cards sub-section */}
+          <Text style={[perAdminStyles.subSection, { marginTop: 12 }]}>Dashboard Cards</Text>
+          {CARD_SETTINGS.map((item, idx) => (
+            <View key={item.key}>
+              {idx > 0 && <View style={perAdminStyles.sep} />}
+              <View style={perAdminStyles.row}>
+                <View style={[perAdminStyles.rowIcon, { backgroundColor: `${SUPER_ACCENT}14` }]}>
+                  <Feather name={item.icon} size={15} color={SUPER_ACCENT} />
+                </View>
+                <Text style={perAdminStyles.rowLabel}>{item.label}</Text>
+                {savingKey === item.key || saveAllLoading ? (
+                  <ActivityIndicator size="small" color={SUPER_ACCENT} style={perAdminStyles.spinner} />
+                ) : (
+                  <Switch
+                    value={localSettings[item.key]}
+                    onValueChange={() => handleToggle(item.key)}
+                    trackColor={{ false: Colors.border, true: `${SUPER_ACCENT}55` }}
+                    thumbColor={localSettings[item.key] ? SUPER_ACCENT : "#ccc"}
+                    ios_backgroundColor={Colors.border}
+                  />
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={perAdminStyles.hintBox}>
+          <Feather name="arrow-up" size={14} color={Colors.textSecondary} />
+          <Text style={perAdminStyles.hintText}>Select an admin above to configure their access</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const perAdminStyles = StyleSheet.create({
+  root: { gap: 10 },
+  loadingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  emptyBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emptyText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary,
+    paddingHorizontal: 4,
+    marginBottom: 2,
+  },
+  chipScroll: { flexGrow: 0 },
+  chipRow: { gap: 8, paddingVertical: 4 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+  },
+  chipText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminText,
+  },
+  hintBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 14,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  hintText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  panelCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    padding: 16,
+  },
+  panelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  panelTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  panelTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: Colors.adminText,
+    flex: 1,
+  },
+  quickBtns: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  quickBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  quickBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  subSection: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: Colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  sep: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginLeft: 44,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    gap: 10,
+  },
+  rowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  rowLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.adminText,
+  },
+  spinner: { width: 51, height: 31 },
+});
+
+// ─── Main Screen ─────────────────────────────────────────────────────────────
+
 export default function SuperConfigScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useAdminSettings();
@@ -296,22 +659,34 @@ export default function SuperConfigScreen() {
         <View style={styles.infoBox}>
           <Feather name="info" size={14} color={SUPER_ACCENT} />
           <Text style={styles.infoText}>
-            Changes take effect immediately. Only Super Admins can access this screen.
+            Global defaults apply to all admins. Use "Per Admin Access" below to override for individual admins.
           </Text>
         </View>
 
         {renderSection(
-          "Navigation Tabs",
-          "Control which tabs appear in the admin bottom bar",
+          "Global Defaults — Navigation Tabs",
+          "Default tab visibility for all admins (overridden per admin below)",
           TAB_SETTINGS
         )}
 
         {renderSection(
-          "Dashboard Cards",
-          "Control which quick-action cards are shown on the admin dashboard",
+          "Global Defaults — Dashboard Cards",
+          "Default card visibility for all admins (overridden per admin below)",
           CARD_SETTINGS
         )}
 
+        {/* Per-Admin Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Per Admin Access</Text>
+            <Text style={styles.sectionSubtitle}>
+              Override access settings for a specific admin account
+            </Text>
+          </View>
+          <PerAdminPanel />
+        </View>
+
+        {/* Role Overview */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Role Access Overview</Text>

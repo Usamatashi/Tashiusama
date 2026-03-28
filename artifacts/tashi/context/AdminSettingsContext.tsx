@@ -27,27 +27,49 @@ export const DEFAULT_SETTINGS: AdminSettings = {
   card_payments: true,
 };
 
+export type AdminUserEntry = {
+  id: number;
+  name: string | null;
+  phone: string;
+  role: string;
+  settings: AdminSettings;
+};
+
 interface AdminSettingsContextType {
   settings: AdminSettings;
   isLoading: boolean;
   fetchSettings: () => Promise<void>;
   updateSettings: (settings: AdminSettings) => Promise<void>;
+  // Per-admin (super admin only)
+  adminUsers: AdminUserEntry[];
+  isLoadingAdmins: boolean;
+  fetchAdminUsers: () => Promise<void>;
+  updateAdminUserSettings: (userId: number, settings: AdminSettings) => Promise<void>;
 }
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | null>(null);
+
+const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 export function AdminSettingsProvider({ children }: { children: React.ReactNode }) {
   const { user, token } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
+  const [adminUsers, setAdminUsers] = useState<AdminUserEntry[]>([]);
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
 
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isSuperAdmin = user?.role === "super_admin";
+  const isAdmin = user?.role === "admin" || isSuperAdmin;
 
+  // Fetch own settings — admins use per-user endpoint, super admins use global
   const fetchSettings = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/admin-settings`, {
+      const url = isSuperAdmin
+        ? `${BASE}/admin-settings`
+        : `${BASE}/admin-user-settings/me`;
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -59,7 +81,7 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, isSuperAdmin]);
 
   useEffect(() => {
     if (isAdmin && token) {
@@ -69,9 +91,10 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
     }
   }, [isAdmin, token, fetchSettings]);
 
+  // Update own global settings (super admin only — global blob)
   const updateSettings = useCallback(async (newSettings: AdminSettings) => {
     if (!token) throw new Error("Not authenticated");
-    const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/admin-settings`, {
+    const res = await fetch(`${BASE}/admin-settings`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -86,8 +109,59 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
     setSettings(newSettings);
   }, [token]);
 
+  // Fetch all admin users with their per-user settings (super admin only)
+  const fetchAdminUsers = useCallback(async () => {
+    if (!token || !isSuperAdmin) return;
+    setIsLoadingAdmins(true);
+    try {
+      const res = await fetch(`${BASE}/admin-user-settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json() as AdminUserEntry[];
+        setAdminUsers(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingAdmins(false);
+    }
+  }, [token, isSuperAdmin]);
+
+  // Update a specific admin's per-user settings (super admin only)
+  const updateAdminUserSettings = useCallback(async (userId: number, newSettings: AdminSettings) => {
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${BASE}/admin-user-settings/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(newSettings),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as any).error || "Failed to update admin settings");
+    }
+    const merged = await res.json() as AdminSettings;
+    setAdminUsers((prev) =>
+      prev.map((a) => (a.id === userId ? { ...a, settings: merged } : a))
+    );
+  }, [token]);
+
   return (
-    <AdminSettingsContext.Provider value={{ settings, isLoading, fetchSettings, updateSettings }}>
+    <AdminSettingsContext.Provider
+      value={{
+        settings,
+        isLoading,
+        fetchSettings,
+        updateSettings,
+        adminUsers,
+        isLoadingAdmins,
+        fetchAdminUsers,
+        updateAdminUserSettings,
+      }}
+    >
       {children}
     </AdminSettingsContext.Provider>
   );

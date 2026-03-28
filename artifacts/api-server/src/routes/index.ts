@@ -11,6 +11,7 @@ import tickerRouter from "./ticker";
 import ordersRouter from "./orders";
 import paymentsRouter from "./payments";
 import adminSettingsRouter from "./admin-settings";
+import adminUserSettingsRouter from "./admin-user-settings";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use("/ticker", tickerRouter);
 router.use("/orders", ordersRouter);
 router.use("/payments", paymentsRouter);
 router.use("/admin-settings", adminSettingsRouter);
+router.use("/admin-user-settings", adminUserSettingsRouter);
 
 export default router;
