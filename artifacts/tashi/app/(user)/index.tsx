@@ -66,12 +66,12 @@ const BASE_QUICK_ACTIONS = [
 
 const RETAILER_QUICK_ACTIONS = [
   { label: "My Orders", desc: "View your orders", icon: "📦", route: "/(user)/orders", accent: "#FEF3C7", iconBg: "#FDE68A" },
-  { label: "Profile", desc: "Your account", icon: "👤", route: "/(user)/profile", accent: "#F0F4FF", iconBg: "#C7D4FF" },
+  { label: "Vehicles", desc: "Browse catalog", icon: "🚗", route: "/(user)/vehicles", accent: "#EDFBF3", iconBg: "#B8F0CE" },
 ];
 
 const SALESMAN_QUICK_ACTIONS = [
   { label: "Orders", desc: "Manage your sales", icon: "📋", route: "/(user)/orders", accent: "#EDFBF3", iconBg: "#B8F0CE" },
-  { label: "Profile", desc: "Your account", icon: "👤", route: "/(user)/profile", accent: "#F0F4FF", iconBg: "#C7D4FF" },
+  { label: "Vehicles", desc: "Browse catalog", icon: "🚗", route: "/(user)/vehicles", accent: "#EDF5FF", iconBg: "#BFDBFE" },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
