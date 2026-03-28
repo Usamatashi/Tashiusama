@@ -57,6 +57,7 @@ router.get("/", requireAuth, async (req, res) => {
           status: claimsTable.status,
           claimedAt: claimsTable.claimedAt,
           userName: usersTable.name,
+          userPhone: usersTable.phone,
           userRole: usersTable.role,
           userId: usersTable.id,
         })
@@ -70,6 +71,7 @@ router.get("/", requireAuth, async (req, res) => {
         status: c.status,
         claimedAt: c.claimedAt.toISOString(),
         userName: c.userName || "",
+        userPhone: c.userPhone || null,
         userRole: c.userRole || "",
         userId: c.userId || 0,
       })));
