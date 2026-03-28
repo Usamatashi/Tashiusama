@@ -99,14 +99,29 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   salesmanId: integer("salesman_id").notNull().references(() => usersTable.id),
   retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
-  vehicleId: integer("vehicle_id").notNull().references(() => vehiclesTable.id),
-  quantity: integer("quantity").notNull(),
+  // nullable for multi-item orders (items stored in order_items table)
+  vehicleId: integer("vehicle_id").references(() => vehiclesTable.id),
+  quantity: integer("quantity"),
   totalPoints: integer("total_points").notNull().default(0),
   bonusPoints: integer("bonus_points").notNull().default(0),
   status: orderStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const orderItemsTable = pgTable("order_items", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => ordersTable.id),
+  vehicleId: integer("vehicle_id").notNull().references(() => vehiclesTable.id),
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull().default(0),
+  totalPoints: integer("total_points").notNull().default(0),
+  bonusPoints: integer("bonus_points").notNull().default(0),
+});
+
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true });
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof ordersTable.$inferSelect;
+
+export const insertOrderItemSchema = createInsertSchema(orderItemsTable).omit({ id: true });
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+export type OrderItem = typeof orderItemsTable.$inferSelect;

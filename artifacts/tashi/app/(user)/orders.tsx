@@ -24,12 +24,37 @@ import { Colors } from "@/constants/colors";
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Retailer { id: number; name: string | null; phone: string; city: string | null; }
 interface Vehicle  { id: number; name: string; points: number; salesPrice: number; }
+interface CartItem { vehicle: Vehicle; quantity: number; }
+
+interface OrderItemResponse {
+  vehicleId: number;
+  vehicleName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPoints: number;
+  bonusPoints: number;
+  totalValue: number;
+}
+
 interface Order {
-  id: number; quantity: number; totalPoints: number; bonusPoints: number;
-  salesPrice: number | null; totalValue: number | null;
+  id: number;
+  totalPoints: number;
+  bonusPoints: number;
+  totalValue: number;
   status: "pending" | "confirmed" | "cancelled";
-  vehicleName: string | null; retailerName: string | null; retailerPhone: string | null;
+  retailerName: string | null;
+  retailerPhone: string | null;
   createdAt: string;
+  items: OrderItemResponse[];
+}
+
+interface RetailerOrder {
+  id: number;
+  totalPoints: number;
+  totalValue: number;
+  status: "pending" | "confirmed" | "cancelled";
+  createdAt: string;
+  items: OrderItemResponse[];
 }
 
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
@@ -63,12 +88,12 @@ function StepBar({ step }: { step: number }) {
       <View style={[styles.stepLine, step > 1 && styles.stepLineDone]} />
       <StepDot n={2} active={step === 2} done={step > 2} />
       <View style={[styles.stepLine, step > 2 && styles.stepLineDone]} />
-      <StepDot n={3} active={step === 3} done={step > 3} />
+      <StepDot n={3} active={step === 3} done={false} />
     </View>
   );
 }
 
-// ─── Shared table card styles ─────────────────────────────────────────────────
+// ─── Status colours ──────────────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
   pending: "#F59E0B", confirmed: "#10B981", cancelled: "#EF4444",
 };
@@ -76,27 +101,23 @@ const STATUS_BG: Record<string, string> = {
   pending: "#FEF3C7", confirmed: "#D1FAE5", cancelled: "#FEE2E2",
 };
 
+// ─── Invoice Card (supports multiple line items) ─────────────────────────────
 function InvoiceCard({
   headerIcon,
   headerTitle,
   headerSub,
   date,
   status,
-  vehicleName,
-  quantity,
-  unitPrice,
-  total,
+  items = [],
 }: {
   headerIcon: "user" | "truck";
   headerTitle: string;
   headerSub?: string;
   date: string;
   status: string;
-  vehicleName: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
+  items: OrderItemResponse[];
 }) {
+  const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
   return (
     <View style={styles.card}>
       {/* Header */}
@@ -124,19 +145,21 @@ function InvoiceCard({
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
         </View>
         <View style={styles.tableDivider} />
-        <View style={[styles.tableRow, { paddingVertical: 10 }]}>
-          <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{vehicleName || "—"}</Text>
-          <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{quantity}</Text>
-          <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-            {unitPrice > 0 ? `Rs.\u00A0${unitPrice.toLocaleString()}` : "—"}
-          </Text>
-          <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
-            {total > 0 ? `Rs.\u00A0${total.toLocaleString()}` : "—"}
-          </Text>
-        </View>
+        {items.map((item, idx) => (
+          <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+            <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.vehicleName}</Text>
+            <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+            <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+              {item.unitPrice > 0 ? `Rs.\u00A0${item.unitPrice.toLocaleString()}` : "—"}
+            </Text>
+            <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+              {item.totalValue > 0 ? `Rs.\u00A0${item.totalValue.toLocaleString()}` : "—"}
+            </Text>
+          </View>
+        ))}
         <View style={styles.totalFooter}>
           <Text style={styles.totalFooterLabel}>Order Total</Text>
-          <Text style={styles.totalFooterValue}>Rs. {total.toLocaleString()}</Text>
+          <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
         </View>
       </View>
     </View>
@@ -151,42 +174,28 @@ function OrderCard({ order }: { order: Order }) {
     <InvoiceCard
       headerIcon="user"
       headerTitle={order.retailerName ?? order.retailerPhone ?? "Retailer"}
+      headerSub={order.retailerPhone ?? undefined}
       date={date}
       status={order.status}
-      vehicleName={order.vehicleName ?? "—"}
-      quantity={order.quantity}
-      unitPrice={order.salesPrice ?? 0}
-      total={order.totalValue ?? 0}
+      items={order.items}
     />
   );
 }
 
 // ─── Retailer Order Card ─────────────────────────────────────────────────────
-interface RetailerOrder {
-  id: number;
-  quantity: number;
-  totalPoints: number;
-  salesPrice: number | null;
-  totalValue: number | null;
-  status: "pending" | "confirmed" | "cancelled";
-  vehicleName: string | null;
-  createdAt: string;
-}
-
 function RetailerOrderCard({ order }: { order: RetailerOrder }) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
+  const safeItems = order.items ?? [];
+  const firstVehicle = safeItems[0]?.vehicleName ?? "Order";
   return (
     <InvoiceCard
       headerIcon="truck"
-      headerTitle={order.vehicleName ?? "—"}
+      headerTitle={safeItems.length > 1 ? `${safeItems.length} vehicles` : firstVehicle}
       date={date}
       status={order.status}
-      vehicleName={order.vehicleName ?? "—"}
-      quantity={order.quantity}
-      unitPrice={order.salesPrice ?? 0}
-      total={order.totalValue ?? 0}
+      items={safeItems}
     />
   );
 }
@@ -237,6 +246,7 @@ function RetailerOrdersScreen() {
 export default function OrdersScreen() {
   const { user } = useAuth();
   if (user?.role === "retailer") return <RetailerOrdersScreen />;
+
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
 
@@ -244,24 +254,22 @@ export default function OrdersScreen() {
   const [step, setStep] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [quantity, setQuantity] = useState("1");
   const [submitError, setSubmitError] = useState("");
 
-  // Fetch orders list
-  const { data: orders = [], isLoading: loadingOrders } = useQuery<Order[]>({
+  const { data: orders = [], isLoading: loadingOrders, refetch, isRefetching } = useQuery<Order[]>({
     queryKey: ["orders"],
     queryFn: () => apiFetch("/orders"),
   });
 
-  // Fetch retailers (search)
   const { data: retailers = [], isLoading: loadingRetailers } = useQuery<Retailer[]>({
     queryKey: ["retailers", search],
     queryFn: () => apiFetch(`/orders/retailers?search=${encodeURIComponent(search)}`),
     enabled: showCreate && step === 1,
   });
 
-  // Fetch vehicles
   const { data: vehicles = [], isLoading: loadingVehicles } = useQuery<Vehicle[]>({
     queryKey: ["vehicles"],
     queryFn: () => apiFetch("/vehicles"),
@@ -269,7 +277,7 @@ export default function OrdersScreen() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: { retailerId: number; vehicleId: number; quantity: number }) =>
+    mutationFn: (body: { retailerId: number; items: { vehicleId: number; quantity: number }[] }) =>
       apiFetch<Order>("/orders", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -285,32 +293,58 @@ export default function OrdersScreen() {
     setStep(1);
     setSearch("");
     setSelectedRetailer(null);
+    setCartItems([]);
     setSelectedVehicle(null);
     setQuantity("1");
     setSubmitError("");
   }, []);
 
-  const handleSubmit = () => {
+  const addToCart = () => {
+    if (!selectedVehicle) return;
     const qty = parseInt(quantity, 10);
-    if (!selectedRetailer || !selectedVehicle || isNaN(qty) || qty < 1) {
-      setSubmitError("Please fill in all fields correctly.");
+    if (isNaN(qty) || qty < 1) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCartItems(prev => {
+      const existing = prev.findIndex(c => c.vehicle.id === selectedVehicle.id);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { vehicle: selectedVehicle, quantity: updated[existing].quantity + qty };
+        return updated;
+      }
+      return [...prev, { vehicle: selectedVehicle, quantity: qty }];
+    });
+    setSelectedVehicle(null);
+    setQuantity("1");
+  };
+
+  const removeFromCart = (vehicleId: number) => {
+    Haptics.selectionAsync();
+    setCartItems(prev => prev.filter(c => c.vehicle.id !== vehicleId));
+  };
+
+  const handleSubmit = () => {
+    if (!selectedRetailer || cartItems.length === 0) {
+      setSubmitError("Please add at least one vehicle.");
       return;
     }
     setSubmitError("");
-    createMutation.mutate({ retailerId: selectedRetailer.id, vehicleId: selectedVehicle.id, quantity: qty });
+    createMutation.mutate({
+      retailerId: selectedRetailer.id,
+      items: cartItems.map(c => ({ vehicleId: c.vehicle.id, quantity: c.quantity })),
+    });
   };
 
+  const cartTotal = cartItems.reduce((s, c) => s + c.vehicle.salesPrice * c.quantity, 0);
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  // ── Create Order Modal-like panel ──────────────────────────────────────────
+  // ── Create Order Flow ───────────────────────────────────────────────────────
   if (showCreate) {
     return (
       <KeyboardAvoidingView
         style={[styles.root, { backgroundColor: "#F7F4F1" }]}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* Header */}
         <View style={[styles.header, { paddingTop: topPad + 12 }]}>
           <TouchableOpacity onPress={resetFlow} style={styles.backBtn}>
             <Feather name="arrow-left" size={22} color={Colors.text} />
@@ -326,7 +360,7 @@ export default function OrdersScreen() {
           contentContainerStyle={{ padding: 20, paddingBottom: botPad + 100 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* STEP 1 — Select retailer */}
+          {/* ── STEP 1: Select Retailer ── */}
           {step === 1 && (
             <View>
               <Text style={styles.stepTitle}>Search Retailer</Text>
@@ -382,56 +416,156 @@ export default function OrdersScreen() {
                   style={[styles.primaryBtn, { marginTop: 24 }]}
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStep(2); }}
                 >
-                  <Text style={styles.primaryBtnText}>Next — Select Vehicle</Text>
+                  <Text style={styles.primaryBtnText}>Next — Add Vehicles</Text>
                   <Feather name="arrow-right" size={18} color={Colors.white} />
                 </TouchableOpacity>
               )}
             </View>
           )}
 
-          {/* STEP 2 — Select vehicle */}
+          {/* ── STEP 2: Build Cart ── */}
           {step === 2 && (
             <View>
-              <Text style={styles.stepTitle}>Select Vehicle</Text>
-              {loadingVehicles ? (
-                <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
-              ) : vehicles.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Feather name="truck" size={40} color={Colors.border} />
-                  <Text style={styles.emptyTitle}>No vehicles available</Text>
+              {/* Retailer chip */}
+              <View style={styles.retailerChip}>
+                <Feather name="user" size={13} color={Colors.primary} />
+                <Text style={styles.retailerChipText}>{selectedRetailer?.name || selectedRetailer?.phone}</Text>
+              </View>
+
+              <Text style={styles.stepTitle}>Add Vehicles</Text>
+              <Text style={styles.stepSubtitle}>Select a vehicle and set quantity, then tap Add. Repeat for each vehicle.</Text>
+
+              {/* Cart summary */}
+              {cartItems.length > 0 && (
+                <View style={styles.cartBox}>
+                  <View style={styles.cartBoxHeader}>
+                    <Text style={styles.cartBoxTitle}>Cart ({cartItems.length} vehicle{cartItems.length !== 1 ? "s" : ""})</Text>
+                    <Text style={styles.cartBoxTotal}>Rs. {cartTotal.toLocaleString()}</Text>
+                  </View>
+                  {cartItems.map(c => (
+                    <View key={c.vehicle.id} style={styles.cartRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cartItemName}>{c.vehicle.name}</Text>
+                        <Text style={styles.cartItemSub}>
+                          {c.quantity} sets × Rs. {c.vehicle.salesPrice.toLocaleString()} = Rs. {(c.quantity * c.vehicle.salesPrice).toLocaleString()}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removeFromCart(c.vehicle.id)} style={styles.removeBtn}>
+                        <Feather name="trash-2" size={15} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-              ) : (
-                vehicles.map(v => (
-                  <TouchableOpacity
-                    key={v.id}
-                    style={[styles.selectCard, selectedVehicle?.id === v.id && styles.selectCardActive]}
-                    onPress={() => { Haptics.selectionAsync(); setSelectedVehicle(v); }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.selectCardIcon}>
-                      <Feather name="truck" size={18} color={selectedVehicle?.id === v.id ? Colors.white : Colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.selectCardName, selectedVehicle?.id === v.id && styles.selectCardNameActive]}>
-                        {v.name}
-                      </Text>
-                      <Text style={styles.selectCardSub}>Rs. {(v.salesPrice ?? 0).toLocaleString()}/unit</Text>
-                    </View>
-                    {selectedVehicle?.id === v.id && <Feather name="check-circle" size={18} color={Colors.white} />}
-                  </TouchableOpacity>
-                ))
               )}
-              <View style={styles.rowBtns}>
+
+              {/* Vehicle picker */}
+              <Text style={styles.sectionLabel}>
+                {selectedVehicle ? "Set Quantity" : "Select Vehicle"}
+              </Text>
+
+              {!selectedVehicle ? (
+                loadingVehicles ? (
+                  <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />
+                ) : vehicles.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Feather name="truck" size={40} color={Colors.border} />
+                    <Text style={styles.emptyTitle}>No vehicles available</Text>
+                  </View>
+                ) : (
+                  vehicles.map(v => {
+                    const alreadyAdded = cartItems.some(c => c.vehicle.id === v.id);
+                    return (
+                      <TouchableOpacity
+                        key={v.id}
+                        style={[styles.selectCard, alreadyAdded && styles.selectCardAdded]}
+                        onPress={() => { Haptics.selectionAsync(); setSelectedVehicle(v); setQuantity("1"); }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.selectCardIcon, alreadyAdded && { backgroundColor: "#D1FAE5" }]}>
+                          <Feather name="truck" size={18} color={alreadyAdded ? "#10B981" : Colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.selectCardName}>{v.name}</Text>
+                          <Text style={styles.selectCardSub}>Rs. {v.salesPrice.toLocaleString()}/unit</Text>
+                        </View>
+                        {alreadyAdded && (
+                          <View style={styles.addedBadge}>
+                            <Text style={styles.addedBadgeText}>Added</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })
+                )
+              ) : (
+                <View>
+                  {/* Selected vehicle summary */}
+                  <View style={styles.selectedVehicleCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.selectedVehicleName}>{selectedVehicle.name}</Text>
+                      <Text style={styles.selectedVehiclePrice}>Rs. {selectedVehicle.salesPrice.toLocaleString()}/unit</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => { setSelectedVehicle(null); setQuantity("1"); }}>
+                      <Feather name="x" size={18} color={Colors.textLight} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Quantity stepper */}
+                  <View style={styles.qtyRow}>
+                    <TouchableOpacity
+                      style={styles.qtyBtn}
+                      onPress={() => { Haptics.selectionAsync(); const n = Math.max(1, parseInt(quantity || "1", 10) - 1); setQuantity(String(n)); }}
+                    >
+                      <Feather name="minus" size={20} color={Colors.primary} />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.qtyInput}
+                      value={quantity}
+                      onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                      textAlign="center"
+                    />
+                    <TouchableOpacity
+                      style={styles.qtyBtn}
+                      onPress={() => { Haptics.selectionAsync(); const n = parseInt(quantity || "0", 10) + 1; setQuantity(String(n)); }}
+                    >
+                      <Feather name="plus" size={20} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Line total */}
+                  {parseInt(quantity, 10) > 0 && (
+                    <View style={styles.previewCard}>
+                      <View style={styles.previewRow}>
+                        <Text style={styles.previewLabel}>Line Total</Text>
+                        <Text style={[styles.previewVal, { color: Colors.primary, fontWeight: "700" }]}>
+                          Rs. {(parseInt(quantity, 10) * selectedVehicle.salesPrice).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { marginTop: 12 }]}
+                    onPress={addToCart}
+                  >
+                    <Feather name="plus-circle" size={18} color={Colors.white} />
+                    <Text style={styles.primaryBtnText}>Add to Order</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={[styles.rowBtns, { marginTop: 24 }]}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={() => setStep(1)}>
                   <Feather name="arrow-left" size={16} color={Colors.primary} />
                   <Text style={styles.secondaryBtnText}>Back</Text>
                 </TouchableOpacity>
-                {selectedVehicle && (
+                {cartItems.length > 0 && (
                   <TouchableOpacity
                     style={[styles.primaryBtn, { flex: 1, marginLeft: 10 }]}
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStep(3); }}
                   >
-                    <Text style={styles.primaryBtnText}>Next — Quantity</Text>
+                    <Text style={styles.primaryBtnText}>Review Order</Text>
                     <Feather name="arrow-right" size={18} color={Colors.white} />
                   </TouchableOpacity>
                 )}
@@ -439,80 +573,57 @@ export default function OrdersScreen() {
             </View>
           )}
 
-          {/* STEP 3 — Quantity */}
+          {/* ── STEP 3: Review & Place ── */}
           {step === 3 && (
             <View>
-              <Text style={styles.stepTitle}>Set Quantity</Text>
+              <Text style={styles.stepTitle}>Review Order</Text>
 
-              {/* Summary */}
+              {/* Retailer */}
               <View style={styles.summaryCard}>
                 <View style={styles.summaryRow}>
                   <Feather name="user" size={15} color={Colors.textSecondary} />
                   <Text style={styles.summaryLabel}>Retailer</Text>
                   <Text style={styles.summaryValue}>{selectedRetailer?.name || selectedRetailer?.phone}</Text>
                 </View>
-                <View style={styles.divider} />
-                <View style={styles.summaryRow}>
-                  <Feather name="truck" size={15} color={Colors.textSecondary} />
-                  <Text style={styles.summaryLabel}>Vehicle</Text>
-                  <Text style={styles.summaryValue}>{selectedVehicle?.name}</Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.summaryRow}>
-                  <Feather name="dollar-sign" size={15} color={Colors.textSecondary} />
-                  <Text style={styles.summaryLabel}>Price/unit</Text>
-                  <Text style={styles.summaryValue}>Rs. {(selectedVehicle?.salesPrice ?? 0).toLocaleString()}</Text>
-                </View>
+                {selectedRetailer?.phone && selectedRetailer?.name && (
+                  <>
+                    <View style={styles.divider} />
+                    <View style={styles.summaryRow}>
+                      <Feather name="phone" size={15} color={Colors.textSecondary} />
+                      <Text style={styles.summaryLabel}>Phone</Text>
+                      <Text style={styles.summaryValue}>{selectedRetailer.phone}</Text>
+                    </View>
+                  </>
+                )}
               </View>
 
-              {/* Quantity stepper */}
-              <View style={styles.qtyRow}>
-                <TouchableOpacity
-                  style={styles.qtyBtn}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    const n = Math.max(1, parseInt(quantity || "1", 10) - 1);
-                    setQuantity(String(n));
-                  }}
-                >
-                  <Feather name="minus" size={20} color={Colors.primary} />
-                </TouchableOpacity>
-                <TextInput
-                  style={styles.qtyInput}
-                  value={quantity}
-                  onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ""))}
-                  keyboardType="number-pad"
-                  textAlign="center"
-                />
-                <TouchableOpacity
-                  style={styles.qtyBtn}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    const n = parseInt(quantity || "0", 10) + 1;
-                    setQuantity(String(n));
-                  }}
-                >
-                  <Feather name="plus" size={20} color={Colors.primary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Live preview */}
-              {parseInt(quantity, 10) > 0 && selectedVehicle && (
-                <View style={styles.previewCard}>
-                  <View style={styles.previewRow}>
-                    <Text style={styles.previewLabel}>Unit Price</Text>
-                    <Text style={styles.previewVal}>
-                      Rs. {(selectedVehicle.salesPrice ?? 0).toLocaleString()}
-                    </Text>
+              {/* Order items table */}
+              <View style={styles.card}>
+                <View style={styles.table}>
+                  <View style={styles.tableRow}>
+                    <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+                    <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+                    <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
+                    <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
                   </View>
-                  <View style={styles.previewRow}>
-                    <Text style={styles.previewLabel}>Total Order Value</Text>
-                    <Text style={[styles.previewVal, { color: "#1B6CA8", fontWeight: "700" }]}>
-                      Rs. {(parseInt(quantity, 10) * (selectedVehicle.salesPrice ?? 0)).toLocaleString()}
-                    </Text>
+                  <View style={styles.tableDivider} />
+                  {cartItems.map((c, idx) => {
+                    const lineTotal = c.quantity * c.vehicle.salesPrice;
+                    return (
+                      <View key={c.vehicle.id} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < cartItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+                        <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{c.vehicle.name}</Text>
+                        <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{c.quantity}</Text>
+                        <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{c.vehicle.salesPrice.toLocaleString()}</Text>
+                        <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{lineTotal.toLocaleString()}</Text>
+                      </View>
+                    );
+                  })}
+                  <View style={styles.totalFooter}>
+                    <Text style={styles.totalFooterLabel}>Grand Total</Text>
+                    <Text style={styles.totalFooterValue}>Rs. {cartTotal.toLocaleString()}</Text>
                   </View>
                 </View>
-              )}
+              </View>
 
               {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
@@ -551,7 +662,6 @@ export default function OrdersScreen() {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowCreate(true); }}
         >
           <Feather name="plus" size={18} color={Colors.white} />
-          <Text style={styles.newOrderBtnText}>New Order</Text>
         </TouchableOpacity>
       </View>
 
@@ -563,7 +673,7 @@ export default function OrdersScreen() {
         <View style={styles.center}>
           <Feather name="clipboard" size={52} color={Colors.border} />
           <Text style={styles.emptyTitle}>No orders yet</Text>
-          <Text style={styles.emptyText}>Tap "New Order" to place your first order</Text>
+          <Text style={styles.emptyText}>Tap + to book your first order</Text>
         </View>
       ) : (
         <FlatList
@@ -572,6 +682,9 @@ export default function OrdersScreen() {
           renderItem={({ item }) => <OrderCard order={item} />}
           contentContainerStyle={{ padding: 16, paddingBottom: botPad + 100 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
+          }
         />
       )}
     </View>
@@ -581,167 +694,178 @@ export default function OrdersScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
-
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 32 },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 20, paddingBottom: 16,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+    paddingHorizontal: 20, paddingBottom: 12,
+    backgroundColor: "#FFF", borderBottomWidth: 1, borderBottomColor: "#EDE8E3",
   },
-  backBtn: { width: 40, height: 40, justifyContent: "center" },
-  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A" },
   newOrderBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: Colors.primary, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: Colors.primary, width: 36, height: 36,
+    borderRadius: 18, alignItems: "center", justifyContent: "center",
   },
-  newOrderBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  backBtn: { padding: 4 },
 
   stepBar: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 32, paddingVertical: 16,
-    backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 32,
+    paddingVertical: 16, backgroundColor: "#FFF",
+    borderBottomWidth: 1, borderBottomColor: "#EDE8E3",
   },
   stepDot: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: Colors.border,
-    alignItems: "center", justifyContent: "center",
+    width: 28, height: 28, borderRadius: 14, alignItems: "center",
+    justifyContent: "center", borderWidth: 2, borderColor: "#D1C9C0",
+    backgroundColor: "#FFF",
   },
-  stepDotActive: { backgroundColor: Colors.primary },
-  stepDotDone: { backgroundColor: Colors.primary },
-  stepDotText: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.textLight },
-  stepDotTextActive: { color: Colors.white },
-  stepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 4 },
+  stepDotActive: { borderColor: Colors.primary, backgroundColor: "#EEF4FB" },
+  stepDotDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepDotText: { fontSize: 12, color: "#9E9590", fontWeight: "600" },
+  stepDotTextActive: { color: Colors.primary },
+  stepLine: { flex: 1, height: 2, backgroundColor: "#E5E0DB" },
   stepLineDone: { backgroundColor: Colors.primary },
 
-  stepTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text, marginBottom: 16 },
+  stepTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
+  stepSubtitle: { fontSize: 13, color: Colors.textLight, marginBottom: 16, lineHeight: 18 },
+  sectionLabel: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary, marginBottom: 10, marginTop: 8, textTransform: "uppercase", letterSpacing: 0.5 },
 
   searchRow: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: Colors.white, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 16,
+    backgroundColor: "#FFF", borderRadius: 12, padding: 12,
+    marginBottom: 16, borderWidth: 1, borderColor: "#E5E0DB",
   },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.text },
+  searchInput: { flex: 1, fontSize: 15, color: Colors.text },
 
   selectCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: Colors.white, borderRadius: 14,
-    padding: 14, marginBottom: 10,
-    borderWidth: 1.5, borderColor: Colors.border,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#FFF", borderRadius: 12, padding: 14,
+    marginBottom: 10, borderWidth: 1.5, borderColor: "#E5E0DB",
   },
   selectCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primary },
+  selectCardAdded: { borderColor: "#10B981", opacity: 0.75 },
   selectCardIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: `${Colors.primary}15`,
-    alignItems: "center", justifyContent: "center",
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: "#EEF4FB", alignItems: "center", justifyContent: "center", marginRight: 12,
   },
-  selectCardName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  selectCardName: { fontSize: 15, fontWeight: "600", color: Colors.text },
   selectCardNameActive: { color: Colors.white },
-  selectCardSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  selectCardSub: { fontSize: 12, color: Colors.textLight, marginTop: 2 },
 
-  rowBtns: { flexDirection: "row", alignItems: "center", marginTop: 24 },
-  primaryBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: Colors.primary, borderRadius: 14,
-    paddingVertical: 14, paddingHorizontal: 20,
-  },
-  primaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.white },
-  btnDisabled: { opacity: 0.6 },
-  secondaryBtn: {
+  addedBadge: { backgroundColor: "#D1FAE5", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  addedBadgeText: { fontSize: 11, fontWeight: "700", color: "#059669" },
+
+  retailerChip: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: `${Colors.primary}15`, borderRadius: 14,
-    paddingVertical: 14, paddingHorizontal: 16,
+    backgroundColor: "#EEF4FB", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    alignSelf: "flex-start", marginBottom: 14,
   },
-  secondaryBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  retailerChipText: { fontSize: 13, fontWeight: "600", color: Colors.primary },
 
-  summaryCard: {
-    backgroundColor: Colors.white, borderRadius: 14,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 20, overflow: "hidden",
+  cartBox: {
+    backgroundColor: "#FFF", borderRadius: 12, padding: 14,
+    marginBottom: 16, borderWidth: 1, borderColor: "#E5E0DB",
   },
-  summaryRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
-  summaryLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  summaryValue: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  divider: { height: 1, backgroundColor: Colors.border },
+  cartBoxHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10,
+  },
+  cartBoxTitle: { fontSize: 13, fontWeight: "700", color: Colors.text },
+  cartBoxTotal: { fontSize: 14, fontWeight: "700", color: Colors.primary },
+  cartRow: {
+    flexDirection: "row", alignItems: "center",
+    paddingVertical: 8, borderTopWidth: 1, borderTopColor: "#F0EDE8",
+  },
+  cartItemName: { fontSize: 13, fontWeight: "600", color: Colors.text },
+  cartItemSub: { fontSize: 12, color: Colors.textLight, marginTop: 1 },
+  removeBtn: { padding: 6 },
 
-  qtyRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 20 },
+  selectedVehicleCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#EEF4FB", borderRadius: 12, padding: 14, marginBottom: 12,
+    borderWidth: 1.5, borderColor: Colors.primary,
+  },
+  selectedVehicleName: { fontSize: 15, fontWeight: "700", color: Colors.primary },
+  selectedVehiclePrice: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+
+  qtyRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 20, marginVertical: 12,
+  },
   qtyBtn: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: `${Colors.primary}15`,
-    alignItems: "center", justifyContent: "center",
+    width: 44, height: 44, borderRadius: 22, borderWidth: 1.5,
+    borderColor: Colors.primary, alignItems: "center", justifyContent: "center",
+    backgroundColor: "#FFF",
   },
   qtyInput: {
-    width: 80, height: 56, borderRadius: 14,
-    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.primary,
-    fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.primary,
+    width: 72, height: 44, borderRadius: 10,
+    borderWidth: 1.5, borderColor: "#E5E0DB",
+    backgroundColor: "#FFF", fontSize: 20, fontWeight: "700", color: Colors.text,
+    textAlign: "center",
   },
 
   previewCard: {
-    backgroundColor: "#F0FBF6", borderRadius: 14,
-    borderWidth: 1, borderColor: "#A7F3D0",
-    padding: 16, marginBottom: 16,
+    backgroundColor: "#F7F4F1", borderRadius: 10, padding: 12, marginBottom: 4,
   },
-  previewRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4 },
-  previewLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  previewVal: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.primary },
+  previewRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  previewLabel: { fontSize: 13, color: Colors.textSecondary },
+  previewVal: { fontSize: 14, fontWeight: "600", color: Colors.text },
 
-  errorText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#EF4444", textAlign: "center", marginBottom: 12 },
+  summaryCard: {
+    backgroundColor: "#FFF", borderRadius: 12, padding: 16,
+    marginBottom: 14, borderWidth: 1, borderColor: "#E5E0DB",
+  },
+  summaryRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  summaryLabel: { fontSize: 13, color: Colors.textSecondary, width: 64 },
+  summaryValue: { flex: 1, fontSize: 14, fontWeight: "600", color: Colors.text, textAlign: "right" },
+  divider: { height: 1, backgroundColor: "#F0EDE8", marginVertical: 10 },
+
+  primaryBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14, gap: 8,
+  },
+  primaryBtnText: { fontSize: 15, fontWeight: "700", color: Colors.white },
+  btnDisabled: { opacity: 0.5 },
+  secondaryBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 16,
+  },
+  secondaryBtnText: { fontSize: 14, fontWeight: "600", color: Colors.primary },
+  rowBtns: { flexDirection: "row", alignItems: "center", marginTop: 16 },
+
+  errorText: { color: "#EF4444", fontSize: 13, marginBottom: 8, textAlign: "center" },
+  emptyState: { alignItems: "center", paddingVertical: 40, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: "600", color: Colors.text, textAlign: "center" },
+  emptyText: { fontSize: 13, color: Colors.textLight, textAlign: "center" },
 
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    marginBottom: 14,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    backgroundColor: "#FFF", borderRadius: 14, marginBottom: 12,
+    borderWidth: 1, borderColor: "#E5E0DB", overflow: "hidden",
   },
   cardHeader: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: "#F5F5F5",
-    backgroundColor: "#FAFAFA",
+    flexDirection: "row", alignItems: "center", gap: 10,
+    padding: 14, borderBottomWidth: 1, borderBottomColor: "#F0EDE8",
   },
   avatarCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: `${Colors.primary}18`,
-    alignItems: "center", justifyContent: "center",
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: "#EEF4FB", alignItems: "center", justifyContent: "center",
   },
-  cardPrimaryTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
-  cardSecondaryTitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
-  cardDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
-  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
-  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
+  cardPrimaryTitle: { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
+  cardSecondaryTitle: { fontSize: 12, color: Colors.textLight, marginTop: 1 },
+  cardDate: { fontSize: 11, color: "#B0AAA4", marginTop: 1 },
+  statusPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  statusText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
 
-  table: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0 },
+  table: { paddingHorizontal: 14, paddingBottom: 4 },
   tableRow: { flexDirection: "row", alignItems: "center" },
-  tableDivider: { height: 1, backgroundColor: "#EEEEEE", marginVertical: 8 },
-  colHead: {
-    fontSize: 10, fontFamily: "Inter_700Bold",
-    color: Colors.textLight, letterSpacing: 0.7,
-  },
-  colVal: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  tableDivider: { height: 1, backgroundColor: "#F0EDE8", marginVertical: 6 },
+  colHead: { fontSize: 10, fontWeight: "700", color: "#B0AAA4", letterSpacing: 0.4, paddingVertical: 4 },
+  colVal: { fontSize: 12, color: "#1A1A1A" },
   colCenter: { textAlign: "center" },
   colRight: { textAlign: "right" },
-  colTotal: { color: Colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 },
+  colTotal: { fontWeight: "700" },
   totalFooter: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    borderTopWidth: 1, borderTopColor: "#EEEEEE",
-    marginTop: 4, paddingTop: 12, paddingBottom: 14,
+    paddingTop: 10, paddingBottom: 10, borderTopWidth: 1, borderTopColor: "#F0EDE8", marginTop: 4,
   },
-  totalFooterLabel: {
-    fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary,
-    textTransform: "uppercase", letterSpacing: 0.5,
-  },
-  totalFooterValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
-
-  emptyState: { alignItems: "center", paddingTop: 60, gap: 10 },
-  emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+  totalFooterLabel: { fontSize: 12, fontWeight: "700", color: Colors.textSecondary },
+  totalFooterValue: { fontSize: 14, fontWeight: "800", color: Colors.primary },
 });
