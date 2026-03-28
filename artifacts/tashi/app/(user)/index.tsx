@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { FontAwesome } from "@expo/vector-icons";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
@@ -353,28 +353,73 @@ export default function UserHomeScreen() {
 
         {/* Quick actions */}
         <Text style={styles.sectionLabel}>Quick Actions</Text>
-        <View style={styles.quickGrid}>
-          {quickActions.map((action, i) => (
+        {(isRetailer || isSalesman) ? (
+          <View style={styles.actionRow}>
+            {/* Orders card */}
             <TouchableOpacity
-              key={action.label}
-              style={[
-                styles.gridCard,
-                { backgroundColor: action.accent },
-                i === 0
-                  ? { borderBottomRightRadius: 36 }
-                  : { borderBottomLeftRadius: 36 },
-              ]}
-              onPress={() => router.push(action.route as any)}
+              style={[styles.actionCard, { backgroundColor: quickActions[0].accent, borderBottomRightRadius: 28 }]}
+              onPress={() => router.push(quickActions[0].route as any)}
               activeOpacity={0.82}
             >
-              <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
-                <Text style={styles.gridIconText}>{action.icon}</Text>
+              <View style={[styles.gridIcon, { backgroundColor: quickActions[0].iconBg }]}>
+                <Text style={styles.gridIconText}>{quickActions[0].icon}</Text>
               </View>
-              <Text style={styles.gridCardTitle}>{action.label}</Text>
-              <Text style={styles.gridCardDesc}>{action.desc}</Text>
+              <Text style={styles.gridCardTitle}>{quickActions[0].label}</Text>
+              <Text style={styles.gridCardDesc}>{quickActions[0].desc}</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+
+            {/* Order button centered between cards */}
+            <View style={styles.centerOrderWrap}>
+              <TouchableOpacity
+                style={styles.centerOrderBtn}
+                onPress={() => router.push("/(user)/orders")}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={[Colors.primary, Colors.primaryDark]}
+                  style={styles.centerOrderGradient}
+                >
+                  <Feather name={isSalesman ? "plus" : "shopping-bag"} size={22} color={Colors.white} />
+                </LinearGradient>
+              </TouchableOpacity>
+              <Text style={styles.centerOrderLabel}>Order</Text>
+            </View>
+
+            {/* Vehicles card */}
+            <TouchableOpacity
+              style={[styles.actionCard, { backgroundColor: quickActions[1].accent, borderBottomLeftRadius: 28 }]}
+              onPress={() => router.push(quickActions[1].route as any)}
+              activeOpacity={0.82}
+            >
+              <View style={[styles.gridIcon, { backgroundColor: quickActions[1].iconBg }]}>
+                <Text style={styles.gridIconText}>{quickActions[1].icon}</Text>
+              </View>
+              <Text style={styles.gridCardTitle}>{quickActions[1].label}</Text>
+              <Text style={styles.gridCardDesc}>{quickActions[1].desc}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.quickGrid}>
+            {quickActions.map((action, i) => (
+              <TouchableOpacity
+                key={action.label}
+                style={[
+                  styles.gridCard,
+                  { backgroundColor: action.accent },
+                  i === 0 ? { borderBottomRightRadius: 36 } : { borderBottomLeftRadius: 36 },
+                ]}
+                onPress={() => router.push(action.route as any)}
+                activeOpacity={0.82}
+              >
+                <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
+                  <Text style={styles.gridIconText}>{action.icon}</Text>
+                </View>
+                <Text style={styles.gridCardTitle}>{action.label}</Text>
+                <Text style={styles.gridCardDesc}>{action.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       {/* Claim modal */}
@@ -613,6 +658,51 @@ const styles = StyleSheet.create({
   gridIconText: { fontSize: 22 },
   gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 0,
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
+    minHeight: 130,
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  centerOrderWrap: {
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 4,
+  },
+  centerOrderBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    overflow: "hidden",
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 12,
+    borderWidth: 3,
+    borderColor: Colors.white,
+  },
+  centerOrderGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  centerOrderLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: Colors.primary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal: {

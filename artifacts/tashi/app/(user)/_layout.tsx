@@ -30,22 +30,6 @@ function TabItem({ icon, label, active, onPress }: TabItemProps) {
   );
 }
 
-type OrderFABProps = {
-  icon: keyof typeof Feather.glyphMap;
-  label: string;
-  onPress: () => void;
-};
-
-function OrderFAB({ icon, label, onPress }: OrderFABProps) {
-  return (
-    <View style={styles.fabRow}>
-      <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.85}>
-        <Feather name={icon} size={26} color={Colors.white} />
-      </TouchableOpacity>
-      <Text style={styles.fabLabel}>{label}</Text>
-    </View>
-  );
-}
 
 function SalesmanTabBar() {
   const insets = useSafeAreaInsets();
@@ -56,13 +40,10 @@ function SalesmanTabBar() {
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 10 : 0);
 
   return (
-    <View style={styles.navWrapper}>
-      <OrderFAB icon="plus" label="New Order" onPress={() => router.push("/(user)/orders")} />
-      <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-        <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
-        <TabItem icon="credit-card" label="Payments" active={isPayments} onPress={() => router.push("/(user)/payments")} />
-        <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
-      </View>
+    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
+      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
+      <TabItem icon="credit-card" label="Payments" active={isPayments} onPress={() => router.push("/(user)/payments")} />
+      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
     </View>
   );
 }
@@ -76,13 +57,10 @@ function RetailerTabBar() {
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 10 : 0);
 
   return (
-    <View style={styles.navWrapper}>
-      <OrderFAB icon="shopping-bag" label="Place Order" onPress={() => router.push("/(user)/orders")} />
-      <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-        <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
-        <TabItem icon="credit-card" label="Account" active={isPayments} onPress={() => router.push("/(user)/payments")} />
-        <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
-      </View>
+    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
+      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
+      <TabItem icon="credit-card" label="Account" active={isPayments} onPress={() => router.push("/(user)/payments")} />
+      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
     </View>
   );
 }
@@ -125,37 +103,6 @@ export default function UserLayout() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4F1" },
 
-  navWrapper: {
-    width: "100%",
-    backgroundColor: "transparent",
-  },
-
-  fabRow: {
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 10,
-    backgroundColor: "transparent",
-  },
-  fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 14,
-    marginBottom: 5,
-  },
-  fabLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    color: Colors.primary,
-    letterSpacing: 0.4,
-  },
 
   tabBarWrapper: {
     flexDirection: "row",
