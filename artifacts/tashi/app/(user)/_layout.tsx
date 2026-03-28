@@ -30,6 +30,23 @@ function TabItem({ icon, label, active, onPress }: TabItemProps) {
   );
 }
 
+type FABProps = {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+};
+
+function OrderFAB({ icon, label, onPress }: FABProps) {
+  return (
+    <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.fabInner}>
+        <Feather name={icon} size={22} color={Colors.white} />
+      </View>
+      <Text style={styles.fabLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 
 function SalesmanTabBar() {
   const insets = useSafeAreaInsets();
@@ -68,15 +85,15 @@ function RetailerTabBar() {
 function DefaultTabBar() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const isHistory = pathname.includes("/history");
+  const isHome = !pathname.includes("/history") && !pathname.includes("/profile") && !pathname.includes("/scan") && !pathname.includes("/rewards") && !pathname.includes("/points");
   const isProfile = pathname.includes("/profile");
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 10 : 0);
 
   return (
     <View style={styles.navWrapper}>
-      <OrderFAB icon="maximize" label="Scan QR" onPress={() => router.push("/(user)/scan")} />
       <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-        <TabItem icon="clock" label="History" active={isHistory} onPress={() => router.push("/(user)/history")} />
+        <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
+        <OrderFAB icon="maximize" label="Scan QR" onPress={() => router.push("/(user)/scan")} />
         <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
       </View>
     </View>
@@ -102,6 +119,39 @@ export default function UserLayout() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4F1" },
+
+  navWrapper: {
+    alignItems: "center",
+  },
+
+  fab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 6,
+  },
+  fabInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    borderWidth: 3,
+    borderColor: Colors.white,
+    marginBottom: 2,
+  },
+  fabLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+    letterSpacing: 0.3,
+  },
 
 
   tabBarWrapper: {
