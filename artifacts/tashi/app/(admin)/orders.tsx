@@ -83,10 +83,12 @@ function OrderCard({
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <View style={styles.vehicleIcon}>
-            <Feather name="truck" size={18} color={Colors.primary} />
+            <Feather name="user" size={18} color={Colors.primary} />
           </View>
           <View>
-            <Text style={styles.vehicleName}>{order.vehicleName ?? "—"}</Text>
+            <Text style={styles.vehicleName}>
+              {order.retailerName || order.retailerPhone || "—"}
+            </Text>
             <Text style={styles.cardDate}>{date}</Text>
           </View>
         </View>
@@ -99,26 +101,14 @@ function OrderCard({
 
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
-          <Feather name="user" size={13} color={Colors.textSecondary} />
-          <Text style={styles.infoLabel}>Retailer</Text>
-          <Text style={styles.infoValue}>
-            {order.retailerName || order.retailerPhone || "—"}
-          </Text>
+          <Feather name="truck" size={13} color={Colors.textSecondary} />
+          <Text style={styles.infoLabel}>Vehicle</Text>
+          <Text style={styles.infoValue}>{order.vehicleName ?? "—"}</Text>
         </View>
         <View style={styles.infoRow}>
           <Feather name="package" size={13} color={Colors.textSecondary} />
           <Text style={styles.infoLabel}>Quantity</Text>
-          <Text style={styles.infoValue}>{order.quantity} units</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Feather name="star" size={13} color={Colors.textSecondary} />
-          <Text style={styles.infoLabel}>Customer pts</Text>
-          <Text style={[styles.infoValue, { color: Colors.primary }]}>{order.totalPoints}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Feather name="gift" size={13} color="#10B981" />
-          <Text style={styles.infoLabel}>Bonus pts</Text>
-          <Text style={[styles.infoValue, { color: "#10B981" }]}>{order.bonusPoints}</Text>
+          <Text style={styles.infoValue}>{order.quantity} sets</Text>
         </View>
       </View>
 
