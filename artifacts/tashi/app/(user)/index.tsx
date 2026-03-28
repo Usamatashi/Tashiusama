@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import TickerMarquee from "@/components/TickerMarquee";
+import { BrakePadCard } from "@/components/BrakePadCard";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
@@ -354,56 +355,12 @@ export default function UserHomeScreen() {
         {/* Quick actions */}
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         {(isRetailer || isSalesman) ? (
-          <View style={styles.qaCard}>
-            {/* Left half — Orders */}
-            <TouchableOpacity
-              style={[styles.qaHalf, styles.qaHalfLeft]}
-              onPress={() => router.push(quickActions[0].route as any)}
-              activeOpacity={0.82}
-            >
-              <View style={styles.qaIconBox}>
-                <Feather name="clipboard" size={22} color="#2E7D52" />
-              </View>
-              <Text style={styles.qaTitle}>{quickActions[0].label}</Text>
-              <Text style={styles.qaDesc}>{quickActions[0].desc}</Text>
-            </TouchableOpacity>
-
-            {/* Divider line */}
-            <View style={styles.qaDivider} />
-
-            {/* Right half — Vehicles */}
-            <TouchableOpacity
-              style={[styles.qaHalf, styles.qaHalfRight]}
-              onPress={() => router.push(quickActions[1].route as any)}
-              activeOpacity={0.82}
-            >
-              <View style={[styles.qaIconBox, styles.qaIconBoxBlue]}>
-                <Feather name="truck" size={22} color="#1E5FA8" />
-              </View>
-              <Text style={styles.qaTitle}>{quickActions[1].label}</Text>
-              <Text style={styles.qaDesc}>{quickActions[1].desc}</Text>
-            </TouchableOpacity>
-
-            {/* Center ORDER button — absolutely positioned */}
-            <View style={styles.qaOrderWrap} pointerEvents="box-none">
-              <View style={styles.qaOrderGlow} />
-              <TouchableOpacity
-                style={styles.qaOrderBtn}
-                onPress={() => router.push("/(user)/orders")}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={["#F09135", "#E87722", "#C5611A"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                  style={styles.qaOrderGradient}
-                >
-                  <Feather name="plus" size={24} color={Colors.white} />
-                  <Text style={styles.qaOrderLabel}>ORDER</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <BrakePadCard
+            leftAction={{ label: quickActions[0].label, desc: quickActions[0].desc, route: quickActions[0].route }}
+            rightAction={{ label: quickActions[1].label, desc: quickActions[1].desc, route: quickActions[1].route }}
+            centerRoute="/(user)/orders"
+            centerLabel="ORDER"
+          />
         ) : (
           <View style={styles.quickGrid}>
             {quickActions.map((action, i) => (
@@ -665,107 +622,6 @@ const styles = StyleSheet.create({
   gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
 
-  /* ── Quick Action Card (salesman / retailer) ─────────────────────── */
-  qaCard: {
-    flexDirection: "row",
-    borderRadius: 24,
-    backgroundColor: Colors.white,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    position: "relative",
-    minHeight: 150,
-  },
-  qaHalf: {
-    flex: 1,
-    padding: 20,
-    paddingVertical: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  qaHalfLeft: {
-    backgroundColor: "#EDFBF3",
-    borderTopLeftRadius: 24,
-    borderBottomLeftRadius: 24,
-  },
-  qaHalfRight: {
-    backgroundColor: "#EDF5FF",
-    borderTopRightRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  qaDivider: {
-    width: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
-  },
-  qaIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#C8F0D8",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 2,
-  },
-  qaIconBoxBlue: {
-    backgroundColor: "#C5DCFA",
-  },
-  qaTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: Colors.text,
-    textAlign: "center",
-  },
-  qaDesc: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary,
-    textAlign: "center",
-  },
-  qaOrderWrap: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qaOrderGlow: {
-    position: "absolute",
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#E87722",
-    opacity: 0.18,
-  },
-  qaOrderBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    overflow: "hidden",
-    shadowColor: "#E87722",
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 14,
-    borderWidth: 3,
-    borderColor: Colors.white,
-  },
-  qaOrderGradient: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 1,
-  },
-  qaOrderLabel: {
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
-    color: Colors.white,
-    letterSpacing: 1,
-  },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modal: {
