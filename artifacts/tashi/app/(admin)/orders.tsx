@@ -121,10 +121,10 @@ function OrderCard({
             {order.quantity}
           </Text>
           <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-            {unitPrice > 0 ? `Rs.\u00A0${unitPrice.toLocaleString()}` : "—"}
+            {unitPrice > 0 ? unitPrice.toLocaleString() : "—"}
           </Text>
           <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
-            {total > 0 ? `Rs.\u00A0${total.toLocaleString()}` : "—"}
+            {total > 0 ? total.toLocaleString() : "—"}
           </Text>
         </View>
         {/* Total footer */}
