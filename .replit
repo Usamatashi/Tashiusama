@@ -46,12 +46,13 @@ outputType = "console"
 name = "Start Tashi"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start Tashi"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=19190 pnpm --filter @workspace/tashi run dev"
+waitForPort = 19190
 
 [agent]
 stack = "PNPM_WORKSPACE"
