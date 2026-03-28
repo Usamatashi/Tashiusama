@@ -68,49 +68,96 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-// ─── Order Card ──────────────────────────────────────────────────────────────
+// ─── Shared table card styles ─────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
   pending: "#F59E0B", confirmed: "#10B981", cancelled: "#EF4444",
 };
+const STATUS_BG: Record<string, string> = {
+  pending: "#FEF3C7", confirmed: "#D1FAE5", cancelled: "#FEE2E2",
+};
+
+function InvoiceCard({
+  headerIcon,
+  headerTitle,
+  headerSub,
+  date,
+  status,
+  vehicleName,
+  quantity,
+  unitPrice,
+  total,
+}: {
+  headerIcon: "user" | "truck";
+  headerTitle: string;
+  headerSub?: string;
+  date: string;
+  status: string;
+  vehicleName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}) {
+  return (
+    <View style={styles.card}>
+      {/* Header */}
+      <View style={styles.cardHeader}>
+        <View style={styles.avatarCircle}>
+          <Feather name={headerIcon} size={15} color={Colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardPrimaryTitle} numberOfLines={1}>{headerTitle}</Text>
+          {headerSub ? <Text style={styles.cardSecondaryTitle} numberOfLines={1}>{headerSub}</Text> : null}
+          <Text style={styles.cardDate}>{date}</Text>
+        </View>
+        <View style={[styles.statusPill, { backgroundColor: STATUS_BG[status] ?? "#eee" }]}>
+          <Text style={[styles.statusText, { color: STATUS_COLOR[status] ?? "#999" }]}>
+            {status.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+      {/* Invoice table */}
+      <View style={styles.table}>
+        <View style={styles.tableRow}>
+          <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+          <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
+          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
+        </View>
+        <View style={styles.tableDivider} />
+        <View style={[styles.tableRow, { paddingVertical: 10 }]}>
+          <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{vehicleName || "—"}</Text>
+          <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{quantity}</Text>
+          <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+            {unitPrice > 0 ? `Rs.\u00A0${unitPrice.toLocaleString()}` : "—"}
+          </Text>
+          <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
+            {total > 0 ? `Rs.\u00A0${total.toLocaleString()}` : "—"}
+          </Text>
+        </View>
+        <View style={styles.totalFooter}>
+          <Text style={styles.totalFooterLabel}>Order Total</Text>
+          <Text style={styles.totalFooterValue}>Rs. {total.toLocaleString()}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 function OrderCard({ order }: { order: Order }) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
   return (
-    <View style={styles.orderCard}>
-      <View style={styles.orderCardTop}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.orderVehicle}>{order.vehicleName ?? "—"}</Text>
-          <Text style={styles.orderRetailer}>
-            {order.retailerName ?? order.retailerPhone ?? "Retailer"}
-          </Text>
-          <Text style={styles.orderDate}>{date}</Text>
-        </View>
-        <View style={styles.orderRight}>
-          <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLOR[order.status]}20` }]}>
-            <Text style={[styles.statusText, { color: STATUS_COLOR[order.status] }]}>
-              {order.status.toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.orderQty}>×{order.quantity} units</Text>
-        </View>
-      </View>
-      <View style={styles.orderCardBottom}>
-        <View style={styles.orderStat}>
-          <Feather name="dollar-sign" size={13} color="#1B6CA8" />
-          <Text style={[styles.orderStatText, { color: "#1B6CA8", fontWeight: "700" }]}>
-            Rs. {(order.totalValue ?? 0).toLocaleString()}
-          </Text>
-        </View>
-        <View style={styles.orderStat}>
-          <Feather name="tag" size={13} color={Colors.textSecondary} />
-          <Text style={styles.orderStatText}>
-            Rs. {(order.salesPrice ?? 0).toLocaleString()}/unit
-          </Text>
-        </View>
-      </View>
-    </View>
+    <InvoiceCard
+      headerIcon="user"
+      headerTitle={order.retailerName ?? order.retailerPhone ?? "Retailer"}
+      date={date}
+      status={order.status}
+      vehicleName={order.vehicleName ?? "—"}
+      quantity={order.quantity}
+      unitPrice={order.salesPrice ?? 0}
+      total={order.totalValue ?? 0}
+    />
   );
 }
 
@@ -126,48 +173,21 @@ interface RetailerOrder {
   createdAt: string;
 }
 
-const RET_STATUS_COLOR: Record<string, string> = {
-  pending: "#F59E0B", confirmed: "#10B981", cancelled: "#EF4444",
-};
-const RET_STATUS_BG: Record<string, string> = {
-  pending: "#FEF3C7", confirmed: "#D1FAE5", cancelled: "#FEE2E2",
-};
-
 function RetailerOrderCard({ order }: { order: RetailerOrder }) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
   return (
-    <View style={styles.orderCard}>
-      <View style={styles.orderCardTop}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.orderVehicle}>{order.vehicleName ?? "—"}</Text>
-          <Text style={styles.orderDate}>{date}</Text>
-        </View>
-        <View style={styles.orderRight}>
-          <View style={[styles.statusBadge, { backgroundColor: RET_STATUS_BG[order.status] }]}>
-            <Text style={[styles.statusText, { color: RET_STATUS_COLOR[order.status] }]}>
-              {order.status.toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.orderQty}>×{order.quantity} units</Text>
-        </View>
-      </View>
-      <View style={styles.orderCardBottom}>
-        <View style={styles.orderStat}>
-          <Feather name="dollar-sign" size={13} color="#059669" />
-          <Text style={[styles.orderStatText, { color: "#059669", fontWeight: "700" }]}>
-            Rs. {(order.totalValue ?? 0).toLocaleString()}
-          </Text>
-        </View>
-        <View style={styles.orderStat}>
-          <Feather name="tag" size={13} color={Colors.textSecondary} />
-          <Text style={styles.orderStatText}>
-            Rs. {(order.salesPrice ?? 0).toLocaleString()}/unit
-          </Text>
-        </View>
-      </View>
-    </View>
+    <InvoiceCard
+      headerIcon="truck"
+      headerTitle={order.vehicleName ?? "—"}
+      date={date}
+      status={order.status}
+      vehicleName={order.vehicleName ?? "—"}
+      quantity={order.quantity}
+      unitPrice={order.salesPrice ?? 0}
+      total={order.totalValue ?? 0}
+    />
   );
 }
 
@@ -669,27 +689,57 @@ const styles = StyleSheet.create({
 
   errorText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#EF4444", textAlign: "center", marginBottom: 12 },
 
-  orderCard: {
-    backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: 1, borderColor: Colors.border,
-    marginBottom: 12, overflow: "hidden",
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginBottom: 14,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
-  orderCardTop: { flexDirection: "row", padding: 14 },
-  orderVehicle: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
-  orderRetailer: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary, marginTop: 2 },
-  orderDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 4 },
-  orderRight: { alignItems: "flex-end", gap: 8 },
-  statusBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 10, fontFamily: "Inter_700Bold" },
-  orderQty: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  orderCardBottom: {
-    flexDirection: "row", gap: 16,
-    paddingHorizontal: 14, paddingBottom: 12, paddingTop: 4,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    backgroundColor: "#FAFAF9",
+  cardHeader: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: "#F5F5F5",
+    backgroundColor: "#FAFAFA",
   },
-  orderStat: { flexDirection: "row", alignItems: "center", gap: 5 },
-  orderStatText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  avatarCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: `${Colors.primary}18`,
+    alignItems: "center", justifyContent: "center",
+  },
+  cardPrimaryTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
+  cardSecondaryTitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  cardDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
+  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
+
+  table: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0 },
+  tableRow: { flexDirection: "row", alignItems: "center" },
+  tableDivider: { height: 1, backgroundColor: "#EEEEEE", marginVertical: 8 },
+  colHead: {
+    fontSize: 10, fontFamily: "Inter_700Bold",
+    color: Colors.textLight, letterSpacing: 0.7,
+  },
+  colVal: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  colCenter: { textAlign: "center" },
+  colRight: { textAlign: "right" },
+  colTotal: { color: Colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 },
+  totalFooter: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    borderTopWidth: 1, borderTopColor: "#EEEEEE",
+    marginTop: 4, paddingTop: 12, paddingBottom: 14,
+  },
+  totalFooterLabel: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary,
+    textTransform: "uppercase", letterSpacing: 0.5,
+  },
+  totalFooterValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 10 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },

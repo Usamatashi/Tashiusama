@@ -23,6 +23,8 @@ interface Order {
   quantity: number;
   totalPoints: number;
   bonusPoints: number;
+  salesPrice: number | null;
+  totalValue: number | null;
   status: "pending" | "confirmed" | "cancelled";
   vehicleName: string | null;
   retailerName: string | null;
@@ -77,20 +79,21 @@ function OrderCard({
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
+  const unitPrice = order.salesPrice ?? 0;
+  const total = order.totalValue ?? (order.quantity * unitPrice);
 
   return (
     <View style={styles.card}>
+      {/* ── Card header: retailer + date + status ── */}
       <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <View style={styles.vehicleIcon}>
-            <Feather name="user" size={18} color={Colors.primary} />
-          </View>
-          <View>
-            <Text style={styles.vehicleName}>
-              {order.retailerName || order.retailerPhone || "—"}
-            </Text>
-            <Text style={styles.cardDate}>{date}</Text>
-          </View>
+        <View style={styles.avatarCircle}>
+          <Feather name="user" size={16} color={Colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.retailerName} numberOfLines={1}>
+            {order.retailerName || order.retailerPhone || "—"}
+          </Text>
+          <Text style={styles.cardDate}>{date}</Text>
         </View>
         <View style={[styles.statusPill, { backgroundColor: STATUS_BG[order.status] }]}>
           <Text style={[styles.statusText, { color: STATUS_COLOR[order.status] }]}>
@@ -99,19 +102,41 @@ function OrderCard({
         </View>
       </View>
 
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <Feather name="truck" size={13} color={Colors.textSecondary} />
-          <Text style={styles.infoLabel}>Vehicle</Text>
-          <Text style={styles.infoValue}>{order.vehicleName ?? "—"}</Text>
+      {/* ── Invoice-style line-item table ── */}
+      <View style={styles.table}>
+        {/* Column headers */}
+        <View style={styles.tableRow}>
+          <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+          <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
+          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Feather name="package" size={13} color={Colors.textSecondary} />
-          <Text style={styles.infoLabel}>Quantity</Text>
-          <Text style={styles.infoValue}>{order.quantity} sets</Text>
+        <View style={styles.tableDivider} />
+        {/* Data row */}
+        <View style={[styles.tableRow, { paddingVertical: 12 }]}>
+          <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>
+            {order.vehicleName ?? "—"}
+          </Text>
+          <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>
+            {order.quantity}
+          </Text>
+          <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+            {unitPrice > 0 ? `Rs.\u00A0${unitPrice.toLocaleString()}` : "—"}
+          </Text>
+          <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
+            {total > 0 ? `Rs.\u00A0${total.toLocaleString()}` : "—"}
+          </Text>
+        </View>
+        {/* Total footer */}
+        <View style={styles.totalFooter}>
+          <Text style={styles.totalFooterLabel}>Order Total</Text>
+          <Text style={styles.totalFooterValue}>
+            Rs. {total.toLocaleString()}
+          </Text>
         </View>
       </View>
 
+      {/* ── Actions (pending only) ── */}
       {order.status === "pending" && (
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -282,44 +307,70 @@ const styles = StyleSheet.create({
   filterTabTextActive: { color: "#fff" },
 
   card: {
-    backgroundColor: "#fff", borderRadius: 18,
-    marginBottom: 12, overflow: "hidden",
-    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 }, elevation: 4,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginBottom: 14,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
   cardHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    padding: 16, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: "#F0F0F0",
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: "#F5F5F5",
+    backgroundColor: "#FAFAFA",
   },
-  cardHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  vehicleIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: `${Colors.primary}15`,
+  avatarCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: `${Colors.primary}18`,
     alignItems: "center", justifyContent: "center",
   },
-  vehicleName: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
-  cardDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 1 },
+  retailerName: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
+  cardDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
   statusPill: {
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
   },
-  statusText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  statusText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
 
-  cardBody: { padding: 16, gap: 10 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoLabel: {
-    fontSize: 13, fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary, width: 90,
+  table: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0 },
+  tableRow: { flexDirection: "row", alignItems: "center" },
+  tableDivider: { height: 1, backgroundColor: "#EEEEEE", marginVertical: 8 },
+  colHead: {
+    fontSize: 10, fontFamily: "Inter_700Bold",
+    color: Colors.textLight, letterSpacing: 0.7, textTransform: "uppercase",
   },
-  infoValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text, flex: 1 },
+  colVal: {
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text,
+  },
+  colCenter: { textAlign: "center" },
+  colRight: { textAlign: "right" },
+  colTotal: { color: Colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 },
+  totalFooter: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    borderTopWidth: 1, borderTopColor: "#EEEEEE",
+    marginTop: 4, paddingTop: 12, paddingBottom: 14,
+  },
+  totalFooterLabel: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary,
+    textTransform: "uppercase", letterSpacing: 0.5,
+  },
+  totalFooterValue: {
+    fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text,
+  },
 
   actionRow: {
-    flexDirection: "row", gap: 10, padding: 16, paddingTop: 12,
+    flexDirection: "row", gap: 10, padding: 14,
     borderTopWidth: 1, borderTopColor: "#F0F0F0",
+    backgroundColor: "#FAFAFA",
   },
   actionBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, paddingVertical: 12, borderRadius: 12,
+    gap: 6, paddingVertical: 11, borderRadius: 10,
   },
   confirmBtn: { backgroundColor: "#10B981" },
   cancelBtn: { backgroundColor: "#FEE2E2" },
