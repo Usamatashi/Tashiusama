@@ -43,13 +43,6 @@ function SalesmanTabBar() {
         </View>
       </TouchableOpacity>
 
-      {/* Center new-order button */}
-      <View style={styles.scanBtnWrapper}>
-        <TouchableOpacity style={styles.scanBtn} onPress={() => router.push("/(user)/orders")} activeOpacity={0.88}>
-          <Feather name="plus" size={24} color={Colors.white} />
-        </TouchableOpacity>
-      </View>
-
       <TouchableOpacity
         style={styles.tabItem}
         onPress={() => router.push("/(user)/profile")}
@@ -95,12 +88,6 @@ function RetailerTabBar() {
           <Text style={[styles.tabLabel, isPayments && styles.tabLabelActive]}>Account</Text>
         </View>
       </TouchableOpacity>
-
-      <View style={styles.scanBtnWrapper}>
-        <TouchableOpacity style={styles.scanBtn} onPress={() => router.push("/(user)/orders")} activeOpacity={0.88}>
-          <Feather name="shopping-bag" size={24} color={Colors.white} />
-        </TouchableOpacity>
-      </View>
 
       <TouchableOpacity
         style={styles.tabItem}
@@ -213,30 +200,4 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
 
-  scanBtnWrapper: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 4,
-  },
-  scanBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-  },
-  scanBtnInner: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: Colors.white,
-    textAlign: "center",
-    lineHeight: 14,
-  },
 });
