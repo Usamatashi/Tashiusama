@@ -354,49 +354,55 @@ export default function UserHomeScreen() {
         {/* Quick actions */}
         <Text style={styles.sectionLabel}>Quick Actions</Text>
         {(isRetailer || isSalesman) ? (
-          <View style={styles.actionRow}>
-            {/* Orders card */}
+          <View style={styles.qaCard}>
+            {/* Left half — Orders */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: quickActions[0].accent, borderBottomRightRadius: 28 }]}
+              style={[styles.qaHalf, styles.qaHalfLeft]}
               onPress={() => router.push(quickActions[0].route as any)}
               activeOpacity={0.82}
             >
-              <View style={[styles.gridIcon, { backgroundColor: quickActions[0].iconBg }]}>
-                <Text style={styles.gridIconText}>{quickActions[0].icon}</Text>
+              <View style={styles.qaIconBox}>
+                <Feather name="clipboard" size={22} color="#2E7D52" />
               </View>
-              <Text style={styles.gridCardTitle}>{quickActions[0].label}</Text>
-              <Text style={styles.gridCardDesc}>{quickActions[0].desc}</Text>
+              <Text style={styles.qaTitle}>{quickActions[0].label}</Text>
+              <Text style={styles.qaDesc}>{quickActions[0].desc}</Text>
             </TouchableOpacity>
 
-            {/* Order button centered between cards */}
-            <View style={styles.centerOrderWrap}>
+            {/* Divider line */}
+            <View style={styles.qaDivider} />
+
+            {/* Right half — Vehicles */}
+            <TouchableOpacity
+              style={[styles.qaHalf, styles.qaHalfRight]}
+              onPress={() => router.push(quickActions[1].route as any)}
+              activeOpacity={0.82}
+            >
+              <View style={[styles.qaIconBox, styles.qaIconBoxBlue]}>
+                <Feather name="truck" size={22} color="#1E5FA8" />
+              </View>
+              <Text style={styles.qaTitle}>{quickActions[1].label}</Text>
+              <Text style={styles.qaDesc}>{quickActions[1].desc}</Text>
+            </TouchableOpacity>
+
+            {/* Center ORDER button — absolutely positioned */}
+            <View style={styles.qaOrderWrap} pointerEvents="box-none">
+              <View style={styles.qaOrderGlow} />
               <TouchableOpacity
-                style={styles.centerOrderBtn}
+                style={styles.qaOrderBtn}
                 onPress={() => router.push("/(user)/orders")}
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={[Colors.primary, Colors.primaryDark]}
-                  style={styles.centerOrderGradient}
+                  colors={["#F09135", "#E87722", "#C5611A"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.qaOrderGradient}
                 >
-                  <Feather name={isSalesman ? "plus" : "shopping-bag"} size={22} color={Colors.white} />
+                  <Feather name="plus" size={24} color={Colors.white} />
+                  <Text style={styles.qaOrderLabel}>ORDER</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <Text style={styles.centerOrderLabel}>Order</Text>
             </View>
-
-            {/* Vehicles card */}
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: quickActions[1].accent, borderBottomLeftRadius: 28 }]}
-              onPress={() => router.push(quickActions[1].route as any)}
-              activeOpacity={0.82}
-            >
-              <View style={[styles.gridIcon, { backgroundColor: quickActions[1].iconBg }]}>
-                <Text style={styles.gridIconText}>{quickActions[1].icon}</Text>
-              </View>
-              <Text style={styles.gridCardTitle}>{quickActions[1].label}</Text>
-              <Text style={styles.gridCardDesc}>{quickActions[1].desc}</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.quickGrid}>
@@ -659,49 +665,106 @@ const styles = StyleSheet.create({
   gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
 
-  actionRow: {
+  /* ── Quick Action Card (salesman / retailer) ─────────────────────── */
+  qaCard: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 0,
+    borderRadius: 24,
+    backgroundColor: Colors.white,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    position: "relative",
+    minHeight: 150,
   },
-  actionCard: {
+  qaHalf: {
     flex: 1,
-    borderRadius: 20,
-    padding: 16,
-    minHeight: 130,
+    padding: 20,
+    paddingVertical: 24,
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
+  },
+  qaHalfLeft: {
+    backgroundColor: "#EDFBF3",
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
+  },
+  qaHalfRight: {
+    backgroundColor: "#EDF5FF",
+    borderTopRightRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  qaDivider: {
+    width: 1,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  qaIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#C8F0D8",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  qaIconBoxBlue: {
+    backgroundColor: "#C5DCFA",
+  },
+  qaTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text,
+    textAlign: "center",
+  },
+  qaDesc: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    textAlign: "center",
+  },
+  qaOrderWrap: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: "center",
     justifyContent: "center",
   },
-  centerOrderWrap: {
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 4,
+  qaOrderGlow: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#E87722",
+    opacity: 0.18,
   },
-  centerOrderBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+  qaOrderBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     overflow: "hidden",
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.55,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 12,
+    shadowColor: "#E87722",
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 14,
     borderWidth: 3,
     borderColor: Colors.white,
   },
-  centerOrderGradient: {
+  qaOrderGradient: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: 1,
   },
-  centerOrderLabel: {
-    fontSize: 10,
+  qaOrderLabel: {
+    fontSize: 9,
     fontFamily: "Inter_700Bold",
-    color: Colors.primary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
+    color: Colors.white,
+    letterSpacing: 1,
   },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
