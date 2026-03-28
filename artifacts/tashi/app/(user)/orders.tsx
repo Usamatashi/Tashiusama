@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as SMS from "expo-sms";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
@@ -258,6 +260,8 @@ export default function OrdersScreen() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [quantity, setQuantity] = useState("1");
   const [submitError, setSubmitError] = useState("");
+  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+  const [smsSending, setSmsSending] = useState(false);
 
   const { data: orders = [], isLoading: loadingOrders, refetch, isRefetching } = useQuery<Order[]>({
     queryKey: ["orders"],
@@ -279,17 +283,23 @@ export default function OrdersScreen() {
   const createMutation = useMutation({
     mutationFn: (body: { retailerId: number; items: { vehicleId: number; quantity: number }[] }) =>
       apiFetch<Order>("/orders", { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => {
+    onSuccess: (order) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["my-bonus"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      resetFlow();
+      // Enrich with retailer info from local state before API refreshes
+      setPlacedOrder({
+        ...order,
+        retailerName: order.retailerName ?? selectedRetailer?.name ?? null,
+        retailerPhone: order.retailerPhone ?? selectedRetailer?.phone ?? null,
+      });
     },
     onError: (e: Error) => setSubmitError(e.message),
   });
 
   const resetFlow = useCallback(() => {
     setShowCreate(false);
+    setPlacedOrder(null);
     setStep(1);
     setSearch("");
     setSelectedRetailer(null);
@@ -297,6 +307,46 @@ export default function OrdersScreen() {
     setSelectedVehicle(null);
     setQuantity("1");
     setSubmitError("");
+    setSmsSending(false);
+  }, []);
+
+  const sendOrderSms = useCallback(async (order: Order) => {
+    const phone = order.retailerPhone;
+    if (!phone) {
+      Alert.alert("No Phone Number", "This retailer has no phone number on record.");
+      return;
+    }
+
+    const available = await SMS.isAvailableAsync();
+    if (!available) {
+      Alert.alert("SMS Not Available", "SMS is not supported on this device.");
+      return;
+    }
+
+    const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+
+    const items = order.items ?? [];
+    const itemLines = items.map(i =>
+      `• ${i.vehicleName}: ${i.quantity} set${i.quantity !== 1 ? "s" : ""} × Rs. ${i.unitPrice.toLocaleString()} = Rs. ${i.totalValue.toLocaleString()}`
+    ).join("\n");
+
+    const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
+    const retailerName = order.retailerName ? `\nRetailer: ${order.retailerName}` : "";
+
+    const message =
+      `*Tashi Order #${order.id}*${retailerName}\nDate: ${date}\n\n` +
+      `${itemLines}\n\n` +
+      `Order Total: Rs. ${grandTotal.toLocaleString()}\nStatus: PENDING\n\n` +
+      `This order is pending confirmation. Thank you!`;
+
+    setSmsSending(true);
+    try {
+      await SMS.sendSMSAsync([phone], message);
+    } finally {
+      setSmsSending(false);
+    }
   }, []);
 
   const addToCart = () => {
@@ -337,6 +387,115 @@ export default function OrdersScreen() {
   const cartTotal = cartItems.reduce((s, c) => s + c.vehicle.salesPrice * c.quantity, 0);
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+
+  // ── Order Placed Success Panel ───────────────────────────────────────────────
+  if (placedOrder) {
+    const orderItems = placedOrder.items ?? [];
+    const grandTotal = orderItems.reduce((s, i) => s + i.totalValue, 0);
+    const date = new Date(placedOrder.createdAt).toLocaleDateString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+    });
+    return (
+      <View style={[styles.root, { backgroundColor: "#F7F4F1" }]}>
+        <ScrollView contentContainerStyle={{ padding: 20, paddingTop: topPad + 24, paddingBottom: botPad + 60 }}>
+
+          {/* Success badge */}
+          <View style={styles.successBadge}>
+            <View style={styles.successIcon}>
+              <Feather name="check" size={32} color="#FFF" />
+            </View>
+            <Text style={styles.successTitle}>Order Placed!</Text>
+            <Text style={styles.successSub}>Order #{placedOrder.id} · {date}</Text>
+          </View>
+
+          {/* Retailer info */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Feather name="user" size={15} color={Colors.textSecondary} />
+              <Text style={styles.summaryLabel}>Retailer</Text>
+              <Text style={styles.summaryValue} numberOfLines={1}>
+                {placedOrder.retailerName || placedOrder.retailerPhone || "—"}
+              </Text>
+            </View>
+            {placedOrder.retailerPhone && placedOrder.retailerName && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.summaryRow}>
+                  <Feather name="phone" size={15} color={Colors.textSecondary} />
+                  <Text style={styles.summaryLabel}>Phone</Text>
+                  <Text style={styles.summaryValue}>{placedOrder.retailerPhone}</Text>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Order items table */}
+          <View style={styles.card}>
+            <View style={styles.table}>
+              <View style={styles.tableRow}>
+                <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+                <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+                <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
+                <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
+              </View>
+              <View style={styles.tableDivider} />
+              {orderItems.map((item, idx) => (
+                <View
+                  key={idx}
+                  style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < orderItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}
+                >
+                  <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.vehicleName}</Text>
+                  <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                  <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.unitPrice.toLocaleString()}</Text>
+                  <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.totalValue.toLocaleString()}</Text>
+                </View>
+              ))}
+              <View style={styles.totalFooter}>
+                <Text style={styles.totalFooterLabel}>Grand Total</Text>
+                <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Status pill */}
+          <View style={[styles.statusInfoRow]}>
+            <Feather name="clock" size={14} color="#F59E0B" />
+            <Text style={styles.statusInfoText}>Pending admin confirmation</Text>
+          </View>
+
+          {/* SMS button */}
+          <TouchableOpacity
+            style={[styles.smsBtn, smsSending && styles.btnDisabled]}
+            onPress={() => sendOrderSms(placedOrder)}
+            disabled={smsSending}
+            activeOpacity={0.8}
+          >
+            {smsSending ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <>
+                <Feather name="message-square" size={20} color="#FFF" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.smsBtnTitle}>Send SMS to Retailer</Text>
+                  <Text style={styles.smsBtnSub}>
+                    {placedOrder.retailerPhone ?? "No phone number"}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Done button */}
+          <TouchableOpacity style={styles.outlineBtn} onPress={resetFlow}>
+            <Feather name="check-circle" size={18} color={Colors.primary} />
+            <Text style={styles.outlineBtnText}>Done</Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </View>
+    );
+  }
 
   // ── Create Order Flow ───────────────────────────────────────────────────────
   if (showCreate) {
@@ -868,4 +1027,37 @@ const styles = StyleSheet.create({
   },
   totalFooterLabel: { fontSize: 12, fontWeight: "700", color: Colors.textSecondary },
   totalFooterValue: { fontSize: 14, fontWeight: "800", color: Colors.primary },
+
+  successBadge: { alignItems: "center", marginBottom: 24, gap: 8 },
+  successIcon: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: "#10B981", alignItems: "center", justifyContent: "center",
+    shadowColor: "#10B981", shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35, shadowRadius: 16, elevation: 10,
+  },
+  successTitle: { fontSize: 26, fontWeight: "800", color: "#1A1A1A", marginTop: 4 },
+  successSub: { fontSize: 13, color: Colors.textLight },
+
+  statusInfoRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, marginBottom: 16,
+  },
+  statusInfoText: { fontSize: 13, color: "#92400E", fontWeight: "600" },
+
+  smsBtn: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: Colors.primary, borderRadius: 14,
+    paddingVertical: 16, paddingHorizontal: 18, marginBottom: 12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
+  },
+  smsBtnTitle: { fontSize: 15, fontWeight: "700", color: "#FFF" },
+  smsBtnSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 2 },
+
+  outlineBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 14,
+    paddingVertical: 14, backgroundColor: "#FFF",
+  },
+  outlineBtnText: { fontSize: 15, fontWeight: "700", color: Colors.primary },
 });
