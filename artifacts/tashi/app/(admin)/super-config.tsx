@@ -301,12 +301,7 @@ function PerAdminPanel() {
             </View>
           ))}
         </View>
-      ) : (
-        <View style={perAdminStyles.hintBox}>
-          <Feather name="search" size={14} color={Colors.textSecondary} />
-          <Text style={perAdminStyles.hintText}>Search and select an admin to configure their access</Text>
-        </View>
-      )}
+      ) : null}
     </View>
   );
 }
