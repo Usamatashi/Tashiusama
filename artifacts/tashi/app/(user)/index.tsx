@@ -89,8 +89,8 @@ export default function UserHomeScreen() {
   const [justClaimed, setJustClaimed] = useState<number | null>(null);
   const [adBanners, setAdBanners] = useState<AdBanner[]>([]);
   const [tickers, setTickers] = useState<TickerItem[]>([]);
-  const [salesSummary, setSalesSummary] = useState<{ totalSalesValue: number; confirmedSalesValue: number; totalOrders: number } | null>(null);
-  const [retailTotal, setRetailTotal] = useState<number>(0);
+  const [salesSummary, setSalesSummary] = useState<{ totalSalesValue: number; confirmedSalesValue: number; confirmedBonus: number; totalOrders: number } | null>(null);
+  const [retailStats, setRetailStats] = useState<{ confirmedCount: number; confirmedValue: number }>({ confirmedCount: 0, confirmedValue: 0 });
 
   useEffect(() => {
     (async () => {
@@ -126,7 +126,7 @@ export default function UserHomeScreen() {
           });
           if (res.ok) {
             const data = await res.json();
-            setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, totalOrders: data.totalOrders });
+            setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, confirmedBonus: data.confirmedBonus ?? 0, totalOrders: data.totalOrders });
           }
         } else if (user.role === "retailer") {
           const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
@@ -134,8 +134,11 @@ export default function UserHomeScreen() {
           });
           if (res.ok) {
             const orders: Array<{ totalValue?: number; status: string }> = await res.json();
-            const total = orders.filter(o => o.status !== "cancelled").reduce((s, o) => s + (o.totalValue ?? 0), 0);
-            setRetailTotal(total);
+            const confirmed = orders.filter(o => o.status === "confirmed");
+            setRetailStats({
+              confirmedCount: confirmed.length,
+              confirmedValue: confirmed.reduce((s, o) => s + (o.totalValue ?? 0), 0),
+            });
           }
         }
       } catch {}
@@ -263,58 +266,23 @@ export default function UserHomeScreen() {
 
         {/* ── Sales Financial Hero Card — salesman only ─────────────── */}
         {isSalesman && (
-          <View style={styles.heroWrapper}>
-            <LinearGradient
-              colors={["#0F4C75", "#1B6CA8", "#187CC2"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroCard}
-            >
-              <View style={styles.decCircle1} />
-              <View style={styles.decCircle2} />
-              <View style={styles.decCircle3} />
-              <Text style={styles.heroLabel}>Total Sales Value</Text>
-              <Text style={[styles.heroValue, { fontSize: 34 }]}>
-                {salesSummary ? `Rs. ${salesSummary.totalSalesValue.toLocaleString()}` : "—"}
-              </Text>
-              <Text style={styles.heroUnit}>
-                {salesSummary ? `${salesSummary.totalOrders} order${salesSummary.totalOrders !== 1 ? "s" : ""} placed` : "loading..."}
-              </Text>
-            </LinearGradient>
-            <View style={[styles.claimTabOuter, { opacity: 1 }]}>
-              <LinearGradient
-                colors={["#0F4C75", "#0A3655"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.claimTabInner}
-              >
-                <Text style={styles.claimTabIcon}>✅</Text>
-                <Text style={styles.claimTabText}>
-                  {"Rs. " + (salesSummary ? salesSummary.confirmedSalesValue.toLocaleString() : "0") + "\n"}
-                  <Text style={{ fontSize: 9 }}>confirmed</Text>
-                </Text>
-              </LinearGradient>
-            </View>
-          </View>
-        )}
-
-        {/* ── Retailer Purchase Hero Card — retailer only ─────────────── */}
-        {isRetailer && (
-          <View style={[styles.heroWrapper, { marginBottom: 4 }]}>
-            <LinearGradient
-              colors={["#065F46", "#047857", "#059669"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroCard}
-            >
-              <View style={styles.decCircle1} />
-              <View style={styles.decCircle2} />
-              <View style={styles.decCircle3} />
-              <Text style={styles.heroLabel}>Total Purchased</Text>
-              <Text style={[styles.heroValue, { fontSize: 34 }]}>Rs. {retailTotal.toLocaleString()}</Text>
-              <Text style={styles.heroUnit}>cumulative order value</Text>
-            </LinearGradient>
-          </View>
+          <LinearGradient
+            colors={["#0F4C75", "#1B6CA8", "#187CC2"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            <View style={styles.decCircle1} />
+            <View style={styles.decCircle2} />
+            <View style={styles.decCircle3} />
+            <Text style={styles.heroLabel}>Total Sales Value</Text>
+            <Text style={[styles.heroValue, { fontSize: 34 }]}>
+              {salesSummary ? `Rs. ${salesSummary.totalSalesValue.toLocaleString()}` : "—"}
+            </Text>
+            <Text style={styles.heroUnit}>
+              {salesSummary ? `${salesSummary.totalOrders} order${salesSummary.totalOrders !== 1 ? "s" : ""} placed` : "loading..."}
+            </Text>
+          </LinearGradient>
         )}
 
         {/* Banner carousel */}
@@ -365,6 +333,52 @@ export default function UserHomeScreen() {
             {activeBanners.map((_, i) => (
               <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
             ))}
+          </View>
+        )}
+
+        {/* ── Salesman stat cards ─────────────────────────────────────── */}
+        {isSalesman && (
+          <View style={styles.statRow}>
+            <View style={[styles.statCard, { backgroundColor: "#0F4C75" }]}>
+              <Text style={styles.statCardLabel}>Confirmed Sales</Text>
+              <Text style={styles.statCardValue}>
+                {salesSummary ? `Rs. ${salesSummary.confirmedSalesValue.toLocaleString()}` : "—"}
+              </Text>
+              <Text style={styles.statCardSub}>orders confirmed</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: "#92400E" }]}>
+              <Text style={styles.statCardLabel}>Commission</Text>
+              <Text style={styles.statCardValue}>
+                {salesSummary ? `${salesSummary.confirmedBonus.toLocaleString()} pts` : "—"}
+              </Text>
+              <Text style={styles.statCardSub}>bonus points earned</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Retailer stat cards ──────────────────────────────────────── */}
+        {isRetailer && (
+          <View style={styles.statRow}>
+            <TouchableOpacity
+              style={[styles.statCard, { backgroundColor: "#065F46" }]}
+              onPress={() => router.push("/(user)/orders" as any)}
+              activeOpacity={0.82}
+            >
+              <Text style={styles.statCardLabel}>Confirmed Orders</Text>
+              <Text style={styles.statCardValue}>{retailStats.confirmedCount}</Text>
+              <Text style={styles.statCardSub}>
+                {retailStats.confirmedValue > 0 ? `Rs. ${retailStats.confirmedValue.toLocaleString()}` : "tap to view"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCard, { backgroundColor: "#7B2FBE" }]}
+              onPress={() => router.push("/(user)/rewards" as any)}
+              activeOpacity={0.82}
+            >
+              <Text style={styles.statCardLabel}>Offers</Text>
+              <Text style={styles.statCardValue}>🎁</Text>
+              <Text style={styles.statCardSub}>view rewards & offers</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -575,6 +589,44 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
+  },
+
+  /* ── Stat mini-cards ────────────────────────────────────────────── */
+  statRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 16,
+    justifyContent: "flex-end",
+    minHeight: 110,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  statCardLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.7)",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  statCardValue: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    includeFontPadding: false,
+  },
+  statCardSub: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 3,
   },
 
   /* Claim tab — protrudes from the right edge of the hero card */

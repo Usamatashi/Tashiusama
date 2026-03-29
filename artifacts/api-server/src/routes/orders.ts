@@ -248,14 +248,40 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
 });
 
 // ─── PUT /orders/:id/status ───────────────────────────────────────────────────
-router.put("/:id/status", requireAuth, requireAdmin, async (req, res) => {
+router.put("/:id/status", requireAuth, async (req, res) => {
   try {
+    const caller = (req as any).user as JwtPayload;
     const id = parseInt(req.params.id);
     const { status } = req.body;
+
+    const isAdmin = caller.role === "admin" || caller.role === "super_admin";
+    const isRetailer = caller.role === "retailer";
+
+    if (!isAdmin && !isRetailer) {
+      res.status(403).json({ error: "Not authorised to update order status" });
+      return;
+    }
+
     if (!["pending", "confirmed", "cancelled"].includes(status)) {
       res.status(400).json({ error: "Invalid status" });
       return;
     }
+
+    if (isRetailer) {
+      // Retailers may only confirm orders that belong to them
+      if (status !== "confirmed") {
+        res.status(403).json({ error: "Retailers may only confirm orders" });
+        return;
+      }
+      const order = await db.select({ retailerId: ordersTable.retailerId })
+        .from(ordersTable).where(eq(ordersTable.id, id));
+      if (!order.length) { res.status(404).json({ error: "Order not found" }); return; }
+      if (order[0].retailerId !== caller.userId) {
+        res.status(403).json({ error: "Not your order" });
+        return;
+      }
+    }
+
     const updated = await db.update(ordersTable).set({ status }).where(eq(ordersTable.id, id)).returning();
     if (!updated.length) { res.status(404).json({ error: "Order not found" }); return; }
     res.json({ ...updated[0], createdAt: updated[0].createdAt.toISOString() });
