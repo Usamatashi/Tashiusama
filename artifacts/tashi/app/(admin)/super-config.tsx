@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Platform,
   ScrollView,
   StyleSheet,
@@ -70,6 +71,7 @@ function PerAdminPanel() {
     setLocalSettings({ ...DEFAULT_SETTINGS, ...admin.settings });
     setQuery(admin.name ?? admin.phone);
     setDropdownOpen(false);
+    Keyboard.dismiss();
   };
 
   const filteredAdmins = adminUsers.filter((a) => {
