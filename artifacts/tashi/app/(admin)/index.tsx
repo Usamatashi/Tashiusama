@@ -32,6 +32,7 @@ const ACTIONS = [
     countLabel: null as string | null,
     showPendingDot: false,
     showOrdersPending: false,
+    superAdminOnly: false,
   },
   {
     icon: "clipboard" as const,
@@ -44,6 +45,7 @@ const ACTIONS = [
     countLabel: null as string | null,
     showPendingDot: false,
     showOrdersPending: true,
+    superAdminOnly: false,
   },
   {
     icon: "gift" as const,
@@ -56,6 +58,7 @@ const ACTIONS = [
     countLabel: null as string | null,
     showPendingDot: true,
     showOrdersPending: false,
+    superAdminOnly: false,
   },
   {
     icon: "radio" as const,
@@ -68,6 +71,7 @@ const ACTIONS = [
     countLabel: "ads" as string | null,
     showPendingDot: false,
     showOrdersPending: false,
+    superAdminOnly: false,
   },
   {
     icon: "type" as const,
@@ -80,6 +84,7 @@ const ACTIONS = [
     countLabel: "texts" as string | null,
     showPendingDot: false,
     showOrdersPending: false,
+    superAdminOnly: false,
   },
   {
     icon: "dollar-sign" as const,
@@ -92,6 +97,20 @@ const ACTIONS = [
     countLabel: null as string | null,
     showPendingDot: false,
     showOrdersPending: false,
+    superAdminOnly: false,
+  },
+  {
+    icon: "sliders" as const,
+    label: "Config",
+    desc: "Manage admin access and app settings",
+    route: "/(admin)/super-config" as const,
+    gradient: ["#4B0082", "#7B2FBE"] as [string, string],
+    decoration: "#9B59B6",
+    countEndpoint: null as string | null,
+    countLabel: null as string | null,
+    showPendingDot: false,
+    showOrdersPending: false,
+    superAdminOnly: true,
   },
 ];
 
@@ -109,12 +128,12 @@ export default function AdminDashboard() {
   const { settings } = useAdminSettings();
   const insets = useSafeAreaInsets();
   const isSuperAdmin = user?.role === "super_admin";
-  const visibleActions = isSuperAdmin
-    ? ACTIONS
-    : ACTIONS.filter((a) => {
-        const key = CARD_KEY_MAP[a.label];
-        return key ? settings[key] : true;
-      });
+  const visibleActions = ACTIONS.filter((a) => {
+    if (a.superAdminOnly) return isSuperAdmin;
+    if (isSuperAdmin) return true;
+    const key = CARD_KEY_MAP[a.label];
+    return key ? settings[key] : true;
+  });
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [pendingClaims, setPendingClaims] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);

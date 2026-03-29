@@ -22,7 +22,6 @@ const ALL_TAB_ITEMS: TabItem[] = [
   { name: "vehicles", label: "Vehicles", icon: "truck" },
   { name: "create-account", label: "Users", icon: "users" },
   { name: "payments", label: "Payments", icon: "dollar-sign" },
-  { name: "super-config", label: "Config", icon: "sliders", superAdminOnly: true },
 ];
 
 const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSettings>["settings"]> = {
@@ -134,7 +133,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="vehicles" options={{ href: isTabVisible("vehicles") ? undefined : null }} />
       <Tabs.Screen name="create-account" options={{ href: isTabVisible("create-account") ? undefined : null }} />
       <Tabs.Screen name="payments" options={{ href: isTabVisible("payments") ? undefined : null }} />
-      <Tabs.Screen name="super-config" options={{ href: isTabVisible("super-config") ? undefined : null }} />
+      <Tabs.Screen name="super-config" options={{ href: null }} />
       <Tabs.Screen name="create-qr" options={{ href: null }} />
       <Tabs.Screen name="claims" options={{ href: null }} />
       <Tabs.Screen name="create-ads" options={{ href: null }} />
