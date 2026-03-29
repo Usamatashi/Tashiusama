@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const W = SCREEN_WIDTH - 8;
+const W = SCREEN_WIDTH;
 const IMG_RATIO = 1000 / 667;
 const H = W / IMG_RATIO;
 
@@ -23,15 +23,16 @@ interface Props {
   leftAction: QuickAction;
   rightAction: QuickAction;
   centerRoute: string;
+  centerLabel?: string;
 }
 
 export function BrakePadCard({ leftAction, rightAction, centerRoute }: Props) {
   return (
-    <View style={{ width: W, height: H, alignSelf: "center", marginTop: 10, marginBottom: 8 }}>
+    <View style={styles.wrapper}>
       <Image
         source={require("../assets/images/quick-actions-card.jpg")}
         style={styles.image}
-        resizeMode="contain"
+        resizeMode="cover"
       />
 
       {/* Left tap zone — Orders */}
@@ -59,6 +60,13 @@ export function BrakePadCard({ leftAction, rightAction, centerRoute }: Props) {
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    width: W,
+    height: H,
+    marginHorizontal: -16,
+    marginTop: 8,
+    marginBottom: 8,
+  },
   image: {
     width: W,
     height: H,
