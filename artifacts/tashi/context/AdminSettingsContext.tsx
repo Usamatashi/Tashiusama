@@ -70,7 +70,11 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
         ? `${BASE}/admin-settings`
         : `${BASE}/admin-user-settings/me`;
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       });
       if (res.ok) {
         const data = await res.json() as AdminSettings;

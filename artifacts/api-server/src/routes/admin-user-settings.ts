@@ -21,6 +21,7 @@ const router = Router();
 
 // GET /api/admin-user-settings/me — current admin's own settings
 router.get("/me", requireAuth, requireAdmin, async (req, res) => {
+  res.set("Cache-Control", "no-store");
   try {
     const userId = (req as any).user.id;
     const rows = await db
