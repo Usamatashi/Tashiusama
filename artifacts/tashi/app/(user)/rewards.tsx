@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,9 +19,16 @@ const REWARDS = [
 ];
 
 export default function RewardsScreen() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
   const userPoints = user?.points ?? 0;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshUser();
+    setRefreshing(false);
+  }, [refreshUser]);
 
   const nextReward = REWARDS.find(r => userPoints < r.points);
   const progressPct = nextReward
@@ -33,7 +41,11 @@ export default function RewardsScreen() {
         <Text style={styles.headerTitle}>Rewards</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      >
         {/* Points card */}
         <View style={styles.pointsCard}>
           <View>

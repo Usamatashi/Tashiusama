@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,8 +21,15 @@ const TIPS = [
 export default function PointsScreen() {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { refreshUser(); }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshUser();
+    setRefreshing(false);
+  }, [refreshUser]);
 
   const pts = user?.points ?? 0;
 
@@ -31,7 +39,11 @@ export default function PointsScreen() {
         <Text style={styles.headerTitle}>My Points</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      >
         {/* Hero */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>

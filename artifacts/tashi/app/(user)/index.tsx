@@ -6,6 +6,7 @@ import {
   Linking,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -91,59 +92,58 @@ export default function UserHomeScreen() {
   const [tickers, setTickers] = useState<TickerItem[]>([]);
   const [salesSummary, setSalesSummary] = useState<{ totalSalesValue: number; confirmedSalesValue: number; confirmedBonus: number; totalOrders: number } | null>(null);
   const [retailStats, setRetailStats] = useState<{ confirmedCount: number; confirmedValue: number }>({ confirmedCount: 0, confirmedValue: 0 });
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const token = await getToken();
-        const [adRes, tickerRes] = await Promise.all([
-          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ads`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ticker`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-        if (adRes.ok) setAdBanners(await adRes.json());
-        if (tickerRes.ok) setTickers(await tickerRes.json());
-      } catch {}
-    })();
+  const fetchAdsTickers = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const [adRes, tickerRes] = await Promise.all([
+        fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ticker`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      if (adRes.ok) setAdBanners(await adRes.json());
+      if (tickerRes.ok) setTickers(await tickerRes.json());
+    } catch {}
   }, []);
 
+  const fetchStats = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await getToken();
+      if (user.role === "salesman") {
+        const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, confirmedBonus: data.confirmedBonus ?? 0, totalOrders: data.totalOrders });
+        }
+      } else if (user.role === "retailer") {
+        const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const orders: Array<{ totalValue?: number; status: string }> = await res.json();
+          const confirmed = orders.filter(o => o.status === "confirmed");
+          setRetailStats({
+            confirmedCount: confirmed.length,
+            confirmedValue: confirmed.reduce((s, o) => s + (o.totalValue ?? 0), 0),
+          });
+        }
+      }
+    } catch {}
+  }, [user?.role]);
+
+  useEffect(() => { fetchAdsTickers(); }, [fetchAdsTickers]);
   useEffect(() => { refreshUser(); }, []);
   useEffect(() => {
     if (user?.points !== undefined) setLocalPoints(user.points);
   }, [user?.points]);
-
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      try {
-        const token = await getToken();
-        if (user.role === "salesman") {
-          const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, confirmedBonus: data.confirmedBonus ?? 0, totalOrders: data.totalOrders });
-          }
-        } else if (user.role === "retailer") {
-          const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const orders: Array<{ totalValue?: number; status: string }> = await res.json();
-            const confirmed = orders.filter(o => o.status === "confirmed");
-            setRetailStats({
-              confirmedCount: confirmed.length,
-              confirmedValue: confirmed.reduce((s, o) => s + (o.totalValue ?? 0), 0),
-            });
-          }
-        }
-      } catch {}
-    })();
-  }, [user?.role]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   const activeBanners = adBanners.length > 0 ? adBanners : FALLBACK_BANNERS;
 
@@ -167,6 +167,12 @@ export default function UserHomeScreen() {
     } catch {}
     finally { setLoadingHistory(false); }
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refreshUser(), fetchAdsTickers(), fetchStats()]);
+    setRefreshing(false);
+  }, [refreshUser, fetchAdsTickers, fetchStats]);
 
   const openClaimModal = () => {
     setJustClaimed(null);
@@ -231,7 +237,12 @@ export default function UserHomeScreen() {
 
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      >
 
         {/* ── Points Hero Card — mechanics only ─────────────── */}
         {isMechanic && (

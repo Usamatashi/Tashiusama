@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -138,6 +139,7 @@ export default function AdminDashboard() {
   const [pendingClaims, setPendingClaims] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
   const [loadingCounts, setLoadingCounts] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchCounts = useCallback(async () => {
     try {
@@ -185,6 +187,12 @@ export default function AdminDashboard() {
     fetchCounts();
   }, [fetchCounts]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchCounts();
+    setRefreshing(false);
+  }, [fetchCounts]);
+
   return (
     <View
       style={[
@@ -207,6 +215,9 @@ export default function AdminDashboard() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.adminAccent} />
+        }
       >
         <Text style={styles.greeting}>Welcome back 👋</Text>
         <Text style={styles.subtitle}>What would you like to do today?</Text>
