@@ -47,8 +47,6 @@ const CARD_SETTINGS: SettingItem[] = [
   { key: "card_payments", label: "Payments Card", desc: "Shortcut to the payments section", icon: "dollar-sign" },
 ];
 
-const ALL_SETTINGS = [...TAB_SETTINGS, ...CARD_SETTINGS];
-
 // ─── Per-Admin Access Panel ───────────────────────────────────────────────────
 
 function PerAdminPanel() {
@@ -503,67 +501,8 @@ const perAdminStyles = StyleSheet.create({
 
 export default function SuperConfigScreen() {
   const insets = useSafeAreaInsets();
-  const { settings, updateSettings } = useAdminSettings();
-  const [localSettings, setLocalSettings] = useState<AdminSettings>(settings);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
-
-  const toggle = useCallback(async (key: keyof AdminSettings) => {
-    const prevSettings = localSettings;
-    const newSettings = { ...localSettings, [key]: !localSettings[key] };
-    setLocalSettings(newSettings);
-    setSavingKey(key);
-    try {
-      await updateSettings(newSettings);
-    } catch {
-      setLocalSettings(prevSettings);
-      Alert.alert("Error", "Failed to save setting. Please try again.");
-    } finally {
-      setSavingKey(null);
-    }
-  }, [localSettings, updateSettings]);
-
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-
-  const renderSection = (title: string, subtitle: string, items: SettingItem[]) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-      </View>
-      <View style={styles.sectionCard}>
-        {items.map((item, idx) => (
-          <View key={item.key}>
-            {idx > 0 && <View style={styles.separator} />}
-            <View style={styles.settingRow}>
-              <View style={[styles.iconWrap, { backgroundColor: `${SUPER_ACCENT}14` }]}>
-                <Feather name={item.icon} size={18} color={SUPER_ACCENT} />
-              </View>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>{item.label}</Text>
-                <Text style={styles.settingDesc}>{item.desc}</Text>
-              </View>
-              {savingKey === item.key ? (
-                <ActivityIndicator size="small" color={SUPER_ACCENT} style={styles.savingSpinner} />
-              ) : (
-                <Switch
-                  value={localSettings[item.key]}
-                  onValueChange={() => toggle(item.key)}
-                  trackColor={{ false: Colors.border, true: `${SUPER_ACCENT}55` }}
-                  thumbColor={localSettings[item.key] ? SUPER_ACCENT : "#ccc"}
-                  ios_backgroundColor={Colors.border}
-                />
-              )}
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -581,19 +520,6 @@ export default function SuperConfigScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.infoBox}>
-          <Feather name="info" size={14} color={SUPER_ACCENT} />
-          <Text style={styles.infoText}>
-            Global defaults apply to all admins. Use "Per Admin Access" below to override for individual admins.
-          </Text>
-        </View>
-
-        {renderSection(
-          "Global Defaults — Dashboard Cards",
-          "Default card visibility for all admins (overridden per admin below)",
-          CARD_SETTINGS
-        )}
-
         {/* Per-Admin Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
