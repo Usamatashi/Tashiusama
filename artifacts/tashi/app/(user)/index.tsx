@@ -346,20 +346,26 @@ export default function UserHomeScreen() {
                 </LinearGradient>
               ))}
         </ScrollView>
-        <View style={styles.dots}>
-          {activeBanners.map((_, i) => (
-            <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
-          ))}
-        </View>
-
-        {/* Disc pad — retailers & salesmen, immediately below banners */}
-        {(isRetailer || isSalesman) && (
-          <BrakePadCard
-            leftAction={{ label: quickActions[0].label, desc: quickActions[0].desc, route: quickActions[0].route }}
-            rightAction={{ label: quickActions[1].label, desc: quickActions[1].desc, route: quickActions[1].route }}
-            centerRoute="/(user)/orders"
-            centerLabel="ORDER"
-          />
+        {(isRetailer || isSalesman) ? (
+          <View style={{ gap: 4 }}>
+            <View style={styles.dots}>
+              {activeBanners.map((_, i) => (
+                <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
+              ))}
+            </View>
+            <BrakePadCard
+              leftAction={{ label: quickActions[0].label, desc: quickActions[0].desc, route: quickActions[0].route }}
+              rightAction={{ label: quickActions[1].label, desc: quickActions[1].desc, route: quickActions[1].route }}
+              centerRoute="/(user)/orders"
+              centerLabel="ORDER"
+            />
+          </View>
+        ) : (
+          <View style={styles.dots}>
+            {activeBanners.map((_, i) => (
+              <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
+            ))}
+          </View>
         )}
 
         {/* Quick actions — mechanics only */}
