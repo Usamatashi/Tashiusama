@@ -1,0 +1,182 @@
+Got it — your permissions UI looks correct, but the issue is almost certainly in how the restrictions are being **applied in code**, not how they’re configured.
+
+Here are the most common reasons this happens 👇
+
+---
+
+## 🔴 1. UI is not actually checking permissions
+
+Just because you *set* restrictions in the admin panel doesn’t mean your app is **using them when rendering**.
+
+👉 Example problem:
+You toggle OFF “Payments”, but your dashboard still renders it like:
+
+```js
+const cards = [
+  "orders",
+  "claim_rewards",
+  "create_ads",
+  "create_text",
+  "payments"
+];
+```
+
+✅ Fix:
+Filter based on permissions:
+
+```js
+const allowedCards = cards.filter(card =>
+  adminPermissions.cards.includes(card)
+);
+```
+
+---
+
+## 🔴 2. Backend is not enforcing permissions
+
+Even worse: sometimes permissions are only stored but never enforced.
+
+👉 You must validate on:
+
+* API responses
+* Dashboard data
+* Navigation config
+
+Example:
+
+```js
+if (!admin.permissions.includes("payments")) {
+  return res.status(403).json({ error: "Access denied" });
+}
+```
+
+---
+
+## 🔴 3. Cached admin data (VERY common)
+
+You changed permissions, but the app is still using old data.
+
+### Happens when:
+
+* Admin data is stored in localStorage
+* Token contains old permissions
+* Redux/Context not refreshed
+
+✅ Fix:
+
+* Log out and log back in
+* Clear cache / localStorage
+* Refetch admin data after update
+
+---
+
+## 🔴 4. Default fallback logic overriding settings
+
+Sometimes devs accidentally allow everything by default:
+
+```js
+if (!permissions) return true; // ❌ bad
+```
+
+Or:
+
+```js
+const hasAccess = permissions?.includes("payments") ?? true;
+```
+
+✅ Should be:
+
+```js
+const hasAccess = permissions?.includes("payments") ?? false;
+```
+
+---
+
+## 🔴 5. Wrong admin selected
+
+From your screenshot:
+👉 You selected **Danish**
+
+Make sure:
+
+* The logged-in admin = Danish
+* Not a super admin account
+
+---
+
+## 🔴 6. Separate configs for Tabs vs Cards
+
+You disabled:
+
+* Payments tab ✅
+* Claim rewards card ❌ (still visible)
+
+👉 These might be controlled by **different keys**
+
+Example mismatch:
+
+```js
+permissions.tabs = ["dashboard", "products"];
+permissions.cards = ["orders", "ads"];
+```
+
+But UI checks:
+
+```js
+permissions.features.includes("claim_rewards") // ❌ wrong key
+```
+
+---
+
+## 🔴 7. UI state not reactive
+
+If you're using React / Flutter / etc:
+
+👉 Permissions update but UI doesn’t re-render
+
+✅ Fix:
+
+* Trigger state update
+* Use proper state management (setState, provider, redux, etc.)
+
+---
+
+## ✅ Quick Debug Checklist
+
+Do this in order:
+
+1. Console log permissions:
+
+```js
+console.log(adminPermissions);
+```
+
+2. Check:
+
+* Does it include/exclude "claim_rewards"?
+* Does it include/exclude "payments"?
+
+3. Add temporary condition:
+
+```js
+if (!adminPermissions.cards.includes("claim_rewards")) {
+  return null;
+}
+```
+
+---
+
+## 🧠 Most Likely Cause (based on your screenshots)
+
+👉 Your dashboard cards are **hardcoded and not filtered by permissions**
+
+---
+
+## 💬 If you want a precise fix
+
+Send me:
+
+* Your dashboard rendering code (cards section)
+* How you store permissions (DB / JSON)
+
+I’ll pinpoint the exact issue and rewrite it cleanly for you.
