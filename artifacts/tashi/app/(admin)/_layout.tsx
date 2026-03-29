@@ -24,31 +24,37 @@ const ALL_TAB_ITEMS: TabItem[] = [
   { name: "payments", label: "Payments", icon: "dollar-sign" },
 ];
 
-const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSettings>["settings"]> = {
+export const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSettings>["settings"]> = {
   index: "tab_dashboard",
   products: "tab_products",
   "create-account": "tab_users",
   payments: "tab_payments",
 };
 
-type CustomTabBarProps = BottomTabBarProps & {
-  tabItems: TabItem[];
-  isSuperAdmin: boolean;
-};
-
-function CustomTabBar({ state, navigation, tabItems, isSuperAdmin }: CustomTabBarProps) {
+function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const paddingBottom = Platform.OS === "web" ? 34 : insets.bottom;
 
+  const { user } = useAuth();
+  const { settings } = useAdminSettings();
+  const isSuperAdmin = user?.role === "super_admin";
+
+  const visibleTabItems = ALL_TAB_ITEMS.filter((item) => {
+    if (item.superAdminOnly) return isSuperAdmin;
+    if (isSuperAdmin) return true;
+    const settingKey = SETTINGS_KEY_MAP[item.name];
+    return settingKey ? settings[settingKey] : true;
+  });
+
   const visibleRoutes = state.routes.filter((r) =>
-    tabItems.some((t) => t.name === r.name)
+    visibleTabItems.some((t) => t.name === r.name)
   );
 
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom }]}>
       <View style={styles.tabBar}>
         {visibleRoutes.map((route) => {
-          const tabItem = tabItems.find((t) => t.name === route.name);
+          const tabItem = visibleTabItems.find((t) => t.name === route.name);
           if (!tabItem) return null;
 
           const isConfigTab = route.name === "super-config";
@@ -120,21 +126,14 @@ export default function AdminLayout() {
 
   const isSuperAdmin = user.role === "super_admin";
 
-  const visibleTabItems = ALL_TAB_ITEMS.filter((item) => {
-    if (item.superAdminOnly) return isSuperAdmin;
+  const isTabVisible = (name: string) => {
     if (isSuperAdmin) return true;
-    const settingKey = SETTINGS_KEY_MAP[item.name];
-    return settingKey ? settings[settingKey] : true;
-  });
-
-  const isTabVisible = (name: string) => visibleTabItems.some((t) => t.name === name);
-
-  const renderTabBar = (props: BottomTabBarProps) => (
-    <CustomTabBar {...props} tabItems={visibleTabItems} isSuperAdmin={isSuperAdmin} />
-  );
+    const key = SETTINGS_KEY_MAP[name];
+    return key ? settings[key] : true;
+  };
 
   return (
-    <Tabs tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
+    <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" options={{ href: isTabVisible("index") ? undefined : null }} />
       <Tabs.Screen name="products" options={{ href: isTabVisible("products") ? undefined : null }} />
       <Tabs.Screen name="create-account" options={{ href: isTabVisible("create-account") ? undefined : null }} />
