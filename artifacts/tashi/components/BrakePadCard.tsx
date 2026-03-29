@@ -11,7 +11,7 @@ import {
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const W = SCREEN_WIDTH - 32;
 const IMG_RATIO = 1000 / 667;
-const H = (W / IMG_RATIO) * 1.45;
+const H = (W / IMG_RATIO) * 1.2;
 
 interface QuickAction {
   label: string;
