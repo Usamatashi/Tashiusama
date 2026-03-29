@@ -352,36 +352,41 @@ export default function UserHomeScreen() {
           ))}
         </View>
 
-        {/* Quick actions */}
-        <Text style={styles.sectionLabel}>Quick Actions</Text>
-        {(isRetailer || isSalesman) ? (
+        {/* Disc pad — retailers & salesmen, immediately below banners */}
+        {(isRetailer || isSalesman) && (
           <BrakePadCard
             leftAction={{ label: quickActions[0].label, desc: quickActions[0].desc, route: quickActions[0].route }}
             rightAction={{ label: quickActions[1].label, desc: quickActions[1].desc, route: quickActions[1].route }}
             centerRoute="/(user)/orders"
             centerLabel="ORDER"
           />
-        ) : (
-          <View style={styles.quickGrid}>
-            {quickActions.map((action, i) => (
-              <TouchableOpacity
-                key={action.label}
-                style={[
-                  styles.gridCard,
-                  { backgroundColor: action.accent },
-                  i === 0 ? { borderBottomRightRadius: 36 } : { borderBottomLeftRadius: 36 },
-                ]}
-                onPress={() => router.push(action.route as any)}
-                activeOpacity={0.82}
-              >
-                <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
-                  <Text style={styles.gridIconText}>{action.icon}</Text>
-                </View>
-                <Text style={styles.gridCardTitle}>{action.label}</Text>
-                <Text style={styles.gridCardDesc}>{action.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        )}
+
+        {/* Quick actions — mechanics only */}
+        {!isRetailer && !isSalesman && (
+          <>
+            <Text style={styles.sectionLabel}>Quick Actions</Text>
+            <View style={styles.quickGrid}>
+              {quickActions.map((action, i) => (
+                <TouchableOpacity
+                  key={action.label}
+                  style={[
+                    styles.gridCard,
+                    { backgroundColor: action.accent },
+                    i === 0 ? { borderBottomRightRadius: 36 } : { borderBottomLeftRadius: 36 },
+                  ]}
+                  onPress={() => router.push(action.route as any)}
+                  activeOpacity={0.82}
+                >
+                  <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
+                    <Text style={styles.gridIconText}>{action.icon}</Text>
+                  </View>
+                  <Text style={styles.gridCardTitle}>{action.label}</Text>
+                  <Text style={styles.gridCardDesc}>{action.desc}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
         )}
       </ScrollView>
 
