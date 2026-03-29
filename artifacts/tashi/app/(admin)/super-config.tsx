@@ -589,12 +589,6 @@ export default function SuperConfigScreen() {
         </View>
 
         {renderSection(
-          "Global Defaults — Navigation Tabs",
-          "Default tab visibility for all admins (overridden per admin below)",
-          TAB_SETTINGS
-        )}
-
-        {renderSection(
           "Global Defaults — Dashboard Cards",
           "Default card visibility for all admins (overridden per admin below)",
           CARD_SETTINGS
