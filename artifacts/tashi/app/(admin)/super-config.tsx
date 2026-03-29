@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -55,6 +56,8 @@ function PerAdminPanel() {
   const [localSettings, setLocalSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [saveAllLoading, setSaveAllLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     fetchAdminUsers();
@@ -65,7 +68,17 @@ function PerAdminPanel() {
   const handleSelect = (admin: AdminUserEntry) => {
     setSelectedId(admin.id);
     setLocalSettings({ ...DEFAULT_SETTINGS, ...admin.settings });
+    setQuery(admin.name ?? admin.phone);
+    setDropdownOpen(false);
   };
+
+  const filteredAdmins = adminUsers.filter((a) => {
+    const q = query.toLowerCase();
+    return (
+      (a.name ?? "").toLowerCase().includes(q) ||
+      a.phone.toLowerCase().includes(q)
+    );
+  });
 
   const handleToggle = useCallback(async (key: keyof AdminSettings) => {
     if (!selectedId) return;
@@ -138,29 +151,77 @@ function PerAdminPanel() {
 
   return (
     <View style={perAdminStyles.root}>
-      {/* Admin selector */}
+      {/* Search field */}
       <Text style={perAdminStyles.pickerLabel}>Select Admin</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={perAdminStyles.chipScroll} contentContainerStyle={perAdminStyles.chipRow}>
-        {adminUsers.map((admin) => {
-          const isActive = admin.id === selectedId;
-          return (
+      <View style={perAdminStyles.searchWrap}>
+        <Feather name="search" size={15} color={Colors.textSecondary} style={perAdminStyles.searchIcon} />
+        <TextInput
+          style={perAdminStyles.searchInput}
+          placeholder="Search by name or phone…"
+          placeholderTextColor={Colors.textSecondary}
+          value={query}
+          onChangeText={(t) => {
+            setQuery(t);
+            setDropdownOpen(true);
+            if (!t) {
+              setSelectedId(null);
+            }
+          }}
+          onFocus={() => setDropdownOpen(true)}
+          returnKeyType="done"
+          onSubmitEditing={() => setDropdownOpen(false)}
+        />
+        {query.length > 0 && (
+          <TouchableOpacity
+            onPress={() => { setQuery(""); setSelectedId(null); setDropdownOpen(false); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="x" size={15} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {dropdownOpen && filteredAdmins.length > 0 && (
+        <View style={perAdminStyles.dropdown}>
+          {filteredAdmins.map((admin, idx) => (
             <TouchableOpacity
               key={admin.id}
               onPress={() => handleSelect(admin)}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               style={[
-                perAdminStyles.chip,
-                isActive && { backgroundColor: SUPER_ACCENT, borderColor: SUPER_ACCENT },
+                perAdminStyles.dropdownItem,
+                idx < filteredAdmins.length - 1 && perAdminStyles.dropdownSep,
+                admin.id === selectedId && perAdminStyles.dropdownItemActive,
               ]}
             >
-              <Feather name="user" size={13} color={isActive ? "#fff" : Colors.textSecondary} />
-              <Text style={[perAdminStyles.chipText, isActive && { color: "#fff" }]}>
-                {admin.name ?? admin.phone}
-              </Text>
+              <View style={[perAdminStyles.dropdownAvatar, admin.id === selectedId && { backgroundColor: SUPER_ACCENT }]}>
+                <Feather name="user" size={13} color={admin.id === selectedId ? "#fff" : SUPER_ACCENT} />
+              </View>
+              <View style={{ flex: 1 }}>
+                {admin.name ? (
+                  <>
+                    <Text style={perAdminStyles.dropdownName}>{admin.name}</Text>
+                    <Text style={perAdminStyles.dropdownPhone}>{admin.phone}</Text>
+                  </>
+                ) : (
+                  <Text style={perAdminStyles.dropdownName}>{admin.phone}</Text>
+                )}
+              </View>
+              {admin.id === selectedId && (
+                <Feather name="check" size={14} color={SUPER_ACCENT} />
+              )}
             </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          ))}
+        </View>
+      )}
+
+      {dropdownOpen && query.length > 0 && filteredAdmins.length === 0 && (
+        <View style={perAdminStyles.dropdown}>
+          <View style={perAdminStyles.dropdownItem}>
+            <Text style={perAdminStyles.dropdownPhone}>No admins match "{query}"</Text>
+          </View>
+        </View>
+      )}
 
       {selectedAdmin ? (
         <View style={perAdminStyles.panelCard}>
@@ -242,8 +303,8 @@ function PerAdminPanel() {
         </View>
       ) : (
         <View style={perAdminStyles.hintBox}>
-          <Feather name="arrow-up" size={14} color={Colors.textSecondary} />
-          <Text style={perAdminStyles.hintText}>Select an admin above to configure their access</Text>
+          <Feather name="search" size={14} color={Colors.textSecondary} />
+          <Text style={perAdminStyles.hintText}>Search and select an admin to configure their access</Text>
         </View>
       )}
     </View>
@@ -291,23 +352,64 @@ const perAdminStyles = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 2,
   },
-  chipScroll: { flexGrow: 0 },
-  chipRow: { gap: 8, paddingVertical: 4 },
-  chip: {
+  searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.white,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 11 : 2,
+    gap: 8,
   },
-  chipText: {
-    fontSize: 13,
+  searchIcon: {},
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminText,
+  },
+  dropdown: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    marginTop: -4,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  dropdownItemActive: {
+    backgroundColor: `${SUPER_ACCENT}08`,
+  },
+  dropdownSep: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  dropdownAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: `${SUPER_ACCENT}14`,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  dropdownName: {
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: Colors.adminText,
+  },
+  dropdownPhone: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
   },
   hintBox: {
     flexDirection: "row",
