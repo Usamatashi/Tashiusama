@@ -130,8 +130,8 @@ export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const isSuperAdmin = user?.role === "super_admin";
   const visibleActions = ACTIONS.filter((a) => {
-    if (a.superAdminOnly) return isSuperAdmin;
     if (isSuperAdmin) return true;
+    if (a.superAdminOnly) return false;
     const key = CARD_KEY_MAP[a.label];
     return key ? settings[key] : true;
   });
