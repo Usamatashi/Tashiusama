@@ -5,7 +5,7 @@ import { requireAuth, requireAdmin, requireSuperAdmin } from "../lib/auth";
 
 const DEFAULT_SETTINGS = {
   tab_dashboard: true,
-  tab_vehicles: true,
+  tab_products: true,
   tab_users: true,
   tab_payments: true,
   card_create_qr: true,

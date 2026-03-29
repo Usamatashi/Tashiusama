@@ -1,6 +1,7 @@
 import { Redirect, Tabs, useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   StyleSheet,
@@ -160,7 +161,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
 export default function AdminLayout() {
   const { user } = useAuth();
-  const { fetchSettings } = useAdminSettings();
+  const { fetchSettings, settingsLoaded } = useAdminSettings();
 
   useFocusEffect(
     useCallback(() => {
@@ -170,6 +171,14 @@ export default function AdminLayout() {
 
   if (!user) return <Redirect href="/login" />;
   if (user.role !== "admin" && user.role !== "super_admin") return <Redirect href="/(user)" />;
+
+  if (!settingsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.adminAccent} />
+      </View>
+    );
+  }
 
   return (
     <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -189,6 +198,12 @@ export default function AdminLayout() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.background,
+  },
   tabBarWrapper: {
     backgroundColor: Colors.white,
     borderTopWidth: 1,

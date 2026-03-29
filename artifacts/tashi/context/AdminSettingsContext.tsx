@@ -38,6 +38,7 @@ export type AdminUserEntry = {
 interface AdminSettingsContextType {
   settings: AdminSettings;
   isLoading: boolean;
+  settingsLoaded: boolean;
   fetchSettings: () => Promise<void>;
   updateSettings: (settings: AdminSettings) => Promise<void>;
   // Per-admin (super admin only)
@@ -55,6 +56,7 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
   const { user, token } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [adminUsers, setAdminUsers] = useState<AdminUserEntry[]>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
 
@@ -84,6 +86,7 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
       // keep defaults on error
     } finally {
       setIsLoading(false);
+      setSettingsLoaded(true);
     }
   }, [token, isSuperAdmin]);
 
@@ -92,6 +95,7 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
       fetchSettings();
     } else {
       setSettings(DEFAULT_SETTINGS);
+      setSettingsLoaded(true);
     }
   }, [isAdmin, token, fetchSettings]);
 
@@ -158,6 +162,7 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
       value={{
         settings,
         isLoading,
+        settingsLoaded,
         fetchSettings,
         updateSettings,
         adminUsers,
