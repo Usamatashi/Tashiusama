@@ -8,6 +8,6 @@
 
 export interface CreateOrderRequest {
   retailerId: number;
-  vehicleId: number;
+  productId: number;
   quantity: number;
 }

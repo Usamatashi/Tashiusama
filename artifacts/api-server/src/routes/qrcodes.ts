@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, qrCodesTable, vehiclesTable, usersTable, scansTable } from "@workspace/db";
+import { db, qrCodesTable, productsTable, usersTable, scansTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 
@@ -11,15 +11,15 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
       .select({
         id: qrCodesTable.id,
         qrNumber: qrCodesTable.qrNumber,
-        vehicleId: qrCodesTable.vehicleId,
-        vehicleName: vehiclesTable.name,
+        productId: qrCodesTable.productId,
+        productName: productsTable.name,
         points: qrCodesTable.points,
         status: qrCodesTable.status,
         createdAt: qrCodesTable.createdAt,
       })
       .from(qrCodesTable)
-      .leftJoin(vehiclesTable, eq(qrCodesTable.vehicleId, vehiclesTable.id));
-    res.json(qrs.map(q => ({ ...q, createdAt: q.createdAt!.toISOString(), vehicleName: q.vehicleName || "" })));
+      .leftJoin(productsTable, eq(qrCodesTable.productId, productsTable.id));
+    res.json(qrs.map(q => ({ ...q, createdAt: q.createdAt!.toISOString(), productName: q.productName || "" })));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -28,29 +28,29 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { qrNumber, vehicleId } = req.body;
-    if (!qrNumber || !vehicleId) {
-      res.status(400).json({ error: "QR number and vehicle ID are required" });
+    const { qrNumber, productId } = req.body;
+    if (!qrNumber || !productId) {
+      res.status(400).json({ error: "QR number and product ID are required" });
       return;
     }
-    const vehicles = await db.select().from(vehiclesTable).where(eq(vehiclesTable.id, Number(vehicleId)));
-    const vehicle = vehicles[0];
-    if (!vehicle) {
-      res.status(404).json({ error: "Vehicle not found" });
+    const products = await db.select().from(productsTable).where(eq(productsTable.id, Number(productId)));
+    const product = products[0];
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
       return;
     }
     const inserted = await db.insert(qrCodesTable).values({
       qrNumber: String(qrNumber),
-      vehicleId: Number(vehicleId),
-      points: vehicle.points,
+      productId: Number(productId),
+      points: product.points,
       status: "unused",
     }).returning();
     const qr = inserted[0];
     res.status(201).json({
       id: qr.id,
       qrNumber: qr.qrNumber,
-      vehicleId: qr.vehicleId,
-      vehicleName: vehicle.name,
+      productId: qr.productId,
+      productName: product.name,
       points: qr.points,
       status: qr.status,
       createdAt: qr.createdAt.toISOString(),
@@ -77,13 +77,13 @@ router.post("/scan", requireAuth, async (req, res) => {
       .select({
         id: qrCodesTable.id,
         qrNumber: qrCodesTable.qrNumber,
-        vehicleId: qrCodesTable.vehicleId,
-        vehicleName: vehiclesTable.name,
+        productId: qrCodesTable.productId,
+        productName: productsTable.name,
         points: qrCodesTable.points,
         status: qrCodesTable.status,
       })
       .from(qrCodesTable)
-      .leftJoin(vehiclesTable, eq(qrCodesTable.vehicleId, vehiclesTable.id))
+      .leftJoin(productsTable, eq(qrCodesTable.productId, productsTable.id))
       .where(eq(qrCodesTable.qrNumber, String(qrNumber)));
     const qr = qrs[0];
     if (!qr) {
@@ -108,8 +108,8 @@ router.post("/scan", requireAuth, async (req, res) => {
     res.json({
       pointsEarned: qr.points,
       totalPoints: updatedUsers[0]?.points || 0,
-      vehicleName: qr.vehicleName || "",
-      message: `You earned ${qr.points} points for ${qr.vehicleName}!`,
+      productName: qr.productName || "",
+      message: `You earned ${qr.points} points for ${qr.productName}!`,
     });
   } catch (err) {
     req.log.error(err);

@@ -14,76 +14,76 @@ import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "@/constants/colors";
 
-interface Vehicle {
+interface Product {
   id: number;
   name: string;
   salesPrice: number;
   points: number;
 }
 
-async function fetchVehicles(): Promise<Vehicle[]> {
+async function fetchProducts(): Promise<Product[]> {
   const token = (await AsyncStorage.getItem("tashi_token")) || "";
-  const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/vehicles`, {
+  const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/products`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Failed to load vehicles");
+  if (!res.ok) throw new Error("Failed to load products");
   return res.json();
 }
 
-function VehicleRow({ vehicle, index }: { vehicle: Vehicle; index: number }) {
+function ProductRow({ product, index }: { product: Product; index: number }) {
   return (
     <View style={styles.row}>
       <View style={styles.indexBadge}>
         <Text style={styles.indexText}>{index + 1}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.vehicleName}>{vehicle.name}</Text>
+        <Text style={styles.productName}>{product.name}</Text>
       </View>
       <View style={styles.priceBox}>
         <Text style={styles.priceLabel}>Rs.</Text>
-        <Text style={styles.priceValue}>{vehicle.salesPrice.toLocaleString()}</Text>
+        <Text style={styles.priceValue}>{product.salesPrice.toLocaleString()}</Text>
       </View>
     </View>
   );
 }
 
-export default function VehiclesScreen() {
+export default function ProductsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const { data: vehicles = [], isLoading, refetch, isRefetching } = useQuery<Vehicle[]>({
-    queryKey: ["user-vehicles"],
-    queryFn: fetchVehicles,
+  const { data: products = [], isLoading, refetch, isRefetching } = useQuery<Product[]>({
+    queryKey: ["user-products"],
+    queryFn: fetchProducts,
   });
 
   return (
     <View style={[styles.root]}>
       <View style={[styles.header, { paddingTop: topPad + 14 }]}>
-        <Text style={styles.headerTitle}>Vehicles</Text>
-        <Text style={styles.headerSub}>{vehicles.length} available</Text>
+        <Text style={styles.headerTitle}>Products</Text>
+        <Text style={styles.headerSub}>{products.length} available</Text>
       </View>
 
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
-      ) : vehicles.length === 0 ? (
+      ) : products.length === 0 ? (
         <View style={styles.center}>
           <Feather name="truck" size={52} color={Colors.border} />
-          <Text style={styles.emptyTitle}>No vehicles yet</Text>
-          <Text style={styles.emptyText}>Vehicle catalog will appear here</Text>
+          <Text style={styles.emptyTitle}>No products yet</Text>
+          <Text style={styles.emptyText}>Product catalog will appear here</Text>
         </View>
       ) : (
         <>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, { flex: 1, marginLeft: 44 }]}>Vehicle</Text>
+            <Text style={[styles.tableHeaderText, { flex: 1, marginLeft: 44 }]}>Product</Text>
             <Text style={[styles.tableHeaderText, { marginRight: 4 }]}>Price</Text>
           </View>
           <FlatList
-            data={vehicles}
+            data={products}
             keyExtractor={item => String(item.id)}
-            renderItem={({ item, index }) => <VehicleRow vehicle={item} index={index} />}
+            renderItem={({ item, index }) => <ProductRow product={item} index={index} />}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: botPad + 100 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: "Inter_600SemiBold",
   },
-  vehicleName: {
+  productName: {
     fontSize: 15,
     fontWeight: "600",
     color: Colors.text,

@@ -9,6 +9,6 @@
 export interface ScanResult {
   pointsEarned: number;
   totalPoints: number;
-  vehicleName: string;
+  productName: string;
   message: string;
 }

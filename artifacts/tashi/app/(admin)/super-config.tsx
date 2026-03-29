@@ -33,7 +33,7 @@ type SettingItem = {
 
 const TAB_SETTINGS: SettingItem[] = [
   { key: "tab_dashboard", label: "Dashboard", desc: "Main overview and quick action cards", icon: "grid" },
-  { key: "tab_vehicles", label: "Vehicles", desc: "Vehicle and points management", icon: "truck" },
+  { key: "tab_products", label: "Products", desc: "Product and points management", icon: "truck" },
   { key: "tab_users", label: "Users", desc: "Account creation and management", icon: "users" },
   { key: "tab_payments", label: "Payments", desc: "Retailer balances and collections", icon: "dollar-sign" },
 ];
@@ -100,7 +100,7 @@ function PerAdminPanel() {
   const handleGrantAll = useCallback(async () => {
     if (!selectedId) return;
     const all: AdminSettings = {
-      tab_dashboard: true, tab_vehicles: true, tab_users: true, tab_payments: true,
+      tab_dashboard: true, tab_products: true, tab_users: true, tab_payments: true,
       card_create_qr: true, card_orders: true, card_claims: true,
       card_create_ads: true, card_create_text: true, card_payments: true,
     };
@@ -118,7 +118,7 @@ function PerAdminPanel() {
   const handleRevokeAll = useCallback(async () => {
     if (!selectedId) return;
     const none: AdminSettings = {
-      tab_dashboard: false, tab_vehicles: false, tab_users: false, tab_payments: false,
+      tab_dashboard: false, tab_products: false, tab_users: false, tab_payments: false,
       card_create_qr: false, card_orders: false, card_claims: false,
       card_create_ads: false, card_create_text: false, card_payments: false,
     };

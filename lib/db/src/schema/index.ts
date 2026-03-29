@@ -17,7 +17,7 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const vehiclesTable = pgTable("vehicles", {
+export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   points: integer("points").notNull().default(0),
@@ -28,7 +28,7 @@ export const vehiclesTable = pgTable("vehicles", {
 export const qrCodesTable = pgTable("qr_codes", {
   id: serial("id").primaryKey(),
   qrNumber: text("qr_number").notNull().unique(),
-  vehicleId: integer("vehicle_id").notNull().references(() => vehiclesTable.id),
+  productId: integer("product_id").notNull().references(() => productsTable.id),
   points: integer("points").notNull().default(0),
   status: qrStatusEnum("status").notNull().default("unused"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -46,9 +46,9 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
 
-export const insertVehicleSchema = createInsertSchema(vehiclesTable).omit({ id: true, createdAt: true });
-export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
-export type Vehicle = typeof vehiclesTable.$inferSelect;
+export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true });
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof productsTable.$inferSelect;
 
 export const insertQRCodeSchema = createInsertSchema(qrCodesTable).omit({ id: true, createdAt: true });
 export type InsertQRCode = z.infer<typeof insertQRCodeSchema>;
@@ -99,7 +99,7 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   salesmanId: integer("salesman_id").notNull().references(() => usersTable.id),
   retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
-  vehicleId: integer("vehicle_id").references(() => vehiclesTable.id),
+  productId: integer("product_id").references(() => productsTable.id),
   quantity: integer("quantity"),
   totalPoints: integer("total_points").notNull().default(0),
   bonusPoints: integer("bonus_points").notNull().default(0),
@@ -110,7 +110,7 @@ export const ordersTable = pgTable("orders", {
 export const orderItemsTable = pgTable("order_items", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").notNull().references(() => ordersTable.id),
-  vehicleId: integer("vehicle_id").notNull().references(() => vehiclesTable.id),
+  productId: integer("product_id").notNull().references(() => productsTable.id),
   quantity: integer("quantity").notNull(),
   unitPrice: integer("unit_price").notNull().default(0),
   totalPoints: integer("total_points").notNull().default(0),

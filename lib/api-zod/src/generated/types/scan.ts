@@ -9,7 +9,7 @@
 export interface Scan {
   id: number;
   qrNumber: string;
-  vehicleName: string;
+  productName: string;
   pointsEarned: number;
   scannedAt: string;
 }

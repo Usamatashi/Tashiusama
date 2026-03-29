@@ -15,7 +15,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
-interface Vehicle {
+interface Product {
   id: number;
   name: string;
   points: number;
@@ -25,27 +25,27 @@ export default function CreateQRScreen() {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
   const [qrNumber, setQrNumber] = useState("");
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [createdQR, setCreatedQR] = useState<{ qrNumber: string; vehicleName: string; points: number } | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [createdQR, setCreatedQR] = useState<{ qrNumber: string; productName: string; points: number } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const qrRef = useRef<any>(null);
 
-  const fetchVehicles = async () => {
-    if (vehicles.length > 0) return;
-    setLoadingVehicles(true);
+  const fetchProducts = async () => {
+    if (products.length > 0) return;
+    setLoadingProducts(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/vehicles`, {
+      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/products`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setVehicles(data);
+      setProducts(data);
     } catch {
-      Alert.alert("Error", "Failed to load vehicles");
+      Alert.alert("Error", "Failed to load products");
     } finally {
-      setLoadingVehicles(false);
+      setLoadingProducts(false);
     }
   };
 
@@ -54,8 +54,8 @@ export default function CreateQRScreen() {
       Alert.alert("Error", "Please enter a QR number");
       return;
     }
-    if (!selectedVehicle) {
-      Alert.alert("Error", "Please select a vehicle");
+    if (!selectedProduct) {
+      Alert.alert("Error", "Please select a product");
       return;
     }
     setLoading(true);
@@ -63,11 +63,11 @@ export default function CreateQRScreen() {
       const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/qrcodes`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ qrNumber: qrNumber.trim(), vehicleId: selectedVehicle.id }),
+        body: JSON.stringify({ qrNumber: qrNumber.trim(), productId: selectedProduct.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create QR code");
-      setCreatedQR({ qrNumber: data.qrNumber, vehicleName: data.vehicleName, points: data.points });
+      setCreatedQR({ qrNumber: data.qrNumber, productName: data.productName, points: data.points });
     } catch (err: any) {
       Alert.alert("Error", err.message);
     } finally {
@@ -87,7 +87,7 @@ export default function CreateQRScreen() {
   const handleReset = () => {
     setCreatedQR(null);
     setQrNumber("");
-    setSelectedVehicle(null);
+    setSelectedProduct(null);
   };
 
   if (createdQR) {
@@ -112,8 +112,8 @@ export default function CreateQRScreen() {
           <View style={styles.resultInfo}>
             <Text style={styles.resultLabel}>QR Number</Text>
             <Text style={styles.resultValue}>{createdQR.qrNumber}</Text>
-            <Text style={styles.resultLabel}>Vehicle</Text>
-            <Text style={styles.resultValue}>{createdQR.vehicleName}</Text>
+            <Text style={styles.resultLabel}>Product</Text>
+            <Text style={styles.resultValue}>{createdQR.productName}</Text>
             <Text style={styles.resultLabel}>Points</Text>
             <Text style={[styles.resultValue, { color: Colors.adminAccent }]}>{createdQR.points} pts</Text>
           </View>
@@ -148,38 +148,38 @@ export default function CreateQRScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Assign to Vehicle</Text>
+          <Text style={styles.label}>Assign to Product</Text>
           <TouchableOpacity
             style={styles.picker}
             onPress={() => {
-              fetchVehicles();
+              fetchProducts();
               setShowPicker(!showPicker);
             }}
             activeOpacity={0.8}
           >
-            <Text style={[styles.pickerText, !selectedVehicle && { color: Colors.textLight }]}>
-              {selectedVehicle ? `${selectedVehicle.name} (${selectedVehicle.points} pts)` : "Select a vehicle..."}
+            <Text style={[styles.pickerText, !selectedProduct && { color: Colors.textLight }]}>
+              {selectedProduct ? `${selectedProduct.name} (${selectedProduct.points} pts)` : "Select a product..."}
             </Text>
             <Feather name={showPicker ? "chevron-up" : "chevron-down"} size={20} color={Colors.textLight} />
           </TouchableOpacity>
           {showPicker && (
             <View style={styles.dropdown}>
-              {loadingVehicles ? (
-                <Text style={styles.dropdownLoading}>Loading vehicles...</Text>
-              ) : vehicles.length === 0 ? (
-                <Text style={styles.dropdownLoading}>No vehicles. Create some first.</Text>
+              {loadingProducts ? (
+                <Text style={styles.dropdownLoading}>Loading products...</Text>
+              ) : products.length === 0 ? (
+                <Text style={styles.dropdownLoading}>No products. Create some first.</Text>
               ) : (
-                vehicles.map((v) => (
+                products.map((p) => (
                   <TouchableOpacity
-                    key={v.id}
+                    key={p.id}
                     style={styles.dropdownItem}
                     onPress={() => {
-                      setSelectedVehicle(v);
+                      setSelectedProduct(p);
                       setShowPicker(false);
                     }}
                   >
-                    <Text style={styles.dropdownItemText}>{v.name}</Text>
-                    <Text style={styles.dropdownItemPts}>{v.points} pts</Text>
+                    <Text style={styles.dropdownItemText}>{p.name}</Text>
+                    <Text style={styles.dropdownItemPts}>{p.points} pts</Text>
                   </TouchableOpacity>
                 ))
               )}

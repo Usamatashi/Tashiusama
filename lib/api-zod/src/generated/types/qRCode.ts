@@ -10,8 +10,8 @@ import type { QRCodeStatus } from "./qRCodeStatus";
 export interface QRCode {
   id: number;
   qrNumber: string;
-  vehicleId: number;
-  vehicleName: string;
+  productId: number;
+  productName: string;
   points: number;
   status: QRCodeStatus;
   createdAt: string;

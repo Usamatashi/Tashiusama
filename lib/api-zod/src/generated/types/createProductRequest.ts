@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateVehicleRequest {
+export interface CreateProductRequest {
   name: string;
   points: number;
 }

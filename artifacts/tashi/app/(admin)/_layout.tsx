@@ -19,14 +19,14 @@ type TabItem = {
 
 const ALL_TAB_ITEMS: TabItem[] = [
   { name: "index", label: "Dashboard", icon: "grid" },
-  { name: "vehicles", label: "Vehicles", icon: "truck" },
+  { name: "products", label: "Products", icon: "truck" },
   { name: "create-account", label: "Users", icon: "users" },
   { name: "payments", label: "Payments", icon: "dollar-sign" },
 ];
 
 const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSettings>["settings"]> = {
   index: "tab_dashboard",
-  vehicles: "tab_vehicles",
+  products: "tab_products",
   "create-account": "tab_users",
   payments: "tab_payments",
 };
@@ -130,7 +130,7 @@ export default function AdminLayout() {
   return (
     <Tabs tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" options={{ href: isTabVisible("index") ? undefined : null }} />
-      <Tabs.Screen name="vehicles" options={{ href: isTabVisible("vehicles") ? undefined : null }} />
+      <Tabs.Screen name="products" options={{ href: isTabVisible("products") ? undefined : null }} />
       <Tabs.Screen name="create-account" options={{ href: isTabVisible("create-account") ? undefined : null }} />
       <Tabs.Screen name="payments" options={{ href: isTabVisible("payments") ? undefined : null }} />
       <Tabs.Screen name="super-config" options={{ href: null }} />

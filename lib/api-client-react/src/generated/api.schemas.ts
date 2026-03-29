@@ -60,14 +60,14 @@ export interface CreateUserRequest {
   role: CreateUserRequestRole;
 }
 
-export interface Vehicle {
+export interface Product {
   id: number;
   name: string;
   points: number;
   createdAt: string;
 }
 
-export interface CreateVehicleRequest {
+export interface CreateProductRequest {
   name: string;
   points: number;
 }
@@ -82,8 +82,8 @@ export const QRCodeStatus = {
 export interface QRCode {
   id: number;
   qrNumber: string;
-  vehicleId: number;
-  vehicleName: string;
+  productId: number;
+  productName: string;
   points: number;
   status: QRCodeStatus;
   createdAt: string;
@@ -91,7 +91,7 @@ export interface QRCode {
 
 export interface CreateQRCodeRequest {
   qrNumber: string;
-  vehicleId: number;
+  productId: number;
 }
 
 export interface ScanQRCodeRequest {
@@ -101,14 +101,14 @@ export interface ScanQRCodeRequest {
 export interface ScanResult {
   pointsEarned: number;
   totalPoints: number;
-  vehicleName: string;
+  productName: string;
   message: string;
 }
 
 export interface Scan {
   id: number;
   qrNumber: string;
-  vehicleName: string;
+  productName: string;
   pointsEarned: number;
   scannedAt: string;
 }
@@ -137,12 +137,12 @@ export interface Order {
   id: number;
   salesmanId: number;
   retailerId: number;
-  vehicleId: number;
+  productId: number;
   quantity: number;
   totalPoints: number;
   bonusPoints: number;
   status: OrderStatus;
-  vehicleName?: string | null;
+  productName?: string | null;
   retailerName?: string | null;
   retailerPhone?: string | null;
   createdAt: string;
@@ -150,7 +150,7 @@ export interface Order {
 
 export interface CreateOrderRequest {
   retailerId: number;
-  vehicleId: number;
+  productId: number;
   quantity: number;
 }
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, scansTable, qrCodesTable, vehiclesTable } from "@workspace/db";
+import { db, scansTable, qrCodesTable, productsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
@@ -12,18 +12,18 @@ router.get("/", requireAuth, async (req, res) => {
       .select({
         id: scansTable.id,
         qrNumber: qrCodesTable.qrNumber,
-        vehicleName: vehiclesTable.name,
+        productName: productsTable.name,
         pointsEarned: scansTable.pointsEarned,
         scannedAt: scansTable.scannedAt,
       })
       .from(scansTable)
       .leftJoin(qrCodesTable, eq(scansTable.qrId, qrCodesTable.id))
-      .leftJoin(vehiclesTable, eq(qrCodesTable.vehicleId, vehiclesTable.id))
+      .leftJoin(productsTable, eq(qrCodesTable.productId, productsTable.id))
       .where(eq(scansTable.userId, userId));
     res.json(scans.map(s => ({
       id: s.id,
       qrNumber: s.qrNumber || "",
-      vehicleName: s.vehicleName || "",
+      productName: s.productName || "",
       pointsEarned: s.pointsEarned,
       scannedAt: s.scannedAt.toISOString(),
     })));

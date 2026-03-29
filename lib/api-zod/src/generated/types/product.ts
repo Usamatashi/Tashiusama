@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Vehicle {
+export interface Product {
   id: number;
   name: string;
   points: number;

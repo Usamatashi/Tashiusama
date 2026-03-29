@@ -3,7 +3,7 @@ import { useAuth } from "./AuthContext";
 
 export type AdminSettings = {
   tab_dashboard: boolean;
-  tab_vehicles: boolean;
+  tab_products: boolean;
   tab_users: boolean;
   tab_payments: boolean;
   card_create_qr: boolean;
@@ -16,7 +16,7 @@ export type AdminSettings = {
 
 export const DEFAULT_SETTINGS: AdminSettings = {
   tab_dashboard: true,
-  tab_vehicles: true,
+  tab_products: true,
   tab_users: true,
   tab_payments: true,
   card_create_qr: true,

@@ -24,7 +24,7 @@ const ACTIONS = [
   {
     icon: "plus-square" as const,
     label: "Create QR Code",
-    desc: "Generate and assign QR codes to vehicles",
+    desc: "Generate and assign QR codes to products",
     route: "/(admin)/create-qr" as const,
     gradient: ["#E87722", "#F5A54A"] as [string, string],
     decoration: "#F5A54A",

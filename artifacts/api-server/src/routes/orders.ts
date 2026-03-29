@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, vehiclesTable, ordersTable, orderItemsTable } from "@workspace/db";
+import { db, usersTable, productsTable, ordersTable, orderItemsTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
@@ -13,23 +13,23 @@ async function getItemsForOrders(orderIds: number[]) {
   const rows = await db
     .select({
       orderId: orderItemsTable.orderId,
-      vehicleId: orderItemsTable.vehicleId,
-      vehicleName: vehiclesTable.name,
+      productId: orderItemsTable.productId,
+      productName: productsTable.name,
       quantity: orderItemsTable.quantity,
       unitPrice: orderItemsTable.unitPrice,
       totalPoints: orderItemsTable.totalPoints,
       bonusPoints: orderItemsTable.bonusPoints,
     })
     .from(orderItemsTable)
-    .leftJoin(vehiclesTable, eq(orderItemsTable.vehicleId, vehiclesTable.id))
+    .leftJoin(productsTable, eq(orderItemsTable.productId, productsTable.id))
     .where(inArray(orderItemsTable.orderId, orderIds));
 
   const map: Record<number, OrderItemRow[]> = {};
   for (const r of rows) {
     if (!map[r.orderId]) map[r.orderId] = [];
     map[r.orderId].push({
-      vehicleId: r.vehicleId,
-      vehicleName: r.vehicleName ?? "—",
+      productId: r.productId,
+      productName: r.productName ?? "—",
       quantity: r.quantity,
       unitPrice: r.unitPrice,
       totalPoints: r.totalPoints,
@@ -41,8 +41,8 @@ async function getItemsForOrders(orderIds: number[]) {
 }
 
 interface OrderItemRow {
-  vehicleId: number;
-  vehicleName: string;
+  productId: number;
+  productName: string;
   quantity: number;
   unitPrice: number;
   totalPoints: number;
@@ -50,11 +50,11 @@ interface OrderItemRow {
   totalValue: number;
 }
 
-// ─── Helper: build unified items array (handles old single-vehicle orders) ────
+// ─── Helper: build unified items array (handles old single-product orders) ────
 function buildOrderItems(
   order: {
-    vehicleId: number | null;
-    vehicleName: string | null;
+    productId: number | null;
+    productName: string | null;
     quantity: number | null;
     salesPrice: number | null;
     totalPoints: number;
@@ -66,12 +66,12 @@ function buildOrderItems(
   const items = itemsMap[orderId];
   if (items && items.length > 0) return items;
 
-  // Backward-compat: old single-vehicle order
-  if (order.vehicleId && order.quantity) {
+  // Backward-compat: old single-product order
+  if (order.productId && order.quantity) {
     const unitPrice = order.salesPrice ?? 0;
     return [{
-      vehicleId: order.vehicleId,
-      vehicleName: order.vehicleName ?? "—",
+      productId: order.productId,
+      productName: order.productName ?? "—",
       quantity: order.quantity,
       unitPrice,
       totalPoints: order.totalPoints,
@@ -91,19 +91,19 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
         id: ordersTable.id,
         salesmanId: ordersTable.salesmanId,
         retailerId: ordersTable.retailerId,
-        vehicleId: ordersTable.vehicleId,
+        productId: ordersTable.productId,
         quantity: ordersTable.quantity,
         totalPoints: ordersTable.totalPoints,
         bonusPoints: ordersTable.bonusPoints,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
-        vehicleName: vehiclesTable.name,
-        salesPrice: vehiclesTable.salesPrice,
+        productName: productsTable.name,
+        salesPrice: productsTable.salesPrice,
         retailerName: usersTable.name,
         retailerPhone: usersTable.phone,
       })
       .from(ordersTable)
-      .leftJoin(vehiclesTable, eq(ordersTable.vehicleId, vehiclesTable.id))
+      .leftJoin(productsTable, eq(ordersTable.productId, productsTable.id))
       .leftJoin(usersTable, eq(ordersTable.retailerId, usersTable.id))
       .where(caller.role === "admin" ? undefined : eq(ordersTable.salesmanId, caller.userId));
 
@@ -136,16 +136,16 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
 router.post("/", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
-    const { retailerId, items, vehicleId, quantity } = req.body;
+    const { retailerId, items, productId, quantity } = req.body;
 
-    // Support both new format (items array) and old format (vehicleId + quantity)
-    let orderItems: Array<{ vehicleId: number; quantity: number }> = [];
+    // Support both new format (items array) and old format (productId + quantity)
+    let orderItems: Array<{ productId: number; quantity: number }> = [];
     if (Array.isArray(items) && items.length > 0) {
       orderItems = items;
-    } else if (vehicleId && quantity) {
-      orderItems = [{ vehicleId: Number(vehicleId), quantity: Number(quantity) }];
+    } else if (productId && quantity) {
+      orderItems = [{ productId: Number(productId), quantity: Number(quantity) }];
     } else {
-      res.status(400).json({ error: "Provide items array or vehicleId+quantity" });
+      res.status(400).json({ error: "Provide items array or productId+quantity" });
       return;
     }
 
@@ -161,12 +161,12 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
       return;
     }
 
-    // Validate all vehicles and compute totals
+    // Validate all products and compute totals
     let orderTotalPoints = 0;
     let orderBonusPoints = 0;
     const resolvedItems: Array<{
-      vehicleId: number;
-      vehicleName: string;
+      productId: number;
+      productName: string;
       quantity: number;
       unitPrice: number;
       totalPoints: number;
@@ -175,37 +175,37 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
     }> = [];
 
     for (const item of orderItems) {
-      if (!item.vehicleId || !item.quantity || item.quantity < 1) {
-        res.status(400).json({ error: "Each item needs vehicleId and quantity ≥ 1" });
+      if (!item.productId || !item.quantity || item.quantity < 1) {
+        res.status(400).json({ error: "Each item needs productId and quantity ≥ 1" });
         return;
       }
-      const vehicle = await db.select().from(vehiclesTable).where(eq(vehiclesTable.id, Number(item.vehicleId)));
-      if (!vehicle.length) {
-        res.status(400).json({ error: `Vehicle ${item.vehicleId} not found` });
+      const product = await db.select().from(productsTable).where(eq(productsTable.id, Number(item.productId)));
+      if (!product.length) {
+        res.status(400).json({ error: `Product ${item.productId} not found` });
         return;
       }
-      const v = vehicle[0];
-      const itemTotalPoints = Number(item.quantity) * v.points;
+      const p = product[0];
+      const itemTotalPoints = Number(item.quantity) * p.points;
       const itemBonusPoints = Math.round(itemTotalPoints * 0.1);
       orderTotalPoints += itemTotalPoints;
       orderBonusPoints += itemBonusPoints;
       resolvedItems.push({
-        vehicleId: v.id,
-        vehicleName: v.name,
+        productId: p.id,
+        productName: p.name,
         quantity: Number(item.quantity),
-        unitPrice: v.salesPrice,
+        unitPrice: p.salesPrice,
         totalPoints: itemTotalPoints,
         bonusPoints: itemBonusPoints,
-        totalValue: Number(item.quantity) * v.salesPrice,
+        totalValue: Number(item.quantity) * p.salesPrice,
       });
     }
 
-    // Insert order (no vehicleId for multi-item orders)
+    // Insert order (no productId for multi-item orders)
     const isMultiItem = resolvedItems.length > 1;
     const inserted = await db.insert(ordersTable).values({
       salesmanId: caller.userId,
       retailerId: Number(retailerId),
-      vehicleId: isMultiItem ? null : resolvedItems[0].vehicleId,
+      productId: isMultiItem ? null : resolvedItems[0].productId,
       quantity: isMultiItem ? null : resolvedItems[0].quantity,
       totalPoints: orderTotalPoints,
       bonusPoints: orderBonusPoints,
@@ -218,7 +218,7 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
     await db.insert(orderItemsTable).values(
       resolvedItems.map(item => ({
         orderId: order.id,
-        vehicleId: item.vehicleId,
+        productId: item.productId,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPoints: item.totalPoints,
@@ -327,19 +327,19 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
     const rows = await db
       .select({
         id: ordersTable.id,
-        vehicleId: ordersTable.vehicleId,
+        productId: ordersTable.productId,
         quantity: ordersTable.quantity,
         totalPoints: ordersTable.totalPoints,
         bonusPoints: ordersTable.bonusPoints,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
-        vehicleName: vehiclesTable.name,
-        salesPrice: vehiclesTable.salesPrice,
+        productName: productsTable.name,
+        salesPrice: productsTable.salesPrice,
         salesmanId: ordersTable.salesmanId,
         retailerId: ordersTable.retailerId,
       })
       .from(ordersTable)
-      .leftJoin(vehiclesTable, eq(ordersTable.vehicleId, vehiclesTable.id))
+      .leftJoin(productsTable, eq(ordersTable.productId, productsTable.id))
       .where(eq(ordersTable.retailerId, caller.userId));
 
     const itemsMap = await getItemsForOrders(rows.map(r => r.id));
@@ -369,19 +369,19 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
     const rows = await db
       .select({
         id: ordersTable.id,
-        vehicleId: ordersTable.vehicleId,
+        productId: ordersTable.productId,
         quantity: ordersTable.quantity,
         bonusPoints: ordersTable.bonusPoints,
         totalPoints: ordersTable.totalPoints,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
-        vehicleName: vehiclesTable.name,
-        salesPrice: vehiclesTable.salesPrice,
+        productName: productsTable.name,
+        salesPrice: productsTable.salesPrice,
         retailerName: usersTable.name,
         retailerPhone: usersTable.phone,
       })
       .from(ordersTable)
-      .leftJoin(vehiclesTable, eq(ordersTable.vehicleId, vehiclesTable.id))
+      .leftJoin(productsTable, eq(ordersTable.productId, productsTable.id))
       .leftJoin(usersTable, eq(ordersTable.retailerId, usersTable.id))
       .where(eq(ordersTable.salesmanId, caller.userId));
 

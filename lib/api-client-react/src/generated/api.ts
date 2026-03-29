@@ -22,14 +22,15 @@ import type {
   BonusSummary,
   CreateAdRequest,
   CreateOrderRequest,
+  CreateProductRequest,
   CreateQRCodeRequest,
   CreateUserRequest,
-  CreateVehicleRequest,
   ErrorResponse,
   HealthStatus,
   ListRetailersParams,
   LoginRequest,
   Order,
+  Product,
   QRCode,
   RetailerSummary,
   Scan,
@@ -38,7 +39,6 @@ import type {
   SuccessResponse,
   UpdateOrderStatusRequest,
   User,
-  Vehicle,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -426,31 +426,31 @@ export const useCreateUser = <
 };
 
 /**
- * @summary List all vehicles
+ * @summary List all products
  */
-export const getListVehiclesUrl = () => {
-  return `/api/vehicles`;
+export const getListProductsUrl = () => {
+  return `/api/products`;
 };
 
-export const listVehicles = async (
+export const listProducts = async (
   options?: RequestInit,
-): Promise<Vehicle[]> => {
-  return customFetch<Vehicle[]>(getListVehiclesUrl(), {
+): Promise<Product[]> => {
+  return customFetch<Product[]>(getListProductsUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListVehiclesQueryKey = () => {
-  return [`/api/vehicles`] as const;
+export const getListProductsQueryKey = () => {
+  return [`/api/products`] as const;
 };
 
-export const getListVehiclesQueryOptions = <
-  TData = Awaited<ReturnType<typeof listVehicles>>,
+export const getListProductsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProducts>>,
   TError = ErrorType<unknown>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listVehicles>>,
+    Awaited<ReturnType<typeof listProducts>>,
     TError,
     TData
   >;
@@ -458,40 +458,40 @@ export const getListVehiclesQueryOptions = <
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListVehiclesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListProductsQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listVehicles>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProducts>>> = ({
     signal,
-  }) => listVehicles({ signal, ...requestOptions });
+  }) => listProducts({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listVehicles>>,
+    Awaited<ReturnType<typeof listProducts>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type ListVehiclesQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listVehicles>>
+export type ListProductsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProducts>>
 >;
-export type ListVehiclesQueryError = ErrorType<unknown>;
+export type ListProductsQueryError = ErrorType<unknown>;
 
 /**
- * @summary List all vehicles
+ * @summary List all products
  */
 
-export function useListVehicles<
-  TData = Awaited<ReturnType<typeof listVehicles>>,
+export function useListProducts<
+  TData = Awaited<ReturnType<typeof listProducts>>,
   TError = ErrorType<unknown>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listVehicles>>,
+    Awaited<ReturnType<typeof listProducts>>,
     TError,
     TData
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListVehiclesQueryOptions(options);
+  const queryOptions = getListProductsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -501,42 +501,42 @@ export function useListVehicles<
 }
 
 /**
- * @summary Create a vehicle (admin only)
+ * @summary Create a product (admin only)
  */
-export const getCreateVehicleUrl = () => {
-  return `/api/vehicles`;
+export const getCreateProductUrl = () => {
+  return `/api/products`;
 };
 
-export const createVehicle = async (
-  createVehicleRequest: CreateVehicleRequest,
+export const createProduct = async (
+  createProductRequest: CreateProductRequest,
   options?: RequestInit,
-): Promise<Vehicle> => {
-  return customFetch<Vehicle>(getCreateVehicleUrl(), {
+): Promise<Product> => {
+  return customFetch<Product>(getCreateProductUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createVehicleRequest),
+    body: JSON.stringify(createProductRequest),
   });
 };
 
-export const getCreateVehicleMutationOptions = <
+export const getCreateProductMutationOptions = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createVehicle>>,
+    Awaited<ReturnType<typeof createProduct>>,
     TError,
-    { data: BodyType<CreateVehicleRequest> },
+    { data: BodyType<CreateProductRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof createVehicle>>,
+  Awaited<ReturnType<typeof createProduct>>,
   TError,
-  { data: BodyType<CreateVehicleRequest> },
+  { data: BodyType<CreateProductRequest> },
   TContext
 > => {
-  const mutationKey = ["createVehicle"];
+  const mutationKey = ["createProduct"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -546,84 +546,84 @@ export const getCreateVehicleMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createVehicle>>,
-    { data: BodyType<CreateVehicleRequest> }
+    Awaited<ReturnType<typeof createProduct>>,
+    { data: BodyType<CreateProductRequest> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return createVehicle(data, requestOptions);
+    return createProduct(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type CreateVehicleMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createVehicle>>
+export type CreateProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProduct>>
 >;
-export type CreateVehicleMutationBody = BodyType<CreateVehicleRequest>;
-export type CreateVehicleMutationError = ErrorType<unknown>;
+export type CreateProductMutationBody = BodyType<CreateProductRequest>;
+export type CreateProductMutationError = ErrorType<unknown>;
 
 /**
- * @summary Create a vehicle (admin only)
+ * @summary Create a product (admin only)
  */
-export const useCreateVehicle = <
+export const useCreateProduct = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createVehicle>>,
+    Awaited<ReturnType<typeof createProduct>>,
     TError,
-    { data: BodyType<CreateVehicleRequest> },
+    { data: BodyType<CreateProductRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof createVehicle>>,
+  Awaited<ReturnType<typeof createProduct>>,
   TError,
-  { data: BodyType<CreateVehicleRequest> },
+  { data: BodyType<CreateProductRequest> },
   TContext
 > => {
-  return useMutation(getCreateVehicleMutationOptions(options));
+  return useMutation(getCreateProductMutationOptions(options));
 };
 
 /**
- * @summary Update a vehicle (admin only)
+ * @summary Update a product (admin only)
  */
-export const getUpdateVehicleUrl = (id: number) => {
-  return `/api/vehicles/${id}`;
+export const getUpdateProductUrl = (id: number) => {
+  return `/api/products/${id}`;
 };
 
-export const updateVehicle = async (
+export const updateProduct = async (
   id: number,
-  createVehicleRequest: CreateVehicleRequest,
+  createProductRequest: CreateProductRequest,
   options?: RequestInit,
-): Promise<Vehicle> => {
-  return customFetch<Vehicle>(getUpdateVehicleUrl(id), {
+): Promise<Product> => {
+  return customFetch<Product>(getUpdateProductUrl(id), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createVehicleRequest),
+    body: JSON.stringify(createProductRequest),
   });
 };
 
-export const getUpdateVehicleMutationOptions = <
+export const getUpdateProductMutationOptions = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateVehicle>>,
+    Awaited<ReturnType<typeof updateProduct>>,
     TError,
-    { id: number; data: BodyType<CreateVehicleRequest> },
+    { id: number; data: BodyType<CreateProductRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof updateVehicle>>,
+  Awaited<ReturnType<typeof updateProduct>>,
   TError,
-  { id: number; data: BodyType<CreateVehicleRequest> },
+  { id: number; data: BodyType<CreateProductRequest> },
   TContext
 > => {
-  const mutationKey = ["updateVehicle"];
+  const mutationKey = ["updateProduct"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -633,81 +633,81 @@ export const getUpdateVehicleMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof updateVehicle>>,
-    { id: number; data: BodyType<CreateVehicleRequest> }
+    Awaited<ReturnType<typeof updateProduct>>,
+    { id: number; data: BodyType<CreateProductRequest> }
   > = (props) => {
     const { id, data } = props ?? {};
 
-    return updateVehicle(id, data, requestOptions);
+    return updateProduct(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type UpdateVehicleMutationResult = NonNullable<
-  Awaited<ReturnType<typeof updateVehicle>>
+export type UpdateProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProduct>>
 >;
-export type UpdateVehicleMutationBody = BodyType<CreateVehicleRequest>;
-export type UpdateVehicleMutationError = ErrorType<unknown>;
+export type UpdateProductMutationBody = BodyType<CreateProductRequest>;
+export type UpdateProductMutationError = ErrorType<unknown>;
 
 /**
- * @summary Update a vehicle (admin only)
+ * @summary Update a product (admin only)
  */
-export const useUpdateVehicle = <
+export const useUpdateProduct = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateVehicle>>,
+    Awaited<ReturnType<typeof updateProduct>>,
     TError,
-    { id: number; data: BodyType<CreateVehicleRequest> },
+    { id: number; data: BodyType<CreateProductRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof updateVehicle>>,
+  Awaited<ReturnType<typeof updateProduct>>,
   TError,
-  { id: number; data: BodyType<CreateVehicleRequest> },
+  { id: number; data: BodyType<CreateProductRequest> },
   TContext
 > => {
-  return useMutation(getUpdateVehicleMutationOptions(options));
+  return useMutation(getUpdateProductMutationOptions(options));
 };
 
 /**
- * @summary Delete a vehicle (admin only)
+ * @summary Delete a product (admin only)
  */
-export const getDeleteVehicleUrl = (id: number) => {
-  return `/api/vehicles/${id}`;
+export const getDeleteProductUrl = (id: number) => {
+  return `/api/products/${id}`;
 };
 
-export const deleteVehicle = async (
+export const deleteProduct = async (
   id: number,
   options?: RequestInit,
 ): Promise<SuccessResponse> => {
-  return customFetch<SuccessResponse>(getDeleteVehicleUrl(id), {
+  return customFetch<SuccessResponse>(getDeleteProductUrl(id), {
     ...options,
     method: "DELETE",
   });
 };
 
-export const getDeleteVehicleMutationOptions = <
+export const getDeleteProductMutationOptions = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof deleteVehicle>>,
+    Awaited<ReturnType<typeof deleteProduct>>,
     TError,
     { id: number },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof deleteVehicle>>,
+  Awaited<ReturnType<typeof deleteProduct>>,
   TError,
   { id: number },
   TContext
 > => {
-  const mutationKey = ["deleteVehicle"];
+  const mutationKey = ["deleteProduct"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -717,44 +717,44 @@ export const getDeleteVehicleMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof deleteVehicle>>,
+    Awaited<ReturnType<typeof deleteProduct>>,
     { id: number }
   > = (props) => {
     const { id } = props ?? {};
 
-    return deleteVehicle(id, requestOptions);
+    return deleteProduct(id, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type DeleteVehicleMutationResult = NonNullable<
-  Awaited<ReturnType<typeof deleteVehicle>>
+export type DeleteProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProduct>>
 >;
 
-export type DeleteVehicleMutationError = ErrorType<unknown>;
+export type DeleteProductMutationError = ErrorType<unknown>;
 
 /**
- * @summary Delete a vehicle (admin only)
+ * @summary Delete a product (admin only)
  */
-export const useDeleteVehicle = <
+export const useDeleteProduct = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof deleteVehicle>>,
+    Awaited<ReturnType<typeof deleteProduct>>,
     TError,
     { id: number },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof deleteVehicle>>,
+  Awaited<ReturnType<typeof deleteProduct>>,
   TError,
   { id: number },
   TContext
 > => {
-  return useMutation(getDeleteVehicleMutationOptions(options));
+  return useMutation(getDeleteProductMutationOptions(options));
 };
 
 /**

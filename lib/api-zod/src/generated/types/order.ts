@@ -11,12 +11,12 @@ export interface Order {
   id: number;
   salesmanId: number;
   retailerId: number;
-  vehicleId: number;
+  productId: number;
   quantity: number;
   totalPoints: number;
   bonusPoints: number;
   status: OrderStatus;
-  vehicleName?: string | null;
+  productName?: string | null;
   retailerName?: string | null;
   retailerPhone?: string | null;
   createdAt: string;

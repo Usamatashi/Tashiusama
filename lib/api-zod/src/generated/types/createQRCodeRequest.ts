@@ -8,5 +8,5 @@
 
 export interface CreateQRCodeRequest {
   qrNumber: string;
-  vehicleId: number;
+  productId: number;
 }

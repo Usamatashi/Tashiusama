@@ -66,37 +66,37 @@ export const CreateUserBody = zod.object({
 });
 
 /**
- * @summary List all vehicles
+ * @summary List all products
  */
-export const ListVehiclesResponseItem = zod.object({
+export const ListProductsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   points: zod.number(),
   createdAt: zod.string(),
 });
-export const ListVehiclesResponse = zod.array(ListVehiclesResponseItem);
+export const ListProductsResponse = zod.array(ListProductsResponseItem);
 
 /**
- * @summary Create a vehicle (admin only)
+ * @summary Create a product (admin only)
  */
-export const CreateVehicleBody = zod.object({
+export const CreateProductBody = zod.object({
   name: zod.string(),
   points: zod.number(),
 });
 
 /**
- * @summary Update a vehicle (admin only)
+ * @summary Update a product (admin only)
  */
-export const UpdateVehicleParams = zod.object({
+export const UpdateProductParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateVehicleBody = zod.object({
+export const UpdateProductBody = zod.object({
   name: zod.string(),
   points: zod.number(),
 });
 
-export const UpdateVehicleResponse = zod.object({
+export const UpdateProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   points: zod.number(),
@@ -104,13 +104,13 @@ export const UpdateVehicleResponse = zod.object({
 });
 
 /**
- * @summary Delete a vehicle (admin only)
+ * @summary Delete a product (admin only)
  */
-export const DeleteVehicleParams = zod.object({
+export const DeleteProductParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteVehicleResponse = zod.object({
+export const DeleteProductResponse = zod.object({
   success: zod.boolean(),
 });
 
@@ -120,8 +120,8 @@ export const DeleteVehicleResponse = zod.object({
 export const ListQRCodesResponseItem = zod.object({
   id: zod.number(),
   qrNumber: zod.string(),
-  vehicleId: zod.number(),
-  vehicleName: zod.string(),
+  productId: zod.number(),
+  productName: zod.string(),
   points: zod.number(),
   status: zod.enum(["unused", "used"]),
   createdAt: zod.string(),
@@ -133,7 +133,7 @@ export const ListQRCodesResponse = zod.array(ListQRCodesResponseItem);
  */
 export const CreateQRCodeBody = zod.object({
   qrNumber: zod.string(),
-  vehicleId: zod.number(),
+  productId: zod.number(),
 });
 
 /**
@@ -146,7 +146,7 @@ export const ScanQRCodeBody = zod.object({
 export const ScanQRCodeResponse = zod.object({
   pointsEarned: zod.number(),
   totalPoints: zod.number(),
-  vehicleName: zod.string(),
+  productName: zod.string(),
   message: zod.string(),
 });
 
@@ -156,7 +156,7 @@ export const ScanQRCodeResponse = zod.object({
 export const ListScansResponseItem = zod.object({
   id: zod.number(),
   qrNumber: zod.string(),
-  vehicleName: zod.string(),
+  productName: zod.string(),
   pointsEarned: zod.number(),
   scannedAt: zod.string(),
 });
@@ -188,12 +188,12 @@ export const ListOrdersResponseItem = zod.object({
   id: zod.number(),
   salesmanId: zod.number(),
   retailerId: zod.number(),
-  vehicleId: zod.number(),
+  productId: zod.number(),
   quantity: zod.number(),
   totalPoints: zod.number(),
   bonusPoints: zod.number(),
   status: zod.enum(["pending", "confirmed", "cancelled"]),
-  vehicleName: zod.string().nullish(),
+  productName: zod.string().nullish(),
   retailerName: zod.string().nullish(),
   retailerPhone: zod.string().nullish(),
   createdAt: zod.string(),
@@ -205,7 +205,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
  */
 export const CreateOrderBody = zod.object({
   retailerId: zod.number(),
-  vehicleId: zod.number(),
+  productId: zod.number(),
   quantity: zod.number(),
 });
 
@@ -235,12 +235,12 @@ export const GetMyBonusResponse = zod.object({
       id: zod.number(),
       salesmanId: zod.number(),
       retailerId: zod.number(),
-      vehicleId: zod.number(),
+      productId: zod.number(),
       quantity: zod.number(),
       totalPoints: zod.number(),
       bonusPoints: zod.number(),
       status: zod.enum(["pending", "confirmed", "cancelled"]),
-      vehicleName: zod.string().nullish(),
+      productName: zod.string().nullish(),
       retailerName: zod.string().nullish(),
       retailerPhone: zod.string().nullish(),
       createdAt: zod.string(),
@@ -263,12 +263,12 @@ export const UpdateOrderStatusResponse = zod.object({
   id: zod.number(),
   salesmanId: zod.number(),
   retailerId: zod.number(),
-  vehicleId: zod.number(),
+  productId: zod.number(),
   quantity: zod.number(),
   totalPoints: zod.number(),
   bonusPoints: zod.number(),
   status: zod.enum(["pending", "confirmed", "cancelled"]),
-  vehicleName: zod.string().nullish(),
+  productName: zod.string().nullish(),
   retailerName: zod.string().nullish(),
   retailerPhone: zod.string().nullish(),
   createdAt: zod.string(),

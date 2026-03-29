@@ -18,7 +18,7 @@ import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
-interface Vehicle {
+interface Product {
   id: number;
   name: string;
   points: number;
@@ -26,52 +26,52 @@ interface Vehicle {
   createdAt: string;
 }
 
-export default function VehiclesScreen() {
+export default function ProductsScreen() {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [name, setName] = useState("");
   const [points, setPoints] = useState("");
   const [salesPrice, setSalesPrice] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [confirmVehicle, setConfirmVehicle] = useState<Vehicle | null>(null);
+  const [confirmProduct, setConfirmProduct] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchVehicles = useCallback(async () => {
+  const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/vehicles`, {
+      const res = await fetch(`${BASE}/products`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setVehicles(await res.json());
+      if (res.ok) setProducts(await res.json());
     } catch {
     } finally {
       setLoading(false);
     }
   }, [token]);
 
-  useEffect(() => { fetchVehicles(); }, [fetchVehicles]);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const openAdd = () => {
-    setEditVehicle(null);
+    setEditProduct(null);
     setErrorMsg("");
     setName(""); setPoints(""); setSalesPrice("");
     setModalVisible(true);
   };
 
-  const openEdit = (v: Vehicle) => {
-    setEditVehicle(v);
+  const openEdit = (p: Product) => {
+    setEditProduct(p);
     setErrorMsg("");
-    setName(v.name);
-    setPoints(String(v.points));
-    setSalesPrice(String(v.salesPrice ?? 0));
+    setName(p.name);
+    setPoints(String(p.points));
+    setSalesPrice(String(p.salesPrice ?? 0));
     setModalVisible(true);
   };
 
@@ -83,8 +83,8 @@ export default function VehiclesScreen() {
     setErrorMsg("");
     setSaving(true);
     try {
-      const url = editVehicle ? `${BASE}/vehicles/${editVehicle.id}` : `${BASE}/vehicles`;
-      const method = editVehicle ? "PUT" : "POST";
+      const url = editProduct ? `${BASE}/products/${editProduct.id}` : `${BASE}/products`;
+      const method = editProduct ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -95,9 +95,9 @@ export default function VehiclesScreen() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setErrorMsg(data.error || "Failed to save vehicle"); return; }
+      if (!res.ok) { setErrorMsg(data.error || "Failed to save product"); return; }
       setModalVisible(false);
-      fetchVehicles();
+      fetchProducts();
     } catch {
       setErrorMsg("Network error. Please try again.");
     } finally {
@@ -106,16 +106,16 @@ export default function VehiclesScreen() {
   };
 
   const confirmDelete = async () => {
-    if (!confirmVehicle) return;
+    if (!confirmProduct) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${BASE}/vehicles/${confirmVehicle.id}`, {
+      const res = await fetch(`${BASE}/products/${confirmProduct.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        setConfirmVehicle(null);
-        fetchVehicles();
+        setConfirmProduct(null);
+        fetchProducts();
       }
     } catch {
     } finally {
@@ -123,21 +123,21 @@ export default function VehiclesScreen() {
     }
   };
 
-  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId) ?? null;
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const renderVehicle = ({ item }: { item: Vehicle }) => {
-    const isSelected = selectedVehicleId === item.id;
+  const renderProduct = ({ item }: { item: Product }) => {
+    const isSelected = selectedProductId === item.id;
     return (
       <TouchableOpacity
         style={[styles.card, isSelected && styles.cardSelected]}
         onPress={() => {
-          setSelectedVehicleId(null);
+          setSelectedProductId(null);
           openEdit(item);
         }}
-        onLongPress={() => setSelectedVehicleId(isSelected ? null : item.id)}
+        onLongPress={() => setSelectedProductId(isSelected ? null : item.id)}
         delayLongPress={300}
         activeOpacity={isSelected ? 1 : 0.85}
       >
@@ -145,7 +145,7 @@ export default function VehiclesScreen() {
           <Feather name="truck" size={20} color={Colors.adminAccent} />
         </View>
         <View style={styles.cardLeft}>
-          <Text style={styles.vehicleName}>{item.name}</Text>
+          <Text style={styles.productName}>{item.name}</Text>
           <View style={styles.metaChip}>
             <Feather name="star" size={11} color={Colors.adminAccent} />
             <Text style={styles.metaChipText}>{item.points} pts/unit</Text>
@@ -164,29 +164,29 @@ export default function VehiclesScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        {selectedVehicle ? (
+        {selectedProduct ? (
           <>
             <TouchableOpacity
               style={styles.cancelSelBtn}
-              onPress={() => setSelectedVehicleId(null)}
+              onPress={() => setSelectedProductId(null)}
               activeOpacity={0.7}
             >
               <Feather name="x" size={18} color={Colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.headerTitleSelected} numberOfLines={1}>
-              {selectedVehicle.name}
+              {selectedProduct.name}
             </Text>
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={[styles.headerActionBtn, styles.editHeaderBtn]}
-                onPress={() => { setSelectedVehicleId(null); openEdit(selectedVehicle); }}
+                onPress={() => { setSelectedProductId(null); openEdit(selectedProduct); }}
                 activeOpacity={0.8}
               >
                 <Feather name="edit-2" size={16} color={Colors.adminAccent} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.headerActionBtn, styles.deleteHeaderBtn]}
-                onPress={() => { setSelectedVehicleId(null); setConfirmVehicle(selectedVehicle); }}
+                onPress={() => { setSelectedProductId(null); setConfirmProduct(selectedProduct); }}
                 activeOpacity={0.8}
               >
                 <Feather name="trash-2" size={16} color="#EF4444" />
@@ -195,7 +195,7 @@ export default function VehiclesScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.headerTitle}>Vehicles & Points</Text>
+            <Text style={styles.headerTitle}>Products & Points</Text>
             <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
               <Feather name="plus" size={20} color={Colors.white} />
             </TouchableOpacity>
@@ -204,20 +204,20 @@ export default function VehiclesScreen() {
       </View>
 
       <FlatList
-        data={vehicles}
+        data={products}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[styles.list, { paddingBottom: bottomPad + 16 }]}
         refreshing={loading}
-        onRefresh={fetchVehicles}
+        onRefresh={fetchProducts}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.empty}>
               <Feather name="truck" size={48} color={Colors.textLight} />
-              <Text style={styles.emptyText}>No vehicles yet.{"\n"}Tap + to add one.</Text>
+              <Text style={styles.emptyText}>No products yet.{"\n"}Tap + to add one.</Text>
             </View>
           ) : null
         }
-        renderItem={renderVehicle}
+        renderItem={renderProduct}
       />
 
       {/* Edit / Create Modal */}
@@ -229,11 +229,11 @@ export default function VehiclesScreen() {
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setModalVisible(false)} />
           <View style={[styles.modal, { paddingBottom: bottomPad + 16 }]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>{editVehicle ? "Edit Vehicle" : "Add Vehicle"}</Text>
+            <Text style={styles.modalTitle}>{editProduct ? "Edit Product" : "Add Product"}</Text>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.modalFields}>
-                <Text style={styles.fieldLabel}>Vehicle Name *</Text>
+                <Text style={styles.fieldLabel}>Product Name *</Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="e.g. Honda 125"
@@ -283,7 +283,7 @@ export default function VehiclesScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={styles.saveBtnText}>
-                  {saving ? (editVehicle ? "Saving..." : "Adding...") : (editVehicle ? "Save" : "Add")}
+                  {saving ? (editProduct ? "Saving..." : "Adding...") : (editProduct ? "Save" : "Add")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -292,24 +292,24 @@ export default function VehiclesScreen() {
       </Modal>
 
       {/* Delete Confirm Modal */}
-      <Modal visible={!!confirmVehicle} transparent animationType="fade" onRequestClose={() => setConfirmVehicle(null)}>
+      <Modal visible={!!confirmProduct} transparent animationType="fade" onRequestClose={() => setConfirmProduct(null)}>
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmBox}>
             <View style={styles.confirmIcon}>
               <Feather name="trash-2" size={28} color="#EF4444" />
             </View>
-            <Text style={styles.confirmTitle}>Delete Vehicle</Text>
+            <Text style={styles.confirmTitle}>Delete Product</Text>
             <Text style={styles.confirmMsg}>
               Are you sure you want to delete{"\n"}
               <Text style={{ fontFamily: "Inter_600SemiBold" }}>
-                {confirmVehicle?.name}
+                {confirmProduct?.name}
               </Text>
               ?{"\n"}This cannot be undone.
             </Text>
             <View style={styles.confirmBtns}>
               <TouchableOpacity
                 style={styles.confirmCancel}
-                onPress={() => setConfirmVehicle(null)}
+                onPress={() => setConfirmProduct(null)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.confirmCancelText}>Cancel</Text>
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   cardLeft: { flex: 1, gap: 6 },
-  vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
+  productName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.adminAccent },
   priceWrap: { alignItems: "flex-end", justifyContent: "center", flexShrink: 0 },

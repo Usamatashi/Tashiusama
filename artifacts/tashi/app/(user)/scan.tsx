@@ -41,7 +41,7 @@ export default function ScanScreen() {
         await refreshUser();
         Alert.alert(
           "Points Earned!",
-          `+${result.pointsEarned} points\nVehicle: ${result.vehicleName}\nTotal Points: ${result.totalPoints}`,
+          `+${result.pointsEarned} points\nProduct: ${result.productName}\nTotal Points: ${result.totalPoints}`,
           [
             { text: "Scan Another", onPress: () => setScanned(false) },
             { text: "Done", onPress: () => router.back() },
