@@ -126,7 +126,7 @@ const CARD_KEY_MAP: Record<string, keyof AdminSettings> = {
 
 export default function AdminDashboard() {
   const { logout, user } = useAuth();
-  const { settings } = useAdminSettings();
+  const { settings, fetchSettings } = useAdminSettings();
   const insets = useSafeAreaInsets();
   const isSuperAdmin = user?.role === "super_admin";
   const visibleActions = ACTIONS.filter((a) => {
@@ -189,9 +189,9 @@ export default function AdminDashboard() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchCounts();
+    await Promise.all([fetchCounts(), fetchSettings()]);
     setRefreshing(false);
-  }, [fetchCounts]);
+  }, [fetchCounts, fetchSettings]);
 
   return (
     <View

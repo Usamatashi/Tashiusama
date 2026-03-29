@@ -1,8 +1,8 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import React from "react";
+import React, { useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
@@ -107,7 +107,13 @@ function CustomTabBar({ state, navigation, tabItems, isSuperAdmin }: CustomTabBa
 
 export default function AdminLayout() {
   const { user } = useAuth();
-  const { settings } = useAdminSettings();
+  const { settings, fetchSettings } = useAdminSettings();
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchSettings();
+    }, [fetchSettings])
+  );
 
   if (!user) return <Redirect href="/login" />;
   if (user.role !== "admin" && user.role !== "super_admin") return <Redirect href="/(user)" />;
