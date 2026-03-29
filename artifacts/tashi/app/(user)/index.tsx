@@ -228,7 +228,7 @@ export default function UserHomeScreen() {
 
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} scrollEnabled={isMechanic}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false} scrollEnabled={isMechanic}>
 
         {/* ── Points Hero Card — mechanics only ─────────────── */}
         {isMechanic && (
