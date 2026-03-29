@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 
 export type AdminSettings = {
@@ -41,7 +41,6 @@ interface AdminSettingsContextType {
   settingsLoaded: boolean;
   fetchSettings: () => Promise<void>;
   updateSettings: (settings: AdminSettings) => Promise<void>;
-  // Per-admin (super admin only)
   adminUsers: AdminUserEntry[];
   isLoadingAdmins: boolean;
   fetchAdminUsers: () => Promise<void>;
@@ -53,7 +52,7 @@ const AdminSettingsContext = createContext<AdminSettingsContextType | null>(null
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 export function AdminSettingsProvider({ children }: { children: React.ReactNode }) {
-  const { user, token } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -63,9 +62,15 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
   const isSuperAdmin = user?.role === "super_admin";
   const isAdmin = user?.role === "admin" || isSuperAdmin;
 
-  // Fetch own settings — admins use per-user endpoint, super admins use global
+  // Track which token's settings have already been fetched — prevents premature settingsLoaded=true
+  const lastLoadedTokenRef = useRef<string | null>(null);
+
   const fetchSettings = useCallback(async () => {
     if (!token) return;
+    // On first fetch for this token, block rendering until settings arrive
+    if (lastLoadedTokenRef.current !== token) {
+      setSettingsLoaded(false);
+    }
     setIsLoading(true);
     try {
       const url = isSuperAdmin
@@ -86,20 +91,23 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
       // keep defaults on error
     } finally {
       setIsLoading(false);
+      lastLoadedTokenRef.current = token;
       setSettingsLoaded(true);
     }
   }, [token, isSuperAdmin]);
 
   useEffect(() => {
+    // Wait for auth to finish restoring before acting
+    if (authLoading) return;
+
     if (isAdmin && token) {
       fetchSettings();
     } else {
       setSettings(DEFAULT_SETTINGS);
       setSettingsLoaded(true);
     }
-  }, [isAdmin, token, fetchSettings]);
+  }, [isAdmin, token, fetchSettings, authLoading]);
 
-  // Update own global settings (super admin only — global blob)
   const updateSettings = useCallback(async (newSettings: AdminSettings) => {
     if (!token) throw new Error("Not authenticated");
     const res = await fetch(`${BASE}/admin-settings`, {
@@ -117,7 +125,6 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
     setSettings(newSettings);
   }, [token]);
 
-  // Fetch all admin users with their per-user settings (super admin only)
   const fetchAdminUsers = useCallback(async () => {
     if (!token || !isSuperAdmin) return;
     setIsLoadingAdmins(true);
@@ -136,7 +143,6 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
     }
   }, [token, isSuperAdmin]);
 
-  // Update a specific admin's per-user settings (super admin only)
   const updateAdminUserSettings = useCallback(async (userId: number, newSettings: AdminSettings) => {
     if (!token) throw new Error("Not authenticated");
     const res = await fetch(`${BASE}/admin-user-settings/${userId}`, {
