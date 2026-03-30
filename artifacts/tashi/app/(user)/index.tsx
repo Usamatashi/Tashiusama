@@ -67,12 +67,12 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 const RETAILER_QUICK_ACTIONS = [
-  { label: "Disc Pads", desc: "View your orders", icon: "circle" as const, route: "/(user)/orders", accent: "#FFF4EC", iconBg: "#FFEDD5", iconColor: "#E87722" },
+  { label: "Disc Pads", desc: "Browse disc pad products", icon: "circle" as const, route: "/(user)/products", accent: "#FFF4EC", iconBg: "#FFEDD5", iconColor: "#E87722" },
   { label: "Brake Shoes", desc: "Browse catalog", icon: "truck" as const, route: "/(user)/products", accent: "#EFF6FF", iconBg: "#DBEAFE", iconColor: "#2563EB" },
 ];
 
 const SALESMAN_QUICK_ACTIONS = [
-  { label: "Disc Pads", desc: "Place disc pad orders", icon: "circle" as const, route: "/(user)/orders", accent: "#FFF4EC", iconBg: "#FFEDD5", iconColor: "#E87722" },
+  { label: "Disc Pads", desc: "Browse disc pad products", icon: "circle" as const, route: "/(user)/products", accent: "#FFF4EC", iconBg: "#FFEDD5", iconColor: "#E87722" },
   { label: "Brake Shoes", desc: "Browse catalog", icon: "truck" as const, route: "/(user)/products", accent: "#EFF6FF", iconBg: "#DBEAFE", iconColor: "#2563EB" },
 ];
 
