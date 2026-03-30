@@ -1,12 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
+  Modal,
   Platform,
   RefreshControl,
   SectionList,
+  StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +19,8 @@ import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams } from "expo-router";
 import { Colors } from "@/constants/colors";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 type ProductCategory = "disc_pad" | "brake_shoes" | "other";
 
@@ -44,10 +50,10 @@ async function fetchProducts(): Promise<Product[]> {
   return res.json();
 }
 
-function ProductRow({ product }: { product: Product }) {
+function ProductRow({ product, onPress }: { product: Product; onPress: (p: Product) => void }) {
   const meta = CATEGORY_META[product.category ?? "other"];
   return (
-    <View style={styles.row}>
+    <TouchableOpacity style={styles.row} onPress={() => onPress(product)} activeOpacity={0.75}>
       {product.imageBase64 ? (
         <Image
           source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
@@ -60,12 +66,69 @@ function ProductRow({ product }: { product: Product }) {
       )}
       <View style={{ flex: 1 }}>
         <Text style={styles.productName}>{product.name}</Text>
+        <Text style={styles.productCategory}>{meta.label}</Text>
       </View>
       <View style={styles.priceBox}>
         <Text style={styles.priceLabel}>Rs.</Text>
         <Text style={styles.priceValue}>{product.salesPrice.toLocaleString()}</Text>
       </View>
-    </View>
+      {product.imageBase64 && (
+        <Feather name="maximize-2" size={14} color="#C0C0C0" style={{ marginLeft: 4 }} />
+      )}
+    </TouchableOpacity>
+  );
+}
+
+function ImageLightbox({ product, onClose }: { product: Product; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const meta = CATEGORY_META[product.category ?? "other"];
+
+  return (
+    <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
+      <StatusBar hidden />
+      <View style={styles.overlay}>
+        {/* Close button */}
+        <TouchableOpacity
+          style={[styles.closeBtn, { top: insets.top + 16 }]}
+          onPress={onClose}
+          activeOpacity={0.8}
+        >
+          <Feather name="x" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Image */}
+        {product.imageBase64 ? (
+          <Image
+            source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
+            style={styles.lightboxImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={[styles.lightboxPlaceholder, { backgroundColor: meta.bg }]}>
+            <Feather name={meta.icon} size={72} color={meta.color} />
+          </View>
+        )}
+
+        {/* Product info card at bottom */}
+        <View style={[styles.infoCard, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={[styles.categoryBadge, { backgroundColor: meta.bg }]}>
+            <Feather name={meta.icon} size={12} color={meta.color} />
+            <Text style={[styles.categoryBadgeText, { color: meta.color }]}>{meta.label}</Text>
+          </View>
+          <Text style={styles.lightboxName}>{product.name}</Text>
+          <View style={styles.lightboxPriceRow}>
+            <Text style={styles.lightboxPriceLabel}>Price</Text>
+            <Text style={styles.lightboxPrice}>Rs. {product.salesPrice.toLocaleString()}</Text>
+          </View>
+          {product.points > 0 && (
+            <View style={styles.pointsRow}>
+              <Feather name="star" size={14} color="#E87722" />
+              <Text style={styles.pointsText}>{product.points} pts earned on purchase</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -74,13 +137,13 @@ export default function ProductsScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
   const { category } = useLocalSearchParams<{ category?: string }>();
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const { data: products = [], isLoading, refetch, isRefetching } = useQuery<Product[]>({
     queryKey: ["user-products"],
     queryFn: fetchProducts,
   });
 
-  // Determine which categories to show based on the filter param
   const visibleCategories: ProductCategory[] =
     category === "disc_pad"
       ? ["disc_pad"]
@@ -129,7 +192,9 @@ export default function ProductsScreen() {
         <SectionList
           sections={sections}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <ProductRow product={item} />}
+          renderItem={({ item }) => (
+            <ProductRow product={item} onPress={setSelectedProduct} />
+          )}
           renderSectionHeader={({ section }) => (
             <View style={[styles.sectionHeader, { backgroundColor: section.meta.bg }]}>
               <Feather name={section.meta.icon} size={14} color={section.meta.color} />
@@ -145,6 +210,10 @@ export default function ProductsScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
           }
         />
+      )}
+
+      {selectedProduct && (
+        <ImageLightbox product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
     </View>
   );
@@ -179,9 +248,78 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconBadge: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-  productImage: { width: 38, height: 38, borderRadius: 8 },
+  productImage: { width: 44, height: 44, borderRadius: 10 },
   productName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  productCategory: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
   priceBox: { alignItems: "flex-end" },
   priceLabel: { fontSize: 10, color: Colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 12 },
   priceValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.primary },
+
+  // Lightbox
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.93)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeBtn: {
+    position: "absolute",
+    right: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  lightboxImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
+  },
+  lightboxPlaceholder: {
+    width: SCREEN_WIDTH * 0.6,
+    height: SCREEN_WIDTH * 0.6,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoCard: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#1A1A1A",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    gap: 8,
+  },
+  categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  categoryBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  lightboxName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  lightboxPriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  lightboxPriceLabel: { fontSize: 13, color: "#999", fontFamily: "Inter_400Regular" },
+  lightboxPrice: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.primary },
+  pointsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  pointsText: { fontSize: 13, color: "#aaa", fontFamily: "Inter_400Regular" },
 });
