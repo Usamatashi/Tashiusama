@@ -1,9 +1,10 @@
 import React from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  Image,
   Platform,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -14,12 +15,24 @@ import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "@/constants/colors";
 
+type ProductCategory = "disc_pad" | "brake_shoes" | "other";
+
 interface Product {
   id: number;
   name: string;
   salesPrice: number;
   points: number;
+  category: ProductCategory;
+  imageBase64: string | null;
 }
+
+const CATEGORY_META: Record<ProductCategory, { label: string; icon: React.ComponentProps<typeof Feather>["name"]; color: string; bg: string }> = {
+  disc_pad:    { label: "Disc Pads",       icon: "circle",  color: "#E87722", bg: "#FFF4EC" },
+  brake_shoes: { label: "Brake Shoes",     icon: "truck",   color: "#2563EB", bg: "#EFF6FF" },
+  other:       { label: "Other Products",  icon: "box",     color: "#7B2FBE", bg: "#F5F0FF" },
+};
+
+const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
 
 async function fetchProducts(): Promise<Product[]> {
   const token = (await AsyncStorage.getItem("tashi_token")) || "";
@@ -30,12 +43,20 @@ async function fetchProducts(): Promise<Product[]> {
   return res.json();
 }
 
-function ProductRow({ product, index }: { product: Product; index: number }) {
+function ProductRow({ product }: { product: Product }) {
+  const meta = CATEGORY_META[product.category ?? "other"];
   return (
     <View style={styles.row}>
-      <View style={styles.indexBadge}>
-        <Text style={styles.indexText}>{index + 1}</Text>
-      </View>
+      {product.imageBase64 ? (
+        <Image
+          source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
+          style={styles.productImage}
+        />
+      ) : (
+        <View style={[styles.iconBadge, { backgroundColor: meta.bg }]}>
+          <Feather name={meta.icon} size={16} color={meta.color} />
+        </View>
+      )}
       <View style={{ flex: 1 }}>
         <Text style={styles.productName}>{product.name}</Text>
       </View>
@@ -57,8 +78,17 @@ export default function ProductsScreen() {
     queryFn: fetchProducts,
   });
 
+  const sections = CATEGORY_ORDER
+    .map((cat) => ({
+      key: cat,
+      title: CATEGORY_META[cat].label,
+      meta: CATEGORY_META[cat],
+      data: products.filter((p) => (p.category ?? "other") === cat),
+    }))
+    .filter((s) => s.data.length > 0);
+
   return (
-    <View style={[styles.root]}>
+    <View style={styles.root}>
       <View style={[styles.header, { paddingTop: topPad + 14 }]}>
         <Text style={styles.headerTitle}>Products</Text>
         <Text style={styles.headerSub}>{products.length} available</Text>
@@ -70,137 +100,67 @@ export default function ProductsScreen() {
         </View>
       ) : products.length === 0 ? (
         <View style={styles.center}>
-          <Feather name="truck" size={52} color={Colors.border} />
+          <Feather name="box" size={52} color={Colors.border} />
           <Text style={styles.emptyTitle}>No products yet</Text>
           <Text style={styles.emptyText}>Product catalog will appear here</Text>
         </View>
       ) : (
-        <>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, { flex: 1, marginLeft: 44 }]}>Product</Text>
-            <Text style={[styles.tableHeaderText, { marginRight: 4 }]}>Price</Text>
-          </View>
-          <FlatList
-            data={products}
-            keyExtractor={item => String(item.id)}
-            renderItem={({ item, index }) => <ProductRow product={item} index={index} />}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: botPad + 100 }}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
-            }
-          />
-        </>
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <ProductRow product={item} />}
+          renderSectionHeader={({ section }) => (
+            <View style={[styles.sectionHeader, { backgroundColor: section.meta.bg }]}>
+              <Feather name={section.meta.icon} size={14} color={section.meta.color} />
+              <Text style={[styles.sectionTitle, { color: section.meta.color }]}>
+                {section.title}
+              </Text>
+            </View>
+          )}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: botPad + 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
+          }
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#F7F4F1",
-  },
+  root: { flex: 1, backgroundColor: "#F7F4F1" },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingHorizontal: 20, paddingBottom: 14,
     backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#EFEFEF",
+    borderBottomWidth: 1, borderBottomColor: "#EFEFEF",
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+  emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", fontFamily: "Inter_400Regular" },
+
+  sectionHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 10, marginTop: 16, marginBottom: 6,
   },
-  headerSub: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    fontFamily: "Inter_400Regular",
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptyText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    fontFamily: "Inter_400Regular",
-  },
-  tableHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#EFEFEF",
-  },
-  tableHeaderText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: Colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    fontFamily: "Inter_700Bold",
-  },
+  sectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+
   row: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    marginTop: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#FFFFFF", borderRadius: 12,
+    marginBottom: 8, paddingVertical: 12, paddingHorizontal: 14,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    gap: 12,
   },
-  indexBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  indexText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    fontFamily: "Inter_600SemiBold",
-  },
-  productName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  priceBox: {
-    alignItems: "flex-end",
-  },
-  priceLabel: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 12,
-  },
-  priceValue: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: Colors.primary,
-    fontFamily: "Inter_700Bold",
-  },
+  iconBadge: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  productImage: { width: 38, height: 38, borderRadius: 8 },
+  productName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  priceBox: { alignItems: "flex-end" },
+  priceLabel: { fontSize: 10, color: Colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 12 },
+  priceValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.primary },
 });

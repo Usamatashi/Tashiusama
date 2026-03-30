@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,7 +26,15 @@ import { Colors } from "@/constants/colors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Retailer { id: number; name: string | null; phone: string; city: string | null; }
-interface Product  { id: number; name: string; points: number; salesPrice: number; }
+type ProductCategory = "disc_pad" | "brake_shoes" | "other";
+interface Product  { id: number; name: string; points: number; salesPrice: number; category: ProductCategory; imageBase64: string | null; }
+
+const CATEGORY_META: Record<ProductCategory, { label: string; icon: React.ComponentProps<typeof Feather>["name"]; color: string; bg: string }> = {
+  disc_pad:    { label: "Disc Pads",      icon: "circle", color: "#E87722", bg: "#FFF4EC" },
+  brake_shoes: { label: "Brake Shoes",    icon: "truck",  color: "#2563EB", bg: "#EFF6FF" },
+  other:       { label: "Other Products", icon: "box",    color: "#7B2FBE", bg: "#F5F0FF" },
+};
+const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
 interface CartItem { product: Product; quantity: number; }
 
 interface OrderItemResponse {
@@ -627,32 +636,52 @@ export default function OrdersScreen() {
                   <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />
                 ) : products.length === 0 ? (
                   <View style={styles.emptyState}>
-                    <Feather name="truck" size={40} color={Colors.border} />
+                    <Feather name="box" size={40} color={Colors.border} />
                     <Text style={styles.emptyTitle}>No products available</Text>
                   </View>
                 ) : (
-                  products.map(v => {
-                    const alreadyAdded = cartItems.some(c => c.product.id === v.id);
+                  CATEGORY_ORDER.map(cat => {
+                    const catProducts = products.filter(p => (p.category ?? "other") === cat);
+                    if (catProducts.length === 0) return null;
+                    const meta = CATEGORY_META[cat];
                     return (
-                      <TouchableOpacity
-                        key={v.id}
-                        style={[styles.selectCard, alreadyAdded && styles.selectCardAdded]}
-                        onPress={() => { Haptics.selectionAsync(); setSelectedProduct(v); setQuantity("1"); }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.selectCardIcon, alreadyAdded && { backgroundColor: "#D1FAE5" }]}>
-                          <Feather name="truck" size={18} color={alreadyAdded ? "#10B981" : Colors.primary} />
+                      <View key={cat}>
+                        <View style={[styles.catHeader, { backgroundColor: meta.bg }]}>
+                          <Feather name={meta.icon} size={13} color={meta.color} />
+                          <Text style={[styles.catHeaderText, { color: meta.color }]}>{meta.label}</Text>
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.selectCardName}>{v.name}</Text>
-                          <Text style={styles.selectCardSub}>Rs. {v.salesPrice.toLocaleString()}/unit</Text>
-                        </View>
-                        {alreadyAdded && (
-                          <View style={styles.addedBadge}>
-                            <Text style={styles.addedBadgeText}>Added</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
+                        {catProducts.map(v => {
+                          const alreadyAdded = cartItems.some(c => c.product.id === v.id);
+                          return (
+                            <TouchableOpacity
+                              key={v.id}
+                              style={[styles.selectCard, alreadyAdded && styles.selectCardAdded]}
+                              onPress={() => { Haptics.selectionAsync(); setSelectedProduct(v); setQuantity("1"); }}
+                              activeOpacity={0.7}
+                            >
+                              {v.imageBase64 ? (
+                                <Image
+                                  source={{ uri: `data:image/jpeg;base64,${v.imageBase64}` }}
+                                  style={styles.productThumb}
+                                />
+                              ) : (
+                                <View style={[styles.selectCardIcon, alreadyAdded && { backgroundColor: "#D1FAE5" }]}>
+                                  <Feather name={meta.icon} size={18} color={alreadyAdded ? "#10B981" : meta.color} />
+                                </View>
+                              )}
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.selectCardName}>{v.name}</Text>
+                                <Text style={styles.selectCardSub}>Rs. {v.salesPrice.toLocaleString()}/unit</Text>
+                              </View>
+                              {alreadyAdded && (
+                                <View style={styles.addedBadge}>
+                                  <Text style={styles.addedBadgeText}>Added</Text>
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     );
                   })
                 )
@@ -901,6 +930,13 @@ const styles = StyleSheet.create({
   },
   selectCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primary },
   selectCardAdded: { borderColor: "#10B981", opacity: 0.75 },
+  catHeader: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    paddingHorizontal: 10, paddingVertical: 7,
+    borderRadius: 8, marginTop: 14, marginBottom: 4,
+  },
+  catHeaderText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  productThumb: { width: 36, height: 36, borderRadius: 8, marginRight: 12 },
   selectCardIcon: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: "#EEF4FB", alignItems: "center", justifyContent: "center", marginRight: 12,
