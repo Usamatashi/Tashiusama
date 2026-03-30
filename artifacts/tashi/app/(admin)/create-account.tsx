@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -94,6 +94,26 @@ export default function CreateAccountScreen() {
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  const lastTapRef = useRef<Record<number, number>>({});
+  const tapTimerRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  const handleCardPress = (item: User) => {
+    const now = Date.now();
+    const last = lastTapRef.current[item.id] ?? 0;
+    lastTapRef.current[item.id] = now;
+
+    if (now - last < 350) {
+      clearTimeout(tapTimerRef.current[item.id]);
+      setSelectedUserId((prev) => (prev === item.id ? null : item.id));
+      return;
+    }
+
+    tapTimerRef.current[item.id] = setTimeout(() => {
+      setSelectedUserId(null);
+      openEdit(item);
+    }, 350);
+  };
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -214,13 +234,8 @@ export default function CreateAccountScreen() {
     return (
       <TouchableOpacity
         style={[styles.userCard, isSelected && styles.userCardSelected]}
-        onPress={() => {
-          setSelectedUserId(null);
-          openEdit(item);
-        }}
-        onLongPress={() => setSelectedUserId(isSelected ? null : item.id)}
-        delayLongPress={300}
-        activeOpacity={isSelected ? 1 : 0.85}
+        onPress={() => handleCardPress(item)}
+        activeOpacity={0.85}
       >
         <View style={styles.cardTop}>
           <View style={styles.avatarWrap}>
@@ -247,6 +262,16 @@ export default function CreateAccountScreen() {
             <View style={[styles.roleDot, { backgroundColor: ROLE_COLORS[item.role] }]} />
             <Text style={[styles.roleText, { color: ROLE_COLORS[item.role] }]}>{item.role}</Text>
           </View>
+          {isSelected && (
+            <TouchableOpacity
+              style={styles.deleteInlineBtn}
+              onPress={() => { setSelectedUserId(null); setConfirmUser(item); }}
+              activeOpacity={0.8}
+            >
+              <Feather name="trash-2" size={13} color="#fff" />
+              <Text style={styles.deleteInlineText}>Delete</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -596,12 +621,20 @@ const styles = StyleSheet.create({
   actionBtn: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   editBtn: { backgroundColor: `${Colors.adminAccent}15` },
   deleteBtn: { backgroundColor: "#FEE2E2" },
-  longPressHint: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: Colors.adminAccent,
+  deleteInlineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     marginLeft: "auto" as const,
-    opacity: 0.7,
+  },
+  deleteInlineText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
   },
   empty: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyText: { color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
