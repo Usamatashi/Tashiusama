@@ -277,10 +277,10 @@ export default function ProductsScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, isSelected && styles.cardSelected]}
-        onPress={() => { setSelectedProductId(null); openEdit(item); }}
-        onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedProductId(isSelected ? null : item.id); }}
-        delayLongPress={300}
-        activeOpacity={isSelected ? 1 : 0.85}
+        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedProductId(isSelected ? null : item.id); }}
+        onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setLightboxProduct(item); }}
+        delayLongPress={400}
+        activeOpacity={0.85}
       >
         <TouchableOpacity
           onPress={(e) => { e.stopPropagation(); setLightboxProduct(item); }}
