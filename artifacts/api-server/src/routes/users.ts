@@ -37,6 +37,10 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       res.status(400).json({ error: "Invalid role" });
       return;
     }
+    if (role === "admin" && (req as any).user?.role !== "super_admin") {
+      res.status(403).json({ error: "Only super admin can create admin accounts" });
+      return;
+    }
     if (password.length < 6) {
       res.status(400).json({ error: "Password must be at least 6 characters" });
       return;
@@ -80,6 +84,12 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     const validRoles = ["admin", "salesman", "mechanic", "retailer"];
     if (role && !validRoles.includes(role)) {
       res.status(400).json({ error: "Invalid role" }); return;
+    }
+    const existing = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id));
+    if (!existing.length) { res.status(404).json({ error: "User not found" }); return; }
+    if (existing[0].role === "super_admin" && password && (req as any).user?.role !== "super_admin") {
+      res.status(403).json({ error: "Only super admin can update a super admin's password" });
+      return;
     }
     const updates: Record<string, any> = {};
     if (phone) updates.phone = phone.trim();

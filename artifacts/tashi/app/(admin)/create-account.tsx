@@ -81,9 +81,12 @@ export default function CreateAccountScreen() {
   const { token, user: currentUser } = useAuth();
   const { settings } = useAdminSettings();
   const insets = useSafeAreaInsets();
-  const ROLES = ALL_ROLES.filter(
-    (r) => r.value !== "super_admin" || currentUser?.role === "super_admin"
-  );
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const ROLES = ALL_ROLES.filter((r) => {
+    if (r.value === "super_admin") return isSuperAdmin;
+    if (r.value === "admin") return isSuperAdmin;
+    return true;
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -442,17 +445,21 @@ export default function CreateAccountScreen() {
                   autoCorrect={false}
                 />
 
-                <Text style={styles.fieldLabel}>
-                  {editingUser ? "New Password (leave blank to keep)" : "Password *"}
-                </Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder={editingUser ? "Leave blank to keep current" : "Min. 6 characters"}
-                  placeholderTextColor={Colors.textLight}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
+                {(!editingUser || editingUser.role !== "super_admin" || isSuperAdmin) && (
+                  <>
+                    <Text style={styles.fieldLabel}>
+                      {editingUser ? "New Password (leave blank to keep)" : "Password *"}
+                    </Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder={editingUser ? "Leave blank to keep current" : "Min. 6 characters"}
+                      placeholderTextColor={Colors.textLight}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                    />
+                  </>
+                )}
 
                 {errorMsg ? (
                   <View style={styles.errorBox}>
