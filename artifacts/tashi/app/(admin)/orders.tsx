@@ -539,11 +539,8 @@ function OrderCard({
           <TouchableOpacity
             style={[styles.actionBtn, styles.dispatchBtn]}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              Alert.alert("Dispatch Order", "Mark this order as dispatched?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Dispatch", onPress: () => onDispatch(order.id) },
-              ]);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onDispatch(order.id);
             }}
             disabled={isUpdating}
             activeOpacity={0.8}
