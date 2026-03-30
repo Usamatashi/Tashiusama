@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Dimensions,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -8,12 +9,14 @@ import {
   Pressable,
   ScrollView,
   SectionList,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Redirect } from "expo-router";
@@ -24,6 +27,7 @@ import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type ProductCategory = "disc_pad" | "brake_shoes" | "other";
 
@@ -55,6 +59,69 @@ const SECTION_TITLES: Record<ProductCategory, string> = {
 
 type Step = "category" | "details" | "image";
 
+function ImageLightbox({ product, onClose }: { product: Product; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const meta = categoryMeta(product.category ?? "other");
+  return (
+    <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={onClose}>
+      <StatusBar hidden />
+      <View style={lbStyles.overlay}>
+        <TouchableOpacity
+          style={[lbStyles.closeBtn, { top: insets.top + 16 }]}
+          onPress={onClose}
+          activeOpacity={0.8}
+        >
+          <Feather name="x" size={20} color="#fff" />
+        </TouchableOpacity>
+        {product.imageBase64 ? (
+          <Image
+            source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
+            style={lbStyles.image}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={[lbStyles.placeholder, { backgroundColor: meta.bg }]}>
+            <Feather name={meta.icon} size={72} color={meta.color} />
+          </View>
+        )}
+        <View style={[lbStyles.infoCard, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={[lbStyles.badge, { backgroundColor: meta.bg }]}>
+            <Feather name={meta.icon} size={12} color={meta.color} />
+            <Text style={[lbStyles.badgeText, { color: meta.color }]}>{meta.label}</Text>
+          </View>
+          <Text style={lbStyles.name}>{product.name}</Text>
+          <View style={lbStyles.priceRow}>
+            <Text style={lbStyles.priceLabel}>Price</Text>
+            <Text style={lbStyles.price}>Rs. {product.salesPrice.toLocaleString()}</Text>
+          </View>
+          {product.points > 0 && (
+            <View style={lbStyles.pointsRow}>
+              <Feather name="star" size={14} color="#E87722" />
+              <Text style={lbStyles.pointsText}>{product.points} pts/unit</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const lbStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.93)", justifyContent: "center", alignItems: "center" },
+  closeBtn: { position: "absolute", right: 20, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", zIndex: 10 },
+  image: { width: SCREEN_WIDTH, height: SCREEN_WIDTH, resizeMode: "contain" },
+  placeholder: { width: SCREEN_WIDTH * 0.6, height: SCREEN_WIDTH * 0.6, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  infoCard: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#1A1A1A", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 20, gap: 8 },
+  badge: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  name: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  priceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
+  priceLabel: { fontSize: 13, color: "#999", fontFamily: "Inter_400Regular" },
+  price: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#E87722" },
+  pointsRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  pointsText: { fontSize: 13, color: "#aaa", fontFamily: "Inter_400Regular" },
+});
+
 export default function ProductsScreen() {
   const { token, user } = useAuth();
   const { settings } = useAdminSettings();
@@ -81,6 +148,7 @@ export default function ProductsScreen() {
 
   const [confirmProduct, setConfirmProduct] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [lightboxProduct, setLightboxProduct] = useState<Product | null>(null);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -214,16 +282,21 @@ export default function ProductsScreen() {
         delayLongPress={300}
         activeOpacity={isSelected ? 1 : 0.85}
       >
-        {item.imageBase64 ? (
-          <Image
-            source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }}
-            style={styles.productImage}
-          />
-        ) : (
-          <View style={[styles.cardIconWrap, { backgroundColor: meta.bg }]}>
-            <Feather name={meta.icon} size={20} color={meta.color} />
-          </View>
-        )}
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); setLightboxProduct(item); }}
+          activeOpacity={0.8}
+        >
+          {item.imageBase64 ? (
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }}
+              style={styles.productImage}
+            />
+          ) : (
+            <View style={[styles.cardIconWrap, { backgroundColor: meta.bg }]}>
+              <Feather name={meta.icon} size={20} color={meta.color} />
+            </View>
+          )}
+        </TouchableOpacity>
         <View style={styles.cardLeft}>
           <Text style={styles.productName}>{item.name}</Text>
           <View style={styles.metaRow}>
@@ -519,6 +592,10 @@ export default function ProductsScreen() {
           </View>
         </View>
       </Modal>
+
+      {lightboxProduct && (
+        <ImageLightbox product={lightboxProduct} onClose={() => setLightboxProduct(null)} />
+      )}
     </View>
   );
 }
