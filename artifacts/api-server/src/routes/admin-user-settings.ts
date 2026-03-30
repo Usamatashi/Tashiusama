@@ -80,6 +80,24 @@ router.get("/", requireAuth, requireSuperAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin-user-settings/:userId — get a specific admin's settings (super admin only)
+router.get("/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) { res.status(400).json({ error: "Invalid user id" }); return; }
+    const rows = await db.select().from(adminUserSettingsTable).where(eq(adminUserSettingsTable.userId, userId)).limit(1);
+    if (rows.length === 0) { res.json(DEFAULT_SETTINGS); return; }
+    try {
+      res.json({ ...DEFAULT_SETTINGS, ...JSON.parse(rows[0].settingsJson) });
+    } catch {
+      res.json(DEFAULT_SETTINGS);
+    }
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // PUT /api/admin-user-settings/:userId — update a specific admin's settings (super admin only)
 router.put("/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
   try {

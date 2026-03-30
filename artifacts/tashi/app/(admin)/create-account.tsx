@@ -20,6 +20,35 @@ import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
+const DEFAULT_ACCESS = {
+  tab_dashboard: true,
+  tab_products: true,
+  tab_users: true,
+  tab_payments: true,
+  card_create_qr: true,
+  card_orders: true,
+  card_claims: true,
+  card_create_ads: true,
+  card_create_text: true,
+  card_payments: true,
+};
+type AccessKey = keyof typeof DEFAULT_ACCESS;
+
+const ACCESS_TABS: { key: AccessKey; label: string }[] = [
+  { key: "tab_dashboard", label: "Dashboard" },
+  { key: "tab_products", label: "Products" },
+  { key: "tab_users", label: "Accounts" },
+  { key: "tab_payments", label: "Payments" },
+];
+const ACCESS_CARDS: { key: AccessKey; label: string }[] = [
+  { key: "card_create_qr", label: "Create QR" },
+  { key: "card_orders", label: "Orders" },
+  { key: "card_claims", label: "Claims" },
+  { key: "card_create_ads", label: "Create Ads" },
+  { key: "card_create_text", label: "Create Text" },
+  { key: "card_payments", label: "Payments" },
+];
+
 const ALL_ROLES = [
   { value: "super_admin", label: "Super Admin" },
   { value: "admin", label: "Admin" },
@@ -71,6 +100,7 @@ export default function CreateAccountScreen() {
   const [city, setCity] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("retailer");
+  const [access, setAccess] = useState({ ...DEFAULT_ACCESS });
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -90,10 +120,11 @@ export default function CreateAccountScreen() {
     setEditingUser(null);
     setErrorMsg("");
     setName(""); setPhone(""); setCity(""); setPassword(""); setRole("retailer");
+    setAccess({ ...DEFAULT_ACCESS });
     setModalVisible(true);
   };
 
-  const openEdit = (user: User) => {
+  const openEdit = async (user: User) => {
     setEditingUser(user);
     setErrorMsg("");
     setName(user.name || "");
@@ -101,6 +132,18 @@ export default function CreateAccountScreen() {
     setCity(user.city || "");
     setPassword("");
     setRole(user.role);
+    setAccess({ ...DEFAULT_ACCESS });
+    if (user.role === "admin" && currentUser?.role === "super_admin") {
+      try {
+        const res = await fetch(`${BASE}/admin-user-settings/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAccess({ ...DEFAULT_ACCESS, ...data });
+        }
+      } catch {}
+    }
     setModalVisible(true);
   };
 
@@ -127,6 +170,18 @@ export default function CreateAccountScreen() {
       });
       const data = await res.json();
       if (!res.ok) { setErrorMsg(data.error || "Failed to save account"); return; }
+
+      if (role === "admin" && currentUser?.role === "super_admin") {
+        const userId = editingUser ? editingUser.id : data.id;
+        if (userId) {
+          await fetch(`${BASE}/admin-user-settings/${userId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(access),
+          });
+        }
+      }
+
       setModalVisible(false);
       fetchUsers();
     } catch {
@@ -291,6 +346,46 @@ export default function CreateAccountScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                {role === "admin" && currentUser?.role === "super_admin" && (
+                  <>
+                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Access Level</Text>
+                    <Text style={styles.accessSectionHead}>Tabs</Text>
+                    <View style={styles.accessGrid}>
+                      {ACCESS_TABS.map((item) => {
+                        const on = access[item.key];
+                        return (
+                          <TouchableOpacity
+                            key={item.key}
+                            style={[styles.accessChip, on && styles.accessChipOn]}
+                            onPress={() => setAccess(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                            activeOpacity={0.8}
+                          >
+                            <Feather name={on ? "check-square" : "square"} size={14} color={on ? Colors.adminAccent : Colors.textLight} />
+                            <Text style={[styles.accessChipText, on && styles.accessChipTextOn]}>{item.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.accessSectionHead}>Dashboard Cards</Text>
+                    <View style={styles.accessGrid}>
+                      {ACCESS_CARDS.map((item) => {
+                        const on = access[item.key];
+                        return (
+                          <TouchableOpacity
+                            key={item.key}
+                            style={[styles.accessChip, on && styles.accessChipOn]}
+                            onPress={() => setAccess(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                            activeOpacity={0.8}
+                          >
+                            <Feather name={on ? "check-square" : "square"} size={14} color={on ? Colors.adminAccent : Colors.textLight} />
+                            <Text style={[styles.accessChipText, on && styles.accessChipTextOn]}>{item.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
 
                 <Text style={styles.fieldLabel}>Phone Number *</Text>
                 <TextInput
@@ -583,4 +678,18 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingVertical: 13, alignItems: "center",
   },
   confirmDeleteText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 15 },
+
+  accessSectionHead: {
+    fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.textLight,
+    textTransform: "uppercase", letterSpacing: 0.5, marginTop: 10, marginBottom: 6,
+  },
+  accessGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  accessChip: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    borderWidth: 1.5, borderColor: Colors.border, backgroundColor: "#F7F8FA",
+  },
+  accessChipOn: { borderColor: Colors.adminAccent, backgroundColor: `${Colors.adminAccent}12` },
+  accessChipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textLight },
+  accessChipTextOn: { color: Colors.adminAccent, fontFamily: "Inter_600SemiBold" },
 });
