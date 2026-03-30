@@ -25,12 +25,12 @@ import { Colors } from "@/constants/colors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Retailer { id: number; name: string | null; phone: string; city: string | null; }
-interface Vehicle  { id: number; name: string; points: number; salesPrice: number; }
-interface CartItem { vehicle: Vehicle; quantity: number; }
+interface Product  { id: number; name: string; points: number; salesPrice: number; }
+interface CartItem { product: Product; quantity: number; }
 
 interface OrderItemResponse {
-  vehicleId: number;
-  vehicleName: string;
+  productId: number;
+  productName: string;
   quantity: number;
   unitPrice: number;
   totalPoints: number;
@@ -141,7 +141,7 @@ function InvoiceCard({
       {/* Invoice table */}
       <View style={styles.table}>
         <View style={styles.tableRow}>
-          <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+          <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
           <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
@@ -149,7 +149,7 @@ function InvoiceCard({
         <View style={styles.tableDivider} />
         {items.map((item, idx) => (
           <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-            <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.vehicleName}</Text>
+            <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName}</Text>
             <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
             <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
               {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
@@ -190,11 +190,11 @@ function RetailerOrderCard({ order }: { order: RetailerOrder }) {
     day: "2-digit", month: "short", year: "numeric",
   });
   const safeItems = order.items ?? [];
-  const firstVehicle = safeItems[0]?.vehicleName ?? "Order";
+  const firstProduct = safeItems[0]?.productName ?? "Order";
   return (
     <InvoiceCard
       headerIcon="truck"
-      headerTitle={safeItems.length > 1 ? `${safeItems.length} vehicles` : firstVehicle}
+      headerTitle={safeItems.length > 1 ? `${safeItems.length} products` : firstProduct}
       date={date}
       status={order.status}
       items={safeItems}
@@ -257,7 +257,7 @@ export default function OrdersScreen() {
   const [search, setSearch] = useState("");
   const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState("1");
   const [submitError, setSubmitError] = useState("");
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
@@ -274,14 +274,14 @@ export default function OrdersScreen() {
     enabled: showCreate && step === 1,
   });
 
-  const { data: vehicles = [], isLoading: loadingVehicles } = useQuery<Vehicle[]>({
-    queryKey: ["vehicles"],
-    queryFn: () => apiFetch("/vehicles"),
+  const { data: products = [], isLoading: loadingProducts } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: () => apiFetch("/products"),
     enabled: showCreate && step === 2,
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: { retailerId: number; items: { vehicleId: number; quantity: number }[] }) =>
+    mutationFn: (body: { retailerId: number; items: { productId: number; quantity: number }[] }) =>
       apiFetch<Order>("/orders", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: (order) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -304,7 +304,7 @@ export default function OrdersScreen() {
     setSearch("");
     setSelectedRetailer(null);
     setCartItems([]);
-    setSelectedVehicle(null);
+    setSelectedProduct(null);
     setQuantity("1");
     setSubmitError("");
     setSmsSending(false);
@@ -329,7 +329,7 @@ export default function OrdersScreen() {
 
     const items = order.items ?? [];
     const itemLines = items.map(i =>
-      `• ${i.vehicleName}: ${i.quantity} set${i.quantity !== 1 ? "s" : ""} × Rs. ${i.unitPrice.toLocaleString()} = Rs. ${i.totalValue.toLocaleString()}`
+      `• ${i.productName}: ${i.quantity} set${i.quantity !== 1 ? "s" : ""} × Rs. ${i.unitPrice.toLocaleString()} = Rs. ${i.totalValue.toLocaleString()}`
     ).join("\n");
 
     const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
@@ -350,41 +350,41 @@ export default function OrdersScreen() {
   }, []);
 
   const addToCart = () => {
-    if (!selectedVehicle) return;
+    if (!selectedProduct) return;
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty < 1) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCartItems(prev => {
-      const existing = prev.findIndex(c => c.vehicle.id === selectedVehicle.id);
+      const existing = prev.findIndex(c => c.product.id === selectedProduct.id);
       if (existing >= 0) {
         const updated = [...prev];
-        updated[existing] = { vehicle: selectedVehicle, quantity: updated[existing].quantity + qty };
+        updated[existing] = { product: selectedProduct, quantity: updated[existing].quantity + qty };
         return updated;
       }
-      return [...prev, { vehicle: selectedVehicle, quantity: qty }];
+      return [...prev, { product: selectedProduct, quantity: qty }];
     });
-    setSelectedVehicle(null);
+    setSelectedProduct(null);
     setQuantity("1");
   };
 
-  const removeFromCart = (vehicleId: number) => {
+  const removeFromCart = (productId: number) => {
     Haptics.selectionAsync();
-    setCartItems(prev => prev.filter(c => c.vehicle.id !== vehicleId));
+    setCartItems(prev => prev.filter(c => c.product.id !== productId));
   };
 
   const handleSubmit = () => {
     if (!selectedRetailer || cartItems.length === 0) {
-      setSubmitError("Please add at least one vehicle.");
+      setSubmitError("Please add at least one product.");
       return;
     }
     setSubmitError("");
     createMutation.mutate({
       retailerId: selectedRetailer.id,
-      items: cartItems.map(c => ({ vehicleId: c.vehicle.id, quantity: c.quantity })),
+      items: cartItems.map(c => ({ productId: c.product.id, quantity: c.quantity })),
     });
   };
 
-  const cartTotal = cartItems.reduce((s, c) => s + c.vehicle.salesPrice * c.quantity, 0);
+  const cartTotal = cartItems.reduce((s, c) => s + c.product.salesPrice * c.quantity, 0);
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
@@ -433,7 +433,7 @@ export default function OrdersScreen() {
           <View style={styles.card}>
             <View style={styles.table}>
               <View style={styles.tableRow}>
-                <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+                <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
                 <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
                 <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
                 <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
@@ -444,7 +444,7 @@ export default function OrdersScreen() {
                   key={idx}
                   style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < orderItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}
                 >
-                  <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.vehicleName}</Text>
+                  <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName}</Text>
                   <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
                   <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.unitPrice.toLocaleString()}</Text>
                   <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.totalValue.toLocaleString()}</Text>
@@ -575,7 +575,7 @@ export default function OrdersScreen() {
                   style={[styles.primaryBtn, { marginTop: 24 }]}
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStep(2); }}
                 >
-                  <Text style={styles.primaryBtnText}>Next — Add Vehicles</Text>
+                  <Text style={styles.primaryBtnText}>Next — Add Products</Text>
                   <Feather name="arrow-right" size={18} color={Colors.white} />
                 </TouchableOpacity>
               )}
@@ -591,25 +591,25 @@ export default function OrdersScreen() {
                 <Text style={styles.retailerChipText}>{selectedRetailer?.name || selectedRetailer?.phone}</Text>
               </View>
 
-              <Text style={styles.stepTitle}>Add Vehicles</Text>
-              <Text style={styles.stepSubtitle}>Select a vehicle and set quantity, then tap Add. Repeat for each vehicle.</Text>
+              <Text style={styles.stepTitle}>Add Products</Text>
+              <Text style={styles.stepSubtitle}>Select a product and set quantity, then tap Add. Repeat for each product.</Text>
 
               {/* Cart summary */}
               {cartItems.length > 0 && (
                 <View style={styles.cartBox}>
                   <View style={styles.cartBoxHeader}>
-                    <Text style={styles.cartBoxTitle}>Cart ({cartItems.length} vehicle{cartItems.length !== 1 ? "s" : ""})</Text>
+                    <Text style={styles.cartBoxTitle}>Cart ({cartItems.length} product{cartItems.length !== 1 ? "s" : ""})</Text>
                     <Text style={styles.cartBoxTotal}>Rs. {cartTotal.toLocaleString()}</Text>
                   </View>
                   {cartItems.map(c => (
-                    <View key={c.vehicle.id} style={styles.cartRow}>
+                    <View key={c.product.id} style={styles.cartRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cartItemName}>{c.vehicle.name}</Text>
+                        <Text style={styles.cartItemName}>{c.product.name}</Text>
                         <Text style={styles.cartItemSub}>
-                          {c.quantity} sets × Rs. {c.vehicle.salesPrice.toLocaleString()} = Rs. {(c.quantity * c.vehicle.salesPrice).toLocaleString()}
+                          {c.quantity} sets × Rs. {c.product.salesPrice.toLocaleString()} = Rs. {(c.quantity * c.product.salesPrice).toLocaleString()}
                         </Text>
                       </View>
-                      <TouchableOpacity onPress={() => removeFromCart(c.vehicle.id)} style={styles.removeBtn}>
+                      <TouchableOpacity onPress={() => removeFromCart(c.product.id)} style={styles.removeBtn}>
                         <Feather name="trash-2" size={15} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
@@ -619,25 +619,25 @@ export default function OrdersScreen() {
 
               {/* Vehicle picker */}
               <Text style={styles.sectionLabel}>
-                {selectedVehicle ? "Set Quantity" : "Select Vehicle"}
+                {selectedProduct ? "Set Quantity" : "Select Product"}
               </Text>
 
-              {!selectedVehicle ? (
-                loadingVehicles ? (
+              {!selectedProduct ? (
+                loadingProducts ? (
                   <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />
-                ) : vehicles.length === 0 ? (
+                ) : products.length === 0 ? (
                   <View style={styles.emptyState}>
                     <Feather name="truck" size={40} color={Colors.border} />
-                    <Text style={styles.emptyTitle}>No vehicles available</Text>
+                    <Text style={styles.emptyTitle}>No products available</Text>
                   </View>
                 ) : (
-                  vehicles.map(v => {
-                    const alreadyAdded = cartItems.some(c => c.vehicle.id === v.id);
+                  products.map(v => {
+                    const alreadyAdded = cartItems.some(c => c.product.id === v.id);
                     return (
                       <TouchableOpacity
                         key={v.id}
                         style={[styles.selectCard, alreadyAdded && styles.selectCardAdded]}
-                        onPress={() => { Haptics.selectionAsync(); setSelectedVehicle(v); setQuantity("1"); }}
+                        onPress={() => { Haptics.selectionAsync(); setSelectedProduct(v); setQuantity("1"); }}
                         activeOpacity={0.7}
                       >
                         <View style={[styles.selectCardIcon, alreadyAdded && { backgroundColor: "#D1FAE5" }]}>
@@ -659,12 +659,12 @@ export default function OrdersScreen() {
               ) : (
                 <View>
                   {/* Selected vehicle summary */}
-                  <View style={styles.selectedVehicleCard}>
+                  <View style={styles.selectedProductCard}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.selectedVehicleName}>{selectedVehicle.name}</Text>
-                      <Text style={styles.selectedVehiclePrice}>Rs. {selectedVehicle.salesPrice.toLocaleString()}/unit</Text>
+                      <Text style={styles.selectedProductName}>{selectedProduct.name}</Text>
+                      <Text style={styles.selectedProductPrice}>Rs. {selectedProduct.salesPrice.toLocaleString()}/unit</Text>
                     </View>
-                    <TouchableOpacity onPress={() => { setSelectedVehicle(null); setQuantity("1"); }}>
+                    <TouchableOpacity onPress={() => { setSelectedProduct(null); setQuantity("1"); }}>
                       <Feather name="x" size={18} color={Colors.textLight} />
                     </TouchableOpacity>
                   </View>
@@ -698,7 +698,7 @@ export default function OrdersScreen() {
                       <View style={styles.previewRow}>
                         <Text style={styles.previewLabel}>Line Total</Text>
                         <Text style={[styles.previewVal, { color: Colors.primary, fontWeight: "700" }]}>
-                          Rs. {(parseInt(quantity, 10) * selectedVehicle.salesPrice).toLocaleString()}
+                          Rs. {(parseInt(quantity, 10) * selectedProduct.salesPrice).toLocaleString()}
                         </Text>
                       </View>
                     </View>
@@ -760,19 +760,19 @@ export default function OrdersScreen() {
               <View style={styles.card}>
                 <View style={styles.table}>
                   <View style={styles.tableRow}>
-                    <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+                    <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
                     <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
                     <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
                     <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
                   </View>
                   <View style={styles.tableDivider} />
                   {cartItems.map((c, idx) => {
-                    const lineTotal = c.quantity * c.vehicle.salesPrice;
+                    const lineTotal = c.quantity * c.product.salesPrice;
                     return (
-                      <View key={c.vehicle.id} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < cartItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-                        <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{c.vehicle.name}</Text>
+                      <View key={c.product.id} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < cartItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+                        <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{c.product.name}</Text>
                         <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{c.quantity}</Text>
-                        <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{c.vehicle.salesPrice.toLocaleString()}</Text>
+                        <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{c.product.salesPrice.toLocaleString()}</Text>
                         <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{lineTotal.toLocaleString()}</Text>
                       </View>
                     );
@@ -936,13 +936,13 @@ const styles = StyleSheet.create({
   cartItemSub: { fontSize: 12, color: Colors.textLight, marginTop: 1 },
   removeBtn: { padding: 6 },
 
-  selectedVehicleCard: {
+  selectedProductCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#EEF4FB", borderRadius: 12, padding: 14, marginBottom: 12,
     borderWidth: 1.5, borderColor: Colors.primary,
   },
-  selectedVehicleName: { fontSize: 15, fontWeight: "700", color: Colors.primary },
-  selectedVehiclePrice: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  selectedProductName: { fontSize: 15, fontWeight: "700", color: Colors.primary },
+  selectedProductPrice: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 
   qtyRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",

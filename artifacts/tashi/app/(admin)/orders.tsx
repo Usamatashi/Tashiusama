@@ -19,8 +19,8 @@ import { router } from "expo-router";
 import { Colors } from "@/constants/colors";
 
 interface OrderItem {
-  vehicleId: number;
-  vehicleName: string;
+  productId: number;
+  productName: string;
   quantity: number;
   unitPrice: number;
   totalPoints: number;
@@ -116,7 +116,7 @@ function OrderCard({
       <View style={styles.table}>
         {/* Column headers */}
         <View style={styles.tableRow}>
-          <Text style={[styles.colHead, { flex: 3 }]}>VEHICLE</Text>
+          <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
           <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
           <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
@@ -132,7 +132,7 @@ function OrderCard({
           items.map((item, idx) => (
             <View key={idx} style={[styles.tableRow, { paddingVertical: 10 }]}>
               <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>
-                {item.vehicleName || "—"}
+                {item.productName || "—"}
               </Text>
               <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>
                 {item.quantity}
