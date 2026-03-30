@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams } from "expo-router";
 import { Colors } from "@/constants/colors";
 
 type ProductCategory = "disc_pad" | "brake_shoes" | "other";
@@ -72,13 +73,33 @@ export default function ProductsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const { category } = useLocalSearchParams<{ category?: string }>();
 
   const { data: products = [], isLoading, refetch, isRefetching } = useQuery<Product[]>({
     queryKey: ["user-products"],
     queryFn: fetchProducts,
   });
 
-  const sections = CATEGORY_ORDER
+  // Determine which categories to show based on the filter param
+  const visibleCategories: ProductCategory[] =
+    category === "disc_pad"
+      ? ["disc_pad"]
+      : category === "brake_shoes"
+      ? ["brake_shoes", "other"]
+      : CATEGORY_ORDER;
+
+  const headerTitle =
+    category === "disc_pad"
+      ? "Disc Pads"
+      : category === "brake_shoes"
+      ? "Brake Shoes & Other"
+      : "Products";
+
+  const filteredProducts = products.filter((p) =>
+    visibleCategories.includes(p.category ?? "other")
+  );
+
+  const sections = visibleCategories
     .map((cat) => ({
       key: cat,
       title: CATEGORY_META[cat].label,
@@ -90,15 +111,15 @@ export default function ProductsScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: topPad + 14 }]}>
-        <Text style={styles.headerTitle}>Products</Text>
-        <Text style={styles.headerSub}>{products.length} available</Text>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <Text style={styles.headerSub}>{filteredProducts.length} available</Text>
       </View>
 
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
-      ) : products.length === 0 ? (
+      ) : filteredProducts.length === 0 ? (
         <View style={styles.center}>
           <Feather name="box" size={52} color={Colors.border} />
           <Text style={styles.emptyTitle}>No products yet</Text>
