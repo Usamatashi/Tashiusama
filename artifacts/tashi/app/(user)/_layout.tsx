@@ -58,9 +58,9 @@ function SalesmanTabBar() {
 
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
-      <TabItem icon="credit-card" label="Payments" active={isPayments} onPress={() => router.push("/(user)/payments")} />
-      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
+      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
+      <TabItem icon="credit-card" label="Payments" active={isPayments} onPress={() => router.replace("/(user)/payments")} />
+      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
     </View>
   );
 }
@@ -75,9 +75,9 @@ function RetailerTabBar() {
 
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
-      <TabItem icon="credit-card" label="Account" active={isPayments} onPress={() => router.push("/(user)/payments")} />
-      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
+      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
+      <TabItem icon="credit-card" label="Account" active={isPayments} onPress={() => router.replace("/(user)/payments")} />
+      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
     </View>
   );
 }
@@ -92,9 +92,9 @@ function DefaultTabBar() {
   return (
     <View style={styles.navWrapper}>
       <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-        <TabItem icon="home" label="Home" active={isHome} onPress={() => router.push("/(user)/")} />
+        <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
         <OrderFAB icon="maximize" label="Scan QR" onPress={() => router.push("/(user)/scan")} />
-        <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.push("/(user)/profile")} />
+        <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
       </View>
     </View>
   );
