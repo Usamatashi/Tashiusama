@@ -194,20 +194,47 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 // ─── Retailer Order Card ─────────────────────────────────────────────────────
-function RetailerOrderCard({ order }: { order: RetailerOrder }) {
+function RetailerOrderCard({
+  order,
+  onConfirm,
+  isConfirming,
+}: {
+  order: RetailerOrder;
+  onConfirm: () => void;
+  isConfirming: boolean;
+}) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
   const safeItems = order.items ?? [];
   const firstProduct = safeItems[0]?.productName ?? "Order";
   return (
-    <InvoiceCard
-      headerIcon="truck"
-      headerTitle={safeItems.length > 1 ? `${safeItems.length} products` : firstProduct}
-      date={date}
-      status={order.status}
-      items={safeItems}
-    />
+    <View>
+      <InvoiceCard
+        headerIcon="truck"
+        headerTitle={safeItems.length > 1 ? `${safeItems.length} products` : firstProduct}
+        date={date}
+        status={order.status}
+        items={safeItems}
+      />
+      {order.status === "pending" && (
+        <TouchableOpacity
+          style={[styles.confirmOrderBtn, isConfirming && styles.btnDisabled]}
+          onPress={onConfirm}
+          disabled={isConfirming}
+          activeOpacity={0.82}
+        >
+          {isConfirming ? (
+            <ActivityIndicator color="#FFF" size="small" />
+          ) : (
+            <>
+              <Feather name="check-circle" size={18} color="#FFF" />
+              <Text style={styles.confirmOrderBtnText}>Confirm Order</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -215,11 +242,39 @@ function RetailerOrdersScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+  const qc = useQueryClient();
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   const { data: orders = [], isLoading, refetch, isRefetching } = useQuery<RetailerOrder[]>({
     queryKey: ["retailer-orders"],
     queryFn: () => apiFetch("/orders/my-retail-orders"),
   });
+
+  const confirmMutation = useMutation({
+    mutationFn: (orderId: number) =>
+      apiFetch(`/orders/${orderId}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "confirmed" }),
+      }),
+    onMutate: (orderId) => setConfirmingId(orderId),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["retailer-orders"] });
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+    onSettled: () => setConfirmingId(null),
+  });
+
+  const handleConfirm = (orderId: number) => {
+    Alert.alert(
+      "Confirm Order",
+      "Are you sure you want to confirm this order?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Confirm", style: "default", onPress: () => confirmMutation.mutate(orderId) },
+      ]
+    );
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: "#F7F4F1" }]}>
@@ -241,7 +296,13 @@ function RetailerOrdersScreen() {
         <FlatList
           data={orders}
           keyExtractor={item => String(item.id)}
-          renderItem={({ item }) => <RetailerOrderCard order={item} />}
+          renderItem={({ item }) => (
+            <RetailerOrderCard
+              order={item}
+              onConfirm={() => handleConfirm(item.id)}
+              isConfirming={confirmingId === item.id}
+            />
+          )}
           contentContainerStyle={{ padding: 16, paddingBottom: botPad + 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -469,7 +530,7 @@ export default function OrdersScreen() {
           {/* Status pill */}
           <View style={[styles.statusInfoRow]}>
             <Feather name="clock" size={14} color="#F59E0B" />
-            <Text style={styles.statusInfoText}>Pending admin confirmation</Text>
+            <Text style={styles.statusInfoText}>Pending retailer confirmation</Text>
           </View>
 
           {/* SMS button */}
@@ -1079,6 +1140,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, marginBottom: 16,
   },
   statusInfoText: { fontSize: 13, color: "#92400E", fontWeight: "600" },
+
+  confirmOrderBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "#10B981", borderRadius: 12,
+    paddingVertical: 13, marginHorizontal: 16, marginTop: -4, marginBottom: 16,
+    shadowColor: "#10B981", shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
+  },
+  confirmOrderBtnText: { fontSize: 15, fontWeight: "700", color: "#FFF" },
 
   smsBtn: {
     flexDirection: "row", alignItems: "center", gap: 14,
