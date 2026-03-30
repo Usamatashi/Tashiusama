@@ -25,7 +25,7 @@ type TabItem = {
 
 const ALL_TAB_ITEMS: TabItem[] = [
   { name: "index", label: "Dashboard", icon: "grid" },
-  { name: "products", label: "Products", icon: "truck" },
+  { name: "products", label: "Brake Shoes", icon: "truck" },
   { name: "create-account", label: "Users", icon: "users" },
   { name: "payments", label: "Payments", icon: "dollar-sign" },
 ];

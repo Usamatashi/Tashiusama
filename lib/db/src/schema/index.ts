@@ -17,11 +17,15 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const productCategoryEnum = pgEnum("product_category", ["disc_pad", "brake_shoes", "other"]);
+
 export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   points: integer("points").notNull().default(0),
   salesPrice: integer("sales_price").notNull().default(0),
+  category: productCategoryEnum("category").notNull().default("other"),
+  imageBase64: text("image_base64"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

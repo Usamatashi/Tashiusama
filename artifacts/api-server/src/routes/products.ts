@@ -17,12 +17,18 @@ router.get("/", requireAuth, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, points, salesPrice } = req.body;
+    const { name, points, salesPrice, category, imageBase64 } = req.body;
     if (!name || points === undefined) {
       res.status(400).json({ error: "Name and points are required" });
       return;
     }
-    const inserted = await db.insert(productsTable).values({ name, points: Number(points), salesPrice: Number(salesPrice) || 0 }).returning();
+    const inserted = await db.insert(productsTable).values({
+      name,
+      points: Number(points),
+      salesPrice: Number(salesPrice) || 0,
+      category: category || "other",
+      imageBase64: imageBase64 || null,
+    }).returning();
     const product = inserted[0];
     res.status(201).json({ ...product, createdAt: product.createdAt.toISOString() });
   } catch (err) {
@@ -34,12 +40,21 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
 router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, points, salesPrice } = req.body;
+    const { name, points, salesPrice, category, imageBase64 } = req.body;
     if (!name || points === undefined) {
       res.status(400).json({ error: "Name and points are required" });
       return;
     }
-    const updated = await db.update(productsTable).set({ name, points: Number(points), salesPrice: Number(salesPrice) || 0 }).where(eq(productsTable.id, id)).returning();
+    const updateData: Record<string, unknown> = {
+      name,
+      points: Number(points),
+      salesPrice: Number(salesPrice) || 0,
+      category: category || "other",
+    };
+    if (imageBase64 !== undefined) {
+      updateData.imageBase64 = imageBase64 || null;
+    }
+    const updated = await db.update(productsTable).set(updateData).where(eq(productsTable.id, id)).returning();
     if (!updated[0]) {
       res.status(404).json({ error: "Product not found" });
       return;
