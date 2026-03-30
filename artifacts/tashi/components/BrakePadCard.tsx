@@ -17,7 +17,7 @@ interface QuickAction {
   label: string;
   desc: string;
   route: string;
-  icon?: React.ComponentProps<typeof Feather>["name"];
+  icon?: string;
   iconColor?: string;
   iconBg?: string;
 }
@@ -37,6 +37,12 @@ export function BrakePadCard({ leftAction, rightAction, centerRoute, centerLabel
         style={styles.image}
         resizeMode="cover"
       />
+
+      {/* Cover left baked-in text (Orders + icon) */}
+      <View style={styles.coverLeft} pointerEvents="none" />
+
+      {/* Cover right baked-in text (Vehicles + icon) */}
+      <View style={styles.coverRight} pointerEvents="none" />
 
       {/* Left tap zone */}
       <TouchableOpacity
@@ -76,6 +82,25 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
+  },
+
+  coverLeft: {
+    position: "absolute",
+    left: "10%",
+    top: "30%",
+    width: "31%",
+    height: "38%",
+    backgroundColor: "rgba(244,246,244,0.97)",
+    borderRadius: 8,
+  },
+  coverRight: {
+    position: "absolute",
+    right: "10%",
+    top: "30%",
+    width: "31%",
+    height: "38%",
+    backgroundColor: "rgba(242,246,250,0.97)",
+    borderRadius: 8,
   },
 
   leftZone: {
