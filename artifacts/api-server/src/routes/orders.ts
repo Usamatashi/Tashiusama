@@ -267,9 +267,26 @@ router.put("/:id/status", requireAuth, async (req, res) => {
       return;
     }
 
-    if (!["pending", "confirmed", "cancelled"].includes(status)) {
+    if (!["pending", "confirmed", "dispatched", "cancelled"].includes(status)) {
       res.status(400).json({ error: "Invalid status" });
       return;
+    }
+
+    // Only admins can dispatch
+    if (status === "dispatched" && !isAdmin) {
+      res.status(403).json({ error: "Only admins can dispatch orders" });
+      return;
+    }
+
+    // Validate dispatch transition: must be confirmed → dispatched
+    if (status === "dispatched" && isAdmin) {
+      const order = await db.select({ status: ordersTable.status })
+        .from(ordersTable).where(eq(ordersTable.id, id));
+      if (!order.length) { res.status(404).json({ error: "Order not found" }); return; }
+      if (order[0].status !== "confirmed") {
+        res.status(400).json({ error: "Only confirmed orders can be dispatched" });
+        return;
+      }
     }
 
     if (isRetailer) {

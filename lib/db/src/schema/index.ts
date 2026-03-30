@@ -97,7 +97,7 @@ export const insertTickerSchema = createInsertSchema(tickerTable).omit({ id: tru
 export type InsertTicker = z.infer<typeof insertTickerSchema>;
 export type Ticker = typeof tickerTable.$inferSelect;
 
-export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "cancelled"]);
+export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "dispatched", "cancelled"]);
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),

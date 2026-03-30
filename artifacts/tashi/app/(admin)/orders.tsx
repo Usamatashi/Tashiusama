@@ -85,11 +85,13 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
 const STATUS_COLOR: Record<string, string> = {
   pending: "#F59E0B",
   confirmed: "#10B981",
+  dispatched: "#3B82F6",
   cancelled: "#EF4444",
 };
 const STATUS_BG: Record<string, string> = {
   pending: "#FEF3C7",
   confirmed: "#D1FAE5",
+  dispatched: "#DBEAFE",
   cancelled: "#FEE2E2",
 };
 
@@ -100,7 +102,7 @@ const CATEGORY_META: Record<ProductCategory, { label: string; color: string; bg:
 };
 const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
 
-type FilterTab = "all" | "pending" | "confirmed" | "cancelled";
+type FilterTab = "all" | "pending" | "confirmed" | "dispatched" | "cancelled";
 
 // ─── Edit Order Modal ─────────────────────────────────────────────────────────
 function EditOrderModal({
@@ -423,12 +425,14 @@ function OrderCard({
   onConfirm,
   onCancel,
   onEdit,
+  onDispatch,
   isUpdating,
 }: {
   order: Order;
   onConfirm: (id: number) => void;
   onCancel: (id: number) => void;
   onEdit: (order: Order) => void;
+  onDispatch: (id: number) => void;
   isUpdating: boolean;
 }) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
@@ -526,10 +530,30 @@ function OrderCard({
           <TouchableOpacity
             style={[styles.actionBtn, styles.editBtn]}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEdit(order); }}
+            disabled={isUpdating}
             activeOpacity={0.8}
           >
             <Feather name="edit-2" size={15} color={Colors.primary} />
-            <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit Order</Text>
+            <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.dispatchBtn]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              Alert.alert("Dispatch Order", "Mark this order as dispatched?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Dispatch", onPress: () => onDispatch(order.id) },
+              ]);
+            }}
+            disabled={isUpdating}
+            activeOpacity={0.8}
+          >
+            {isUpdating
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <>
+                  <Feather name="send" size={15} color="#fff" />
+                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>Dispatch</Text>
+                </>}
           </TouchableOpacity>
         </View>
       )}
@@ -544,6 +568,7 @@ export default function AdminOrdersScreen() {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [dispatchingId, setDispatchingId] = useState<number | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -565,6 +590,19 @@ export default function AdminOrdersScreen() {
     },
   });
 
+  const dispatchMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiFetch(`/orders/${id}/status`, { method: "PUT", body: JSON.stringify({ status: "dispatched" }) }),
+    onMutate: (id) => setDispatchingId(id),
+    onSuccess: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+    onSettled: () => {
+      setDispatchingId(null);
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
   const handleConfirm = useCallback((id: number) => {
     updateStatus.mutate({ id, status: "confirmed" });
   }, [updateStatus]);
@@ -580,7 +618,7 @@ export default function AdminOrdersScreen() {
     ]);
   }, [updateStatus]);
 
-  const FILTERS: FilterTab[] = ["all", "pending", "confirmed", "cancelled"];
+  const FILTERS: FilterTab[] = ["all", "pending", "confirmed", "dispatched", "cancelled"];
   const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
   const pendingCount = orders.filter(o => o.status === "pending").length;
 
@@ -636,7 +674,8 @@ export default function AdminOrdersScreen() {
               onConfirm={handleConfirm}
               onCancel={handleCancel}
               onEdit={setEditingOrder}
-              isUpdating={updatingId === item.id}
+              onDispatch={(id) => dispatchMutation.mutate(id)}
+              isUpdating={updatingId === item.id || dispatchingId === item.id}
             />
           )}
           contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
@@ -757,6 +796,7 @@ const styles = StyleSheet.create({
   confirmBtn: { backgroundColor: "#10B981" },
   cancelBtn: { backgroundColor: "#FEE2E2" },
   editBtn: { backgroundColor: `${Colors.primary}12`, borderWidth: 1, borderColor: `${Colors.primary}30` },
+  dispatchBtn: { backgroundColor: "#3B82F6" },
   actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },

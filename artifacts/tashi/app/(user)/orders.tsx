@@ -106,10 +106,10 @@ function StepBar({ step }: { step: number }) {
 
 // ─── Status colours ──────────────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
-  pending: "#F59E0B", confirmed: "#10B981", cancelled: "#EF4444",
+  pending: "#F59E0B", confirmed: "#10B981", dispatched: "#3B82F6", cancelled: "#EF4444",
 };
 const STATUS_BG: Record<string, string> = {
-  pending: "#FEF3C7", confirmed: "#D1FAE5", cancelled: "#FEE2E2",
+  pending: "#FEF3C7", confirmed: "#D1FAE5", dispatched: "#DBEAFE", cancelled: "#FEE2E2",
 };
 
 // ─── Invoice Card (supports multiple line items) ─────────────────────────────
