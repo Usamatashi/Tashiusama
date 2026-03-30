@@ -1,0 +1,158 @@
+Got it — since you're using **Expo (React Native)** and the **tabs are still showing even after restriction**, this is almost always a **navigation-level issue**, not just UI.
+
+Let’s break it down clearly 👇
+
+---
+
+## 🚨 Root Problem (Expo / React Navigation)
+
+In Expo apps, tabs are usually defined like this:
+
+```js
+<Tab.Navigator>
+  <Tab.Screen name="Dashboard" component={DashboardScreen} />
+  <Tab.Screen name="Products" component={ProductsScreen} />
+  <Tab.Screen name="Users" component={UsersScreen} />
+  <Tab.Screen name="Payments" component={PaymentsScreen} />
+</Tab.Navigator>
+```
+
+👉 This means:
+**All tabs are always rendered unless you conditionally remove them.**
+
+---
+
+## ✅ FIX: Conditionally render tabs based on permissions
+
+You must filter tabs BEFORE rendering them.
+
+### ✔️ Correct approach:
+
+```js
+const tabs = [
+  { name: "Dashboard", component: DashboardScreen, key: "dashboard" },
+  { name: "Products", component: ProductsScreen, key: "products" },
+  { name: "Users", component: UsersScreen, key: "users" },
+  { name: "Payments", component: PaymentsScreen, key: "payments" },
+];
+
+<Tab.Navigator>
+  {tabs
+    .filter(tab => adminPermissions.tabs.includes(tab.key))
+    .map(tab => (
+      <Tab.Screen
+        key={tab.key}
+        name={tab.name}
+        component={tab.component}
+      />
+    ))}
+</Tab.Navigator>
+```
+
+---
+
+## 🔴 Common mistake (why yours is still showing)
+
+You probably did something like:
+
+```js
+<Tab.Screen
+  name="Payments"
+  component={PaymentsScreen}
+  options={{ tabBarStyle: { display: 'none' } }}
+/>
+```
+
+❌ This only hides visually — tab still exists
+❌ Navigation still allows access
+❌ Sometimes still shows depending on state
+
+---
+
+## 🔴 Also check: Expo Router (if you're using it)
+
+If you're using **Expo Router**, tabs are file-based like:
+
+```
+/(app)/tabs/dashboard.tsx
+/app/tabs/products.tsx
+/app/tabs/users.tsx
+/app/tabs/payments.tsx
+```
+
+👉 In that case, you must conditionally block them:
+
+### Option 1: Redirect inside screen
+
+```js
+if (!adminPermissions.tabs.includes("payments")) {
+  return <Redirect href="/dashboard" />;
+}
+```
+
+---
+
+### Option 2: Hide tab button
+
+```js
+<Tabs.Screen
+  name="payments"
+  options={{
+    href: adminPermissions.tabs.includes("payments") ? "/payments" : null
+  }}
+/>
+```
+
+---
+
+## 🔴 SUPER IMPORTANT (Expo issue)
+
+Permissions must be loaded BEFORE rendering tabs.
+
+👉 If permissions load after render:
+
+Tabs will show first → then update (or not update)
+
+### ✅ Fix:
+
+```js
+if (!adminPermissions) return null; // or loading screen
+```
+
+---
+
+## 🔥 Debug this right now
+
+Add this:
+
+```js
+console.log("TABS PERMISSIONS:", adminPermissions.tabs);
+```
+
+Then check:
+
+* Is `"payments"` still inside?
+* Is data coming late?
+
+---
+
+## 🧠 Most likely in your case
+
+Based on what you said:
+
+👉 Tabs are **hardcoded in navigator**
+👉 Permissions are **not used to filter Tab.Screen**
+
+---
+
+## 💬 If you want exact fix
+
+Send me:
+
+* Your Tab Navigator code (very important)
+* Are you using:
+
+  * React Navigation OR
+  * Expo Router?
+
+I’ll rewrite it exactly for your setup 👍

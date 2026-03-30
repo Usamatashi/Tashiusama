@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useAdminSettings } from "@/context/AdminSettingsContext";
+import { useAdminSettings, type AdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
@@ -21,7 +21,6 @@ type TabItem = {
   name: string;
   label: string;
   icon: React.ComponentProps<typeof Feather>["name"];
-  superAdminOnly?: boolean;
 };
 
 const ALL_TAB_ITEMS: TabItem[] = [
@@ -31,7 +30,7 @@ const ALL_TAB_ITEMS: TabItem[] = [
   { name: "payments", label: "Payments", icon: "dollar-sign" },
 ];
 
-export const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSettings>["settings"]> = {
+export const SETTINGS_KEY_MAP: Record<string, keyof AdminSettings> = {
   index: "tab_dashboard",
   products: "tab_products",
   "create-account": "tab_users",
@@ -41,7 +40,6 @@ export const SETTINGS_KEY_MAP: Record<string, keyof ReturnType<typeof useAdminSe
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const paddingBottom = Platform.OS === "web" ? 34 : insets.bottom;
-
   const { user } = useAuth();
   const { settings } = useAdminSettings();
   const isSuperAdmin = user?.role === "super_admin";
@@ -62,8 +60,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           const tabItem = ALL_TAB_ITEMS.find((t) => t.name === route.name);
           if (!tabItem) return null;
 
-          const isConfigTab = route.name === "super-config";
-          const accent = isConfigTab ? SUPER_ACCENT : Colors.adminAccent;
+          const accent = Colors.adminAccent;
           const isFocused = state.index === state.routes.indexOf(route);
 
           const onPress = () => {
@@ -118,7 +115,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
 export default function AdminLayout() {
   const { user } = useAuth();
-  const { fetchSettings, settingsLoaded } = useAdminSettings();
+  const { fetchSettings, settingsLoaded, settings } = useAdminSettings();
+  const isSuperAdmin = user?.role === "super_admin";
 
   useFocusEffect(
     useCallback(() => {
@@ -137,12 +135,15 @@ export default function AdminLayout() {
     );
   }
 
+  const tabHref = (key: keyof AdminSettings): null | undefined =>
+    isSuperAdmin || settings[key] ? undefined : null;
+
   return (
     <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="products" />
-      <Tabs.Screen name="create-account" />
-      <Tabs.Screen name="payments" />
+      <Tabs.Screen name="index" options={{ href: tabHref("tab_dashboard") }} />
+      <Tabs.Screen name="products" options={{ href: tabHref("tab_products") }} />
+      <Tabs.Screen name="create-account" options={{ href: tabHref("tab_users") }} />
+      <Tabs.Screen name="payments" options={{ href: tabHref("tab_payments") }} />
       <Tabs.Screen name="super-config" options={{ href: null }} />
       <Tabs.Screen name="create-qr" options={{ href: null }} />
       <Tabs.Screen name="claims" options={{ href: null }} />
