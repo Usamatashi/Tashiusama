@@ -67,13 +67,13 @@ const BASE_QUICK_ACTIONS = [
 ];
 
 const RETAILER_QUICK_ACTIONS = [
-  { label: "My Orders", desc: "View your orders", icon: "📦", route: "/(user)/orders", accent: "#FEF3C7", iconBg: "#FDE68A" },
-  { label: "Vehicles", desc: "Browse catalog", icon: "🚗", route: "/(user)/vehicles", accent: "#EDFBF3", iconBg: "#B8F0CE" },
+  { label: "Disc Pads", desc: "View your orders", icon: "circle" as const, route: "/(user)/orders", accent: "#FFF4EC", iconBg: "#FFEDD5", iconColor: "#E87722" },
+  { label: "Brake Shoes", desc: "Browse catalog", icon: "truck" as const, route: "/(user)/products", accent: "#EFF6FF", iconBg: "#DBEAFE", iconColor: "#2563EB" },
 ];
 
 const SALESMAN_QUICK_ACTIONS = [
-  { label: "Orders", desc: "Manage your sales", icon: "📋", route: "/(user)/orders", accent: "#EDFBF3", iconBg: "#B8F0CE" },
-  { label: "Vehicles", desc: "Browse catalog", icon: "🚗", route: "/(user)/vehicles", accent: "#EDF5FF", iconBg: "#BFDBFE" },
+  { label: "Disc Pads", desc: "Place disc pad orders", icon: "circle" as const, route: "/(user)/orders", accent: "#FFF4EC", iconBg: "#FFEDD5", iconColor: "#E87722" },
+  { label: "Brake Shoes", desc: "Browse catalog", icon: "truck" as const, route: "/(user)/products", accent: "#EFF6FF", iconBg: "#DBEAFE", iconColor: "#2563EB" },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -333,8 +333,8 @@ export default function UserHomeScreen() {
               ))}
             </View>
             <BrakePadCard
-              leftAction={{ label: quickActions[0].label, desc: quickActions[0].desc, route: quickActions[0].route }}
-              rightAction={{ label: quickActions[1].label, desc: quickActions[1].desc, route: quickActions[1].route }}
+              leftAction={{ label: quickActions[0].label, desc: quickActions[0].desc, route: quickActions[0].route, icon: (quickActions[0] as any).icon, iconColor: (quickActions[0] as any).iconColor, iconBg: (quickActions[0] as any).iconBg }}
+              rightAction={{ label: quickActions[1].label, desc: quickActions[1].desc, route: quickActions[1].route, icon: (quickActions[1] as any).icon, iconColor: (quickActions[1] as any).iconColor, iconBg: (quickActions[1] as any).iconBg }}
               centerRoute="/(user)/orders"
               centerLabel="ORDER"
             />
