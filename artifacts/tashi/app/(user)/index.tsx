@@ -357,13 +357,17 @@ export default function UserHomeScreen() {
               </Text>
               <Text style={styles.statCardSub}>orders confirmed</Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: "#92400E" }]}>
+            <TouchableOpacity
+              style={[styles.statCard, { backgroundColor: "#065F46" }]}
+              onPress={() => router.push("/(user)/commission" as any)}
+              activeOpacity={0.82}
+            >
               <Text style={styles.statCardLabel}>Commission</Text>
               <Text style={styles.statCardValue}>
                 {salesSummary ? `${salesSummary.confirmedBonus.toLocaleString()} pts` : "—"}
               </Text>
-              <Text style={styles.statCardSub}>bonus points earned</Text>
-            </View>
+              <Text style={styles.statCardSub}>tap to view details</Text>
+            </TouchableOpacity>
           </View>
         )}
 

@@ -158,6 +158,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="create-text" options={{ href: null }} />
       <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="commission" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -101,6 +101,19 @@ const ACTIONS = [
     superAdminOnly: false,
   },
   {
+    icon: "percent" as const,
+    label: "Commission",
+    desc: "Track salesman commission on sales",
+    route: "/(admin)/commission" as const,
+    gradient: ["#065F46", "#059669"] as [string, string],
+    decoration: "#34D399",
+    countEndpoint: null as string | null,
+    countLabel: null as string | null,
+    showPendingDot: false,
+    showOrdersPending: false,
+    superAdminOnly: false,
+  },
+  {
     icon: "sliders" as const,
     label: "Config",
     desc: "Manage admin access and app settings",
@@ -122,6 +135,7 @@ const CARD_KEY_MAP: Record<string, keyof AdminSettings> = {
   "Create Ads": "card_create_ads",
   "Create Text": "card_create_text",
   "Payments": "card_payments",
+  "Commission": "card_commission",
 };
 
 export default function AdminDashboard() {

@@ -423,4 +423,67 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
   }
 });
 
+// ─── GET /orders/salesman-commissions — admin only ────────────────────────────
+router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: ordersTable.id,
+        salesmanId: ordersTable.salesmanId,
+        productId: ordersTable.productId,
+        quantity: ordersTable.quantity,
+        bonusPoints: ordersTable.bonusPoints,
+        totalPoints: ordersTable.totalPoints,
+        status: ordersTable.status,
+        createdAt: ordersTable.createdAt,
+        salesPrice: productsTable.salesPrice,
+        salesmanName: usersTable.name,
+        salesmanPhone: usersTable.phone,
+      })
+      .from(ordersTable)
+      .leftJoin(productsTable, eq(ordersTable.productId, productsTable.id))
+      .leftJoin(usersTable, eq(ordersTable.salesmanId, usersTable.id));
+
+    const itemsMap = await getItemsForOrders(rows.map((r) => r.id));
+
+    type SmEntry = {
+      salesmanId: number;
+      name: string | null;
+      phone: string;
+      orders: Array<{ id: number; status: string; bonusPoints: number; totalValue: number; createdAt: string }>;
+    };
+
+    const byId: Record<number, SmEntry> = {};
+    for (const r of rows) {
+      if (!byId[r.salesmanId]) {
+        byId[r.salesmanId] = { salesmanId: r.salesmanId, name: r.salesmanName, phone: r.salesmanPhone!, orders: [] };
+      }
+      const items = buildOrderItems(r, itemsMap, r.id);
+      const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
+      byId[r.salesmanId].orders.push({ id: r.id, status: r.status, bonusPoints: r.bonusPoints, totalValue, createdAt: r.createdAt.toISOString() });
+    }
+
+    const result = Object.values(byId).map((sm) => {
+      const active = sm.orders.filter((o) => o.status !== "cancelled");
+      const confirmed = sm.orders.filter((o) => o.status === "confirmed");
+      return {
+        salesmanId: sm.salesmanId,
+        name: sm.name,
+        phone: sm.phone,
+        totalOrders: active.length,
+        confirmedOrders: confirmed.length,
+        totalSalesValue: active.reduce((s, o) => s + o.totalValue, 0),
+        confirmedSalesValue: confirmed.reduce((s, o) => s + o.totalValue, 0),
+        totalBonus: active.reduce((s, o) => s + o.bonusPoints, 0),
+        confirmedBonus: confirmed.reduce((s, o) => s + o.bonusPoints, 0),
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

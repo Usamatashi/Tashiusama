@@ -12,6 +12,7 @@ export type AdminSettings = {
   card_create_ads: boolean;
   card_create_text: boolean;
   card_payments: boolean;
+  card_commission: boolean;
 };
 
 export const DEFAULT_SETTINGS: AdminSettings = {
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: AdminSettings = {
   card_create_ads: true,
   card_create_text: true,
   card_payments: true,
+  card_commission: true,
 };
 
 export type AdminUserEntry = {

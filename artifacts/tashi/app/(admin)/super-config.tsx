@@ -45,6 +45,7 @@ const CARD_SETTINGS: SettingItem[] = [
   { key: "card_create_ads", label: "Create Ads", desc: "Create and manage advertisements", icon: "radio" },
   { key: "card_create_text", label: "Create Text", desc: "Add scrolling ticker messages for users", icon: "type" },
   { key: "card_payments", label: "Payments Card", desc: "Shortcut to the payments section", icon: "dollar-sign" },
+  { key: "card_commission", label: "Commission", desc: "Track salesman commission on sales", icon: "percent" },
 ];
 
 // ─── Per-Admin Access Panel ───────────────────────────────────────────────────
