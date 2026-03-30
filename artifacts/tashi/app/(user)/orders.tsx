@@ -1144,7 +1144,7 @@ const styles = StyleSheet.create({
   confirmOrderBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: "#10B981", borderRadius: 12,
-    paddingVertical: 13, marginHorizontal: 16, marginTop: -4, marginBottom: 16,
+    paddingVertical: 13, marginHorizontal: 16, marginTop: 8, marginBottom: 16,
     shadowColor: "#10B981", shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
