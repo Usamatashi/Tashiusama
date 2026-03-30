@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -52,7 +53,7 @@ interface Order {
   totalPoints: number;
   bonusPoints: number;
   totalValue: number;
-  status: "pending" | "confirmed" | "cancelled";
+  status: "pending" | "confirmed" | "dispatched" | "cancelled";
   retailerName: string | null;
   retailerPhone: string | null;
   createdAt: string;
@@ -101,6 +102,292 @@ function StepBar({ step }: { step: number }) {
       <View style={[styles.stepLine, step > 2 && styles.stepLineDone]} />
       <StepDot n={3} active={step === 3} done={false} />
     </View>
+  );
+}
+
+// ─── Salesman Edit Order Modal ────────────────────────────────────────────────
+function SalesmanEditOrderModal({
+  order,
+  visible,
+  onClose,
+  onSaved,
+}: {
+  order: Order | null;
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const qc = useQueryClient();
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState("1");
+  const [tab, setTab] = useState<"cart" | "add">("cart");
+  const [saveError, setSaveError] = useState("");
+
+  const { data: products = [], isLoading: loadingProducts } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: () => apiFetch("/products"),
+    enabled: visible,
+  });
+
+  React.useEffect(() => {
+    if (visible && order && products.length > 0) {
+      const initial: CartItem[] = order.items
+        .map(item => {
+          const p = products.find(p => p.id === item.productId);
+          return p ? { product: p, quantity: item.quantity } : null;
+        })
+        .filter((x): x is CartItem => x !== null);
+      setCart(initial);
+      setTab("cart");
+      setSelectedProduct(null);
+      setQuantity("1");
+      setSaveError("");
+    }
+  }, [visible, order, products]);
+
+  const saveItemsMutation = useMutation({
+    mutationFn: (items: { productId: number; quantity: number }[]) =>
+      apiFetch(`/orders/${order!.id}/items`, {
+        method: "PUT",
+        body: JSON.stringify({ items }),
+      }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      onSaved();
+      onClose();
+    },
+    onError: (e: Error) => setSaveError(e.message),
+  });
+
+  const addToCart = () => {
+    if (!selectedProduct) return;
+    const qty = parseInt(quantity, 10);
+    if (isNaN(qty) || qty < 1) return;
+    Haptics.selectionAsync();
+    setCart(prev => {
+      const idx = prev.findIndex(c => c.product.id === selectedProduct.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = { product: selectedProduct, quantity: qty };
+        return updated;
+      }
+      return [...prev, { product: selectedProduct, quantity: qty }];
+    });
+    setSelectedProduct(null);
+    setQuantity("1");
+    setTab("cart");
+  };
+
+  const updateQty = (productId: number, newQty: number) => {
+    if (newQty < 1) return;
+    setCart(prev => prev.map(c => c.product.id === productId ? { ...c, quantity: newQty } : c));
+  };
+
+  const removeFromCart = (productId: number) => {
+    Haptics.selectionAsync();
+    setCart(prev => prev.filter(c => c.product.id !== productId));
+  };
+
+  const handleSave = () => {
+    if (cart.length === 0) { setSaveError("Order must have at least one product."); return; }
+    setSaveError("");
+    saveItemsMutation.mutate(cart.map(c => ({ productId: c.product.id, quantity: c.quantity })));
+  };
+
+  const cartTotal = cart.reduce((s, c) => s + c.product.salesPrice * c.quantity, 0);
+
+  if (!order) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={editModal.root}>
+        {/* Header */}
+        <View style={editModal.header}>
+          <TouchableOpacity onPress={onClose} style={editModal.headerBtn}>
+            <Feather name="x" size={22} color="#1A1A1A" />
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={editModal.headerTitle}>Edit Order #{order.id}</Text>
+            <Text style={editModal.headerSub}>{order.retailerName || order.retailerPhone || "Retailer"}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saveItemsMutation.isPending || cart.length === 0}
+            style={[editModal.saveBtn, (saveItemsMutation.isPending || cart.length === 0) && editModal.saveBtnDisabled]}
+          >
+            {saveItemsMutation.isPending
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={editModal.saveBtnText}>Save</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {/* Tabs */}
+        <View style={editModal.tabRow}>
+          {(["cart", "add"] as const).map(t => (
+            <TouchableOpacity
+              key={t}
+              style={[editModal.tabBtn, tab === t && editModal.tabBtnActive]}
+              onPress={() => setTab(t)}
+            >
+              <Feather
+                name={t === "cart" ? "shopping-cart" : "plus-circle"}
+                size={14}
+                color={tab === t ? Colors.primary : "#888"}
+              />
+              <Text style={[editModal.tabBtnText, tab === t && editModal.tabBtnTextActive]}>
+                {t === "cart" ? `Cart (${cart.length})` : "Add Products"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {saveError ? (
+          <View style={editModal.errorBanner}>
+            <Feather name="alert-circle" size={14} color="#EF4444" />
+            <Text style={editModal.errorText}>{saveError}</Text>
+          </View>
+        ) : null}
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          {/* Cart tab */}
+          {tab === "cart" && (
+            cart.length === 0 ? (
+              <View style={editModal.emptyState}>
+                <Feather name="shopping-cart" size={44} color="#DDD" />
+                <Text style={editModal.emptyTitle}>Cart is empty</Text>
+                <Text style={editModal.emptyText}>Tap "Add Products" to add items</Text>
+                <TouchableOpacity style={editModal.addTabBtn} onPress={() => setTab("add")}>
+                  <Feather name="plus" size={16} color="#fff" />
+                  <Text style={editModal.addTabBtnText}>Add Products</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                {cart.map(c => (
+                  <View key={c.product.id} style={editModal.cartRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={editModal.cartItemName}>{c.product.name}</Text>
+                      <Text style={editModal.cartItemPrice}>Rs. {c.product.salesPrice.toLocaleString()} / unit</Text>
+                    </View>
+                    <View style={editModal.qtyControls}>
+                      <TouchableOpacity style={editModal.qtyBtn} onPress={() => updateQty(c.product.id, c.quantity - 1)}>
+                        <Feather name="minus" size={14} color={Colors.primary} />
+                      </TouchableOpacity>
+                      <TextInput
+                        style={editModal.qtyInput}
+                        value={String(c.quantity)}
+                        onChangeText={v => { const n = parseInt(v.replace(/[^0-9]/g, ""), 10); if (!isNaN(n) && n >= 1) updateQty(c.product.id, n); }}
+                        keyboardType="number-pad"
+                        textAlign="center"
+                      />
+                      <TouchableOpacity style={editModal.qtyBtn} onPress={() => updateQty(c.product.id, c.quantity + 1)}>
+                        <Feather name="plus" size={14} color={Colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ alignItems: "flex-end", minWidth: 80, marginLeft: 8 }}>
+                      <Text style={editModal.cartItemTotal}>Rs. {(c.product.salesPrice * c.quantity).toLocaleString()}</Text>
+                      <TouchableOpacity onPress={() => removeFromCart(c.product.id)} style={{ marginTop: 4 }}>
+                        <Feather name="trash-2" size={14} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+                <View style={editModal.totalRow}>
+                  <Text style={editModal.totalLabel}>Order Total</Text>
+                  <Text style={editModal.totalValue}>Rs. {cartTotal.toLocaleString()}</Text>
+                </View>
+              </View>
+            )
+          )}
+
+          {/* Add products tab */}
+          {tab === "add" && (
+            selectedProduct ? (
+              <View>
+                <View style={editModal.selectedCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={editModal.selectedName}>{selectedProduct.name}</Text>
+                    <Text style={editModal.selectedPrice}>Rs. {selectedProduct.salesPrice.toLocaleString()} / unit</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => { setSelectedProduct(null); setQuantity("1"); }}>
+                    <Feather name="x" size={18} color="#888" />
+                  </TouchableOpacity>
+                </View>
+                <View style={editModal.qtyRowCenter}>
+                  <TouchableOpacity style={editModal.qtyBtn} onPress={() => setQuantity(String(Math.max(1, parseInt(quantity || "1", 10) - 1)))}>
+                    <Feather name="minus" size={18} color={Colors.primary} />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={editModal.qtyInputLarge}
+                    value={quantity}
+                    onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ""))}
+                    keyboardType="number-pad"
+                    textAlign="center"
+                  />
+                  <TouchableOpacity style={editModal.qtyBtn} onPress={() => setQuantity(String(parseInt(quantity || "0", 10) + 1))}>
+                    <Feather name="plus" size={18} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
+                {parseInt(quantity, 10) > 0 && (
+                  <View style={editModal.previewTotal}>
+                    <Text style={editModal.totalLabel}>Line Total</Text>
+                    <Text style={[editModal.totalValue, { color: Colors.primary }]}>
+                      Rs. {(parseInt(quantity, 10) * selectedProduct.salesPrice).toLocaleString()}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity style={editModal.addToCartBtn} onPress={addToCart}>
+                  <Feather name="plus-circle" size={18} color="#fff" />
+                  <Text style={editModal.addToCartBtnText}>
+                    {cart.some(c => c.product.id === selectedProduct.id) ? "Update in Cart" : "Add to Cart"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : loadingProducts ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
+            ) : (
+              CATEGORY_ORDER.map(cat => {
+                const catProducts = products.filter(p => (p.category ?? "other") === cat);
+                if (catProducts.length === 0) return null;
+                const meta = CATEGORY_META[cat];
+                return (
+                  <View key={cat}>
+                    <View style={[editModal.catHeader, { backgroundColor: meta.bg }]}>
+                      <Text style={[editModal.catHeaderText, { color: meta.color }]}>{meta.label}</Text>
+                    </View>
+                    {catProducts.map(p => {
+                      const inCart = cart.find(c => c.product.id === p.id);
+                      return (
+                        <TouchableOpacity
+                          key={p.id}
+                          style={[editModal.productRow, inCart && editModal.productRowInCart]}
+                          onPress={() => { Haptics.selectionAsync(); setSelectedProduct(p); setQuantity(inCart ? String(inCart.quantity) : "1"); }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={editModal.productName}>{p.name}</Text>
+                            <Text style={editModal.productPrice}>Rs. {p.salesPrice.toLocaleString()} / unit</Text>
+                          </View>
+                          {inCart ? (
+                            <View style={editModal.inCartBadge}>
+                              <Text style={editModal.inCartText}>{inCart.quantity} in cart</Text>
+                            </View>
+                          ) : (
+                            <Feather name="plus" size={18} color={Colors.primary} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                );
+              })
+            )
+          )}
+        </ScrollView>
+      </View>
+    </Modal>
   );
 }
 
@@ -180,10 +467,12 @@ function InvoiceCard({
 function OrderCard({
   order,
   onCancel,
+  onEdit,
   isCancelling,
 }: {
   order: Order;
   onCancel?: (id: number) => void;
+  onEdit?: (order: Order) => void;
   isCancelling?: boolean;
 }) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
@@ -199,29 +488,39 @@ function OrderCard({
         status={order.status}
         items={order.items}
       />
-      {order.status === "pending" && onCancel && (
-        <TouchableOpacity
-          style={styles.cancelOrderBtn}
-          onPress={() => {
-            Alert.alert(
-              "Cancel Order",
-              "Are you sure you want to cancel this order?",
-              [
-                { text: "No", style: "cancel" },
-                { text: "Yes, Cancel", style: "destructive", onPress: () => onCancel(order.id) },
-              ]
-            );
-          }}
-          disabled={isCancelling}
-          activeOpacity={0.8}
-        >
-          {isCancelling
-            ? <ActivityIndicator color="#EF4444" size="small" />
-            : <>
-                <Feather name="x-circle" size={16} color="#EF4444" />
-                <Text style={styles.cancelOrderBtnText}>Cancel Order</Text>
-              </>}
-        </TouchableOpacity>
+      {order.status === "pending" && (onCancel || onEdit) && (
+        <View style={styles.orderActionRow}>
+          {onEdit && (
+            <TouchableOpacity
+              style={[styles.orderActionBtn, styles.orderEditBtn]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEdit(order); }}
+              activeOpacity={0.8}
+            >
+              <Feather name="edit-2" size={15} color={Colors.primary} />
+              <Text style={[styles.orderActionBtnText, { color: Colors.primary }]}>Edit Order</Text>
+            </TouchableOpacity>
+          )}
+          {onCancel && (
+            <TouchableOpacity
+              style={[styles.orderActionBtn, styles.orderCancelBtn]}
+              onPress={() => {
+                Alert.alert("Cancel Order", "Are you sure you want to cancel this order?", [
+                  { text: "No", style: "cancel" },
+                  { text: "Yes, Cancel", style: "destructive", onPress: () => onCancel(order.id) },
+                ]);
+              }}
+              disabled={isCancelling}
+              activeOpacity={0.8}
+            >
+              {isCancelling
+                ? <ActivityIndicator color="#EF4444" size="small" />
+                : <>
+                    <Feather name="x-circle" size={15} color="#EF4444" />
+                    <Text style={[styles.orderActionBtnText, { color: "#EF4444" }]}>Cancel</Text>
+                  </>}
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </View>
   );
@@ -393,6 +692,7 @@ export default function OrdersScreen() {
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [smsSending, setSmsSending] = useState(false);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   const { data: orders = [], isLoading: loadingOrders, refetch, isRefetching } = useQuery<Order[]>({
     queryKey: ["orders"],
@@ -1006,6 +1306,7 @@ export default function OrdersScreen() {
             <OrderCard
               order={item}
               onCancel={(id) => cancelMutation.mutate(id)}
+              onEdit={setEditingOrder}
               isCancelling={cancellingId === item.id}
             />
           )}
@@ -1016,6 +1317,13 @@ export default function OrdersScreen() {
           }
         />
       )}
+
+      <SalesmanEditOrderModal
+        order={editingOrder}
+        visible={editingOrder !== null}
+        onClose={() => setEditingOrder(null)}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["orders"] })}
+      />
     </View>
   );
 }
@@ -1221,14 +1529,23 @@ const styles = StyleSheet.create({
   },
   statusInfoText: { fontSize: 13, color: "#92400E", fontWeight: "600" },
 
-  cancelOrderBtn: {
-    flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const,
-    gap: 6, marginHorizontal: 16, marginBottom: 14, marginTop: -6,
-    paddingVertical: 10, borderRadius: 10,
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1, borderColor: "#FECACA",
+  orderActionRow: {
+    flexDirection: "row" as const, gap: 10,
+    marginHorizontal: 16, marginBottom: 14, marginTop: -6,
   },
-  cancelOrderBtnText: { fontSize: 14, fontWeight: "600" as const, color: "#EF4444" },
+  orderActionBtn: {
+    flex: 1, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const,
+    gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
+  },
+  orderEditBtn: {
+    backgroundColor: "#FFF4EC",
+    borderColor: `${Colors.primary}40`,
+  },
+  orderCancelBtn: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FECACA",
+  },
+  orderActionBtnText: { fontSize: 14, fontWeight: "600" as const },
   confirmOrderBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: "#10B981", borderRadius: 12,
@@ -1265,4 +1582,114 @@ const styles = StyleSheet.create({
     paddingVertical: 14, backgroundColor: "#FFF",
   },
   outlineBtnText: { fontSize: 15, fontWeight: "700", color: Colors.primary },
+});
+
+// ─── Edit Order Modal Styles ──────────────────────────────────────────────────
+const editModal = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#F7F8FA" },
+  header: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14,
+    backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#EEEEEE",
+  },
+  headerBtn: { width: 36, height: 36, justifyContent: "center" },
+  headerTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A" },
+  headerSub: { fontSize: 12, color: "#888", marginTop: 1 },
+  saveBtn: {
+    backgroundColor: Colors.primary, paddingHorizontal: 18, paddingVertical: 8,
+    borderRadius: 20, minWidth: 60, alignItems: "center",
+  },
+  saveBtnDisabled: { opacity: 0.5 },
+  saveBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+
+  tabRow: {
+    flexDirection: "row", gap: 10, padding: 12, paddingHorizontal: 16,
+    backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#EEEEEE",
+  },
+  tabBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "#F0F0F0",
+  },
+  tabBtnActive: { backgroundColor: `${Colors.primary}15`, borderWidth: 1, borderColor: `${Colors.primary}30` },
+  tabBtnText: { fontSize: 13, fontWeight: "600", color: "#888" },
+  tabBtnTextActive: { color: Colors.primary },
+
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#FEE2E2", padding: 12, paddingHorizontal: 16,
+  },
+  errorText: { fontSize: 13, color: "#EF4444", flex: 1 },
+
+  emptyState: { alignItems: "center", paddingVertical: 48, gap: 10 },
+  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A" },
+  emptyText: { fontSize: 13, color: "#888", textAlign: "center" },
+  addTabBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 20, marginTop: 8,
+  },
+  addTabBtnText: { fontSize: 14, fontWeight: "600", color: "#fff" },
+
+  cartRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: "#EEEEEE",
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  cartItemName: { fontSize: 14, fontWeight: "600", color: "#1A1A1A", marginBottom: 2 },
+  cartItemPrice: { fontSize: 12, color: "#888" },
+  cartItemTotal: { fontSize: 14, fontWeight: "700", color: Colors.primary },
+  qtyControls: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 8 },
+  qtyBtn: {
+    width: 30, height: 30, borderRadius: 15, borderWidth: 1,
+    borderColor: Colors.primary, alignItems: "center", justifyContent: "center",
+  },
+  qtyInput: {
+    width: 36, height: 30, borderWidth: 1, borderColor: "#E0E0E0",
+    borderRadius: 8, fontSize: 13, fontWeight: "600", color: "#1A1A1A", backgroundColor: "#F8F8F8",
+  },
+  totalRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 12, padding: 16, marginTop: 8,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  totalLabel: { fontSize: 13, fontWeight: "600", color: "#888", textTransform: "uppercase", letterSpacing: 0.5 },
+  totalValue: { fontSize: 18, fontWeight: "700", color: "#1A1A1A" },
+
+  selectedCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: `${Colors.primary}0D`, borderRadius: 12, padding: 14, marginBottom: 12,
+    borderWidth: 1.5, borderColor: `${Colors.primary}40`,
+  },
+  selectedName: { fontSize: 15, fontWeight: "700", color: Colors.primary },
+  selectedPrice: { fontSize: 12, color: "#888", marginTop: 2 },
+
+  qtyRowCenter: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20, marginVertical: 12 },
+  qtyInputLarge: {
+    width: 64, height: 44, borderWidth: 1.5, borderColor: "#E0E0E0",
+    borderRadius: 10, fontSize: 18, fontWeight: "700", color: "#1A1A1A", backgroundColor: "#fff",
+  },
+  previewTotal: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 12,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  addToCartBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, backgroundColor: Colors.primary, padding: 14, borderRadius: 12,
+  },
+  addToCartBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+
+  catHeader: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, marginTop: 14, marginBottom: 6 },
+  catHeaderText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  productRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  productRowInCart: { borderColor: "#10B981", backgroundColor: "#F0FDF4" },
+  productName: { fontSize: 14, fontWeight: "600", color: "#1A1A1A" },
+  productPrice: { fontSize: 12, color: "#888", marginTop: 2 },
+  inCartBadge: { backgroundColor: "#D1FAE5", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  inCartText: { fontSize: 11, fontWeight: "700", color: "#059669" },
 });

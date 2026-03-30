@@ -332,9 +332,18 @@ router.put("/:id/status", requireAuth, async (req, res) => {
   }
 });
 
-// ─── PUT /orders/:id/items — admin: update items on a confirmed order ─────────
-router.put("/:id/items", requireAuth, requireAdmin, async (req, res) => {
+// ─── PUT /orders/:id/items — admin: confirmed orders, salesman: own pending ───
+router.put("/:id/items", requireAuth, async (req, res) => {
   try {
+    const caller = (req as any).user as JwtPayload;
+    const isAdmin = caller.role === "admin" || caller.role === "super_admin";
+    const isSalesman = caller.role === "salesman";
+
+    if (!isAdmin && !isSalesman) {
+      res.status(403).json({ error: "Not authorised to edit order items" });
+      return;
+    }
+
     const id = parseInt(req.params.id);
     const { items } = req.body;
 
@@ -345,9 +354,23 @@ router.put("/:id/items", requireAuth, requireAdmin, async (req, res) => {
 
     const order = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
     if (!order.length) { res.status(404).json({ error: "Order not found" }); return; }
-    if (order[0].status !== "confirmed") {
-      res.status(400).json({ error: "Only confirmed orders can be edited" });
-      return;
+
+    if (isAdmin) {
+      if (order[0].status !== "confirmed") {
+        res.status(400).json({ error: "Admins can only edit confirmed orders" });
+        return;
+      }
+    }
+
+    if (isSalesman) {
+      if (order[0].salesmanId !== caller.userId) {
+        res.status(403).json({ error: "Not your order" });
+        return;
+      }
+      if (order[0].status !== "pending") {
+        res.status(400).json({ error: "Salesmen can only edit pending orders" });
+        return;
+      }
     }
 
     // Validate items and compute new totals
