@@ -102,6 +102,7 @@ function PerAdminPanel() {
       tab_dashboard: true, tab_products: true, tab_users: true, tab_payments: true,
       card_create_qr: true, card_orders: true, card_claims: true,
       card_create_ads: true, card_create_text: true, card_payments: true,
+      card_commission: true,
     };
     setLocalSettings(all);
     setSaveAllLoading(true);
@@ -120,6 +121,7 @@ function PerAdminPanel() {
       tab_dashboard: false, tab_products: false, tab_users: false, tab_payments: false,
       card_create_qr: false, card_orders: false, card_claims: false,
       card_create_ads: false, card_create_text: false, card_payments: false,
+      card_commission: false,
     };
     setLocalSettings(none);
     setSaveAllLoading(true);

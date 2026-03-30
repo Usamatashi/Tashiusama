@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { useAuth } from "./AuthContext";
 
 export type AdminSettings = {
@@ -53,6 +54,8 @@ const AdminSettingsContext = createContext<AdminSettingsContextType | null>(null
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
+const POLL_INTERVAL_MS = 30_000;
+
 export function AdminSettingsProvider({ children }: { children: React.ReactNode }) {
   const { user, token, isLoading: authLoading } = useAuth();
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
@@ -64,12 +67,11 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
   const isSuperAdmin = user?.role === "super_admin";
   const isAdmin = user?.role === "admin" || isSuperAdmin;
 
-  // Track which token's settings have already been fetched — prevents premature settingsLoaded=true
   const lastLoadedTokenRef = useRef<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSettings = useCallback(async () => {
     if (!token) return;
-    // On first fetch for this token, block rendering until settings arrive
     if (lastLoadedTokenRef.current !== token) {
       setSettingsLoaded(false);
     }
@@ -89,8 +91,10 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
         const data = await res.json() as AdminSettings;
         setSettings({ ...DEFAULT_SETTINGS, ...data });
       }
+      // On non-ok (e.g. 401/500), keep current settings — do NOT silently
+      // fall back to DEFAULT_SETTINGS which would show all tabs as enabled.
     } catch {
-      // keep defaults on error
+      // Network error — keep current settings
     } finally {
       setIsLoading(false);
       lastLoadedTokenRef.current = token;
@@ -98,17 +102,50 @@ export function AdminSettingsProvider({ children }: { children: React.ReactNode 
     }
   }, [token, isSuperAdmin]);
 
+  // Periodic poll so settings update automatically while app is open
+  const schedulePoll = useCallback(() => {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    pollTimerRef.current = setTimeout(async () => {
+      await fetchSettings();
+      schedulePoll();
+    }, POLL_INTERVAL_MS);
+  }, [fetchSettings]);
+
+  const stopPoll = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  // Initial fetch + start polling when admin is authenticated
   useEffect(() => {
-    // Wait for auth to finish restoring before acting
     if (authLoading) return;
 
     if (isAdmin && token) {
-      fetchSettings();
+      fetchSettings().then(() => schedulePoll());
     } else {
       setSettings(DEFAULT_SETTINGS);
       setSettingsLoaded(true);
+      stopPoll();
     }
-  }, [isAdmin, token, fetchSettings, authLoading]);
+
+    return () => stopPoll();
+  }, [isAdmin, token, fetchSettings, authLoading, schedulePoll, stopPoll]);
+
+  // Re-fetch when the app comes back to the foreground
+  useEffect(() => {
+    if (!isAdmin || !token) return;
+
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === "active") {
+        fetchSettings();
+      }
+    };
+
+    const sub = AppState.addEventListener("change", handleAppStateChange);
+    return () => sub.remove();
+  }, [isAdmin, token, fetchSettings]);
 
   const updateSettings = useCallback(async (newSettings: AdminSettings) => {
     if (!token) throw new Error("Not authenticated");

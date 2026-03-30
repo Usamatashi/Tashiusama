@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
   card_create_ads: true,
   card_create_text: true,
   card_payments: true,
+  card_commission: true,
 };
 
 const router = Router();
