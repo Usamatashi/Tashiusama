@@ -150,6 +150,31 @@ export default function ProductsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [lightboxProduct, setLightboxProduct] = useState<Product | null>(null);
 
+  const lastTapRef = useRef<{ id: number; time: number } | null>(null);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleProductTap = useCallback((item: Product) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.id === item.id && now - last.time < 350) {
+      // Double tap — select
+      if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+      lastTapRef.current = null;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setSelectedProductId((prev) => (prev === item.id ? null : item.id));
+    } else {
+      // First tap — wait to confirm it's not a double tap
+      lastTapRef.current = { id: item.id, time: now };
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = setTimeout(() => {
+        lastTapRef.current = null;
+        tapTimerRef.current = null;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setLightboxProduct(item);
+      }, 350);
+    }
+  }, []);
+
   const fetchProducts = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/products`, {
@@ -277,9 +302,7 @@ export default function ProductsScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, isSelected && styles.cardSelected]}
-        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedProductId(isSelected ? null : item.id); }}
-        onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setLightboxProduct(item); }}
-        delayLongPress={400}
+        onPress={() => handleProductTap(item)}
         activeOpacity={0.85}
       >
         <TouchableOpacity
