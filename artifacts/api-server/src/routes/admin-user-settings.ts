@@ -24,7 +24,7 @@ const router = Router();
 router.get("/me", requireAuth, requireAdmin, async (req, res) => {
   res.set("Cache-Control", "no-store");
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
     const rows = await db
       .select()
       .from(adminUserSettingsTable)
