@@ -260,8 +260,9 @@ router.put("/:id/status", requireAuth, async (req, res) => {
 
     const isAdmin = caller.role === "admin" || caller.role === "super_admin";
     const isRetailer = caller.role === "retailer";
+    const isSalesman = caller.role === "salesman";
 
-    if (!isAdmin && !isRetailer) {
+    if (!isAdmin && !isRetailer && !isSalesman) {
       res.status(403).json({ error: "Not authorised to update order status" });
       return;
     }
@@ -286,9 +287,103 @@ router.put("/:id/status", requireAuth, async (req, res) => {
       }
     }
 
+    if (isSalesman) {
+      // Salesmen may only cancel their own pending orders
+      if (status !== "cancelled") {
+        res.status(403).json({ error: "Salesmen may only cancel orders" });
+        return;
+      }
+      const order = await db.select({ salesmanId: ordersTable.salesmanId, status: ordersTable.status })
+        .from(ordersTable).where(eq(ordersTable.id, id));
+      if (!order.length) { res.status(404).json({ error: "Order not found" }); return; }
+      if (order[0].salesmanId !== caller.userId) {
+        res.status(403).json({ error: "Not your order" });
+        return;
+      }
+      if (order[0].status !== "pending") {
+        res.status(400).json({ error: "Only pending orders can be cancelled" });
+        return;
+      }
+    }
+
     const updated = await db.update(ordersTable).set({ status }).where(eq(ordersTable.id, id)).returning();
     if (!updated.length) { res.status(404).json({ error: "Order not found" }); return; }
     res.json({ ...updated[0], createdAt: updated[0].createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── PUT /orders/:id/items — admin: update items on a confirmed order ─────────
+router.put("/:id/items", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "items array is required" });
+      return;
+    }
+
+    const order = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+    if (!order.length) { res.status(404).json({ error: "Order not found" }); return; }
+    if (order[0].status !== "confirmed") {
+      res.status(400).json({ error: "Only confirmed orders can be edited" });
+      return;
+    }
+
+    // Validate items and compute new totals
+    let orderTotalPoints = 0;
+    let orderBonusPoints = 0;
+    const resolvedItems: Array<{
+      productId: number;
+      quantity: number;
+      unitPrice: number;
+      totalPoints: number;
+      bonusPoints: number;
+    }> = [];
+
+    for (const item of items) {
+      if (!item.productId || !item.quantity || item.quantity < 1) {
+        res.status(400).json({ error: "Each item needs productId and quantity ≥ 1" });
+        return;
+      }
+      const product = await db.select().from(productsTable).where(eq(productsTable.id, Number(item.productId)));
+      if (!product.length) {
+        res.status(400).json({ error: `Product ${item.productId} not found` });
+        return;
+      }
+      const p = product[0];
+      const itemTotalPoints = Number(item.quantity) * p.points;
+      const itemBonusPoints = Math.round(itemTotalPoints * 0.1);
+      orderTotalPoints += itemTotalPoints;
+      orderBonusPoints += itemBonusPoints;
+      resolvedItems.push({
+        productId: p.id,
+        quantity: Number(item.quantity),
+        unitPrice: p.salesPrice,
+        totalPoints: itemTotalPoints,
+        bonusPoints: itemBonusPoints,
+      });
+    }
+
+    // Replace order items
+    await db.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+    await db.insert(orderItemsTable).values(
+      resolvedItems.map(item => ({ orderId: id, ...item }))
+    );
+
+    // Update order totals (keep single-item legacy fields null for multi-item)
+    const isMultiItem = resolvedItems.length > 1;
+    await db.update(ordersTable).set({
+      totalPoints: orderTotalPoints,
+      bonusPoints: orderBonusPoints,
+      productId: isMultiItem ? null : resolvedItems[0].productId,
+      quantity: isMultiItem ? null : resolvedItems[0].quantity,
+    }).where(eq(ordersTable.id, id));
+
+    res.json({ success: true, totalPoints: orderTotalPoints, bonusPoints: orderBonusPoints });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

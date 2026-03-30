@@ -177,19 +177,53 @@ function InvoiceCard({
   );
 }
 
-function OrderCard({ order }: { order: Order }) {
+function OrderCard({
+  order,
+  onCancel,
+  isCancelling,
+}: {
+  order: Order;
+  onCancel?: (id: number) => void;
+  isCancelling?: boolean;
+}) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
   return (
-    <InvoiceCard
-      headerIcon="user"
-      headerTitle={order.retailerName ?? order.retailerPhone ?? "Retailer"}
-      headerSub={order.retailerPhone ?? undefined}
-      date={date}
-      status={order.status}
-      items={order.items}
-    />
+    <View>
+      <InvoiceCard
+        headerIcon="user"
+        headerTitle={order.retailerName ?? order.retailerPhone ?? "Retailer"}
+        headerSub={order.retailerPhone ?? undefined}
+        date={date}
+        status={order.status}
+        items={order.items}
+      />
+      {order.status === "pending" && onCancel && (
+        <TouchableOpacity
+          style={styles.cancelOrderBtn}
+          onPress={() => {
+            Alert.alert(
+              "Cancel Order",
+              "Are you sure you want to cancel this order?",
+              [
+                { text: "No", style: "cancel" },
+                { text: "Yes, Cancel", style: "destructive", onPress: () => onCancel(order.id) },
+              ]
+            );
+          }}
+          disabled={isCancelling}
+          activeOpacity={0.8}
+        >
+          {isCancelling
+            ? <ActivityIndicator color="#EF4444" size="small" />
+            : <>
+                <Feather name="x-circle" size={16} color="#EF4444" />
+                <Text style={styles.cancelOrderBtnText}>Cancel Order</Text>
+              </>}
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -358,10 +392,24 @@ export default function OrdersScreen() {
   const [submitError, setSubmitError] = useState("");
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [smsSending, setSmsSending] = useState(false);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   const { data: orders = [], isLoading: loadingOrders, refetch, isRefetching } = useQuery<Order[]>({
     queryKey: ["orders"],
     queryFn: () => apiFetch("/orders"),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (orderId: number) =>
+      apiFetch(`/orders/${orderId}/status`, { method: "PUT", body: JSON.stringify({ status: "cancelled" }) }),
+    onMutate: (orderId) => setCancellingId(orderId),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["my-bonus"] });
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+    onSettled: () => setCancellingId(null),
   });
 
   const { data: retailers = [], isLoading: loadingRetailers } = useQuery<Retailer[]>({
@@ -954,7 +1002,13 @@ export default function OrdersScreen() {
         <FlatList
           data={orders}
           keyExtractor={item => String(item.id)}
-          renderItem={({ item }) => <OrderCard order={item} />}
+          renderItem={({ item }) => (
+            <OrderCard
+              order={item}
+              onCancel={(id) => cancelMutation.mutate(id)}
+              isCancelling={cancellingId === item.id}
+            />
+          )}
           contentContainerStyle={{ padding: 16, paddingBottom: botPad + 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -1167,6 +1221,14 @@ const styles = StyleSheet.create({
   },
   statusInfoText: { fontSize: 13, color: "#92400E", fontWeight: "600" },
 
+  cancelOrderBtn: {
+    flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const,
+    gap: 6, marginHorizontal: 16, marginBottom: 14, marginTop: -6,
+    paddingVertical: 10, borderRadius: 10,
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1, borderColor: "#FECACA",
+  },
+  cancelOrderBtnText: { fontSize: 14, fontWeight: "600" as const, color: "#EF4444" },
   confirmOrderBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     backgroundColor: "#10B981", borderRadius: 12,

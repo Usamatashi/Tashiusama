@@ -1,12 +1,16 @@
 import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Colors } from "@/constants/colors";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface OrderItem {
   productId: number;
   productName: string;
@@ -42,6 +47,21 @@ interface Order {
   items: OrderItem[];
 }
 
+type ProductCategory = "disc_pad" | "brake_shoes" | "other";
+interface Product {
+  id: number;
+  name: string;
+  points: number;
+  salesPrice: number;
+  category: ProductCategory;
+}
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
 async function getToken() {
   return (await AsyncStorage.getItem("tashi_token")) || "";
 }
@@ -61,6 +81,7 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   return data as T;
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {
   pending: "#F59E0B",
   confirmed: "#10B981",
@@ -72,17 +93,342 @@ const STATUS_BG: Record<string, string> = {
   cancelled: "#FEE2E2",
 };
 
+const CATEGORY_META: Record<ProductCategory, { label: string; color: string; bg: string }> = {
+  disc_pad:    { label: "Disc Pads",      color: "#E87722", bg: "#FFF4EC" },
+  brake_shoes: { label: "Brake Shoes",    color: "#2563EB", bg: "#EFF6FF" },
+  other:       { label: "Other Products", color: "#7B2FBE", bg: "#F5F0FF" },
+};
+const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
+
 type FilterTab = "all" | "pending" | "confirmed" | "cancelled";
 
+// ─── Edit Order Modal ─────────────────────────────────────────────────────────
+function EditOrderModal({
+  order,
+  visible,
+  onClose,
+  onSaved,
+}: {
+  order: Order | null;
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const qc = useQueryClient();
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState("1");
+  const [tab, setTab] = useState<"cart" | "add">("cart");
+  const [saveError, setSaveError] = useState("");
+
+  // Populate cart when modal opens with existing order items
+  const { data: products = [], isLoading: loadingProducts } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: () => apiFetch("/products"),
+    enabled: visible,
+  });
+
+  React.useEffect(() => {
+    if (visible && order && products.length > 0) {
+      const initialCart: CartItem[] = order.items
+        .map(item => {
+          const product = products.find(p => p.id === item.productId);
+          if (!product) return null;
+          return { product, quantity: item.quantity };
+        })
+        .filter((x): x is CartItem => x !== null);
+      setCart(initialCart);
+      setTab("cart");
+      setSelectedProduct(null);
+      setQuantity("1");
+      setSaveError("");
+    }
+  }, [visible, order, products]);
+
+  const saveItemsMutation = useMutation({
+    mutationFn: (items: { productId: number; quantity: number }[]) =>
+      apiFetch(`/orders/${order!.id}/items`, {
+        method: "PUT",
+        body: JSON.stringify({ items }),
+      }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      onSaved();
+      onClose();
+    },
+    onError: (e: Error) => setSaveError(e.message),
+  });
+
+  const addToCart = () => {
+    if (!selectedProduct) return;
+    const qty = parseInt(quantity, 10);
+    if (isNaN(qty) || qty < 1) return;
+    Haptics.selectionAsync();
+    setCart(prev => {
+      const idx = prev.findIndex(c => c.product.id === selectedProduct.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = { product: selectedProduct, quantity: qty };
+        return updated;
+      }
+      return [...prev, { product: selectedProduct, quantity: qty }];
+    });
+    setSelectedProduct(null);
+    setQuantity("1");
+    setTab("cart");
+  };
+
+  const updateQty = (productId: number, newQty: number) => {
+    if (newQty < 1) return;
+    setCart(prev => prev.map(c => c.product.id === productId ? { ...c, quantity: newQty } : c));
+  };
+
+  const removeFromCart = (productId: number) => {
+    Haptics.selectionAsync();
+    setCart(prev => prev.filter(c => c.product.id !== productId));
+  };
+
+  const handleSave = () => {
+    if (cart.length === 0) {
+      setSaveError("Order must have at least one product.");
+      return;
+    }
+    setSaveError("");
+    saveItemsMutation.mutate(cart.map(c => ({ productId: c.product.id, quantity: c.quantity })));
+  };
+
+  const cartTotal = cart.reduce((s, c) => s + c.product.salesPrice * c.quantity, 0);
+
+  if (!order) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={editStyles.root}>
+        {/* Header */}
+        <View style={editStyles.header}>
+          <TouchableOpacity onPress={onClose} style={editStyles.headerBtn}>
+            <Feather name="x" size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={editStyles.headerTitle}>Edit Order #{order.id}</Text>
+            <Text style={editStyles.headerSub}>{order.retailerName || order.retailerPhone || "Retailer"}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saveItemsMutation.isPending || cart.length === 0}
+            style={[editStyles.saveBtn, (saveItemsMutation.isPending || cart.length === 0) && editStyles.saveBtnDisabled]}
+          >
+            {saveItemsMutation.isPending
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={editStyles.saveBtnText}>Save</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {/* Tabs */}
+        <View style={editStyles.tabRow}>
+          <TouchableOpacity
+            style={[editStyles.tabBtn, tab === "cart" && editStyles.tabBtnActive]}
+            onPress={() => setTab("cart")}
+          >
+            <Feather name="shopping-cart" size={14} color={tab === "cart" ? Colors.primary : Colors.textSecondary} />
+            <Text style={[editStyles.tabBtnText, tab === "cart" && editStyles.tabBtnTextActive]}>
+              Cart ({cart.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[editStyles.tabBtn, tab === "add" && editStyles.tabBtnActive]}
+            onPress={() => setTab("add")}
+          >
+            <Feather name="plus-circle" size={14} color={tab === "add" ? Colors.primary : Colors.textSecondary} />
+            <Text style={[editStyles.tabBtnText, tab === "add" && editStyles.tabBtnTextActive]}>
+              Add Products
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {saveError ? (
+          <View style={editStyles.errorBanner}>
+            <Feather name="alert-circle" size={14} color="#EF4444" />
+            <Text style={editStyles.errorText}>{saveError}</Text>
+          </View>
+        ) : null}
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+
+          {/* ── Cart Tab ── */}
+          {tab === "cart" && (
+            <View>
+              {cart.length === 0 ? (
+                <View style={editStyles.emptyState}>
+                  <Feather name="shopping-cart" size={44} color={Colors.border} />
+                  <Text style={editStyles.emptyTitle}>Cart is empty</Text>
+                  <Text style={editStyles.emptyText}>Tap "Add Products" to add items</Text>
+                  <TouchableOpacity style={editStyles.addTabBtn} onPress={() => setTab("add")}>
+                    <Feather name="plus" size={16} color="#fff" />
+                    <Text style={editStyles.addTabBtnText}>Add Products</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  {cart.map((c, idx) => (
+                    <View key={c.product.id} style={editStyles.cartRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={editStyles.cartItemName}>{c.product.name}</Text>
+                        <Text style={editStyles.cartItemPrice}>
+                          Rs. {c.product.salesPrice.toLocaleString()} / unit
+                        </Text>
+                      </View>
+                      <View style={editStyles.qtyControls}>
+                        <TouchableOpacity
+                          style={editStyles.qtyBtn}
+                          onPress={() => updateQty(c.product.id, c.quantity - 1)}
+                        >
+                          <Feather name="minus" size={14} color={Colors.primary} />
+                        </TouchableOpacity>
+                        <TextInput
+                          style={editStyles.qtyInput}
+                          value={String(c.quantity)}
+                          onChangeText={v => {
+                            const n = parseInt(v.replace(/[^0-9]/g, ""), 10);
+                            if (!isNaN(n) && n >= 1) updateQty(c.product.id, n);
+                          }}
+                          keyboardType="number-pad"
+                          textAlign="center"
+                        />
+                        <TouchableOpacity
+                          style={editStyles.qtyBtn}
+                          onPress={() => updateQty(c.product.id, c.quantity + 1)}
+                        >
+                          <Feather name="plus" size={14} color={Colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={{ alignItems: "flex-end", minWidth: 80, marginLeft: 8 }}>
+                        <Text style={editStyles.cartItemTotal}>
+                          Rs. {(c.product.salesPrice * c.quantity).toLocaleString()}
+                        </Text>
+                        <TouchableOpacity onPress={() => removeFromCart(c.product.id)} style={{ marginTop: 4 }}>
+                          <Feather name="trash-2" size={14} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+
+                  <View style={editStyles.totalRow}>
+                    <Text style={editStyles.totalLabel}>Order Total</Text>
+                    <Text style={editStyles.totalValue}>Rs. {cartTotal.toLocaleString()}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
+          {/* ── Add Products Tab ── */}
+          {tab === "add" && (
+            <View>
+              {selectedProduct ? (
+                <View>
+                  <View style={editStyles.selectedProductCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={editStyles.selectedProductName}>{selectedProduct.name}</Text>
+                      <Text style={editStyles.selectedProductPrice}>Rs. {selectedProduct.salesPrice.toLocaleString()} / unit</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => { setSelectedProduct(null); setQuantity("1"); }}>
+                      <Feather name="x" size={18} color={Colors.textLight} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={editStyles.qtyRowStandalone}>
+                    <TouchableOpacity style={editStyles.qtyBtn} onPress={() => setQuantity(String(Math.max(1, parseInt(quantity || "1", 10) - 1)))}>
+                      <Feather name="minus" size={18} color={Colors.primary} />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={editStyles.qtyInputLarge}
+                      value={quantity}
+                      onChangeText={v => setQuantity(v.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                      textAlign="center"
+                    />
+                    <TouchableOpacity style={editStyles.qtyBtn} onPress={() => setQuantity(String(parseInt(quantity || "0", 10) + 1))}>
+                      <Feather name="plus" size={18} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {parseInt(quantity, 10) > 0 && (
+                    <View style={editStyles.previewTotal}>
+                      <Text style={editStyles.totalLabel}>Line Total</Text>
+                      <Text style={[editStyles.totalValue, { color: Colors.primary }]}>
+                        Rs. {(parseInt(quantity, 10) * selectedProduct.salesPrice).toLocaleString()}
+                      </Text>
+                    </View>
+                  )}
+
+                  <TouchableOpacity style={editStyles.addToCartBtn} onPress={addToCart}>
+                    <Feather name="plus-circle" size={18} color="#fff" />
+                    <Text style={editStyles.addToCartBtnText}>
+                      {cart.some(c => c.product.id === selectedProduct.id) ? "Update in Cart" : "Add to Cart"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : loadingProducts ? (
+                <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
+              ) : (
+                CATEGORY_ORDER.map(cat => {
+                  const catProducts = products.filter(p => (p.category ?? "other") === cat);
+                  if (catProducts.length === 0) return null;
+                  const meta = CATEGORY_META[cat];
+                  return (
+                    <View key={cat}>
+                      <View style={[editStyles.catHeader, { backgroundColor: meta.bg }]}>
+                        <Text style={[editStyles.catHeaderText, { color: meta.color }]}>{meta.label}</Text>
+                      </View>
+                      {catProducts.map(p => {
+                        const inCart = cart.find(c => c.product.id === p.id);
+                        return (
+                          <TouchableOpacity
+                            key={p.id}
+                            style={[editStyles.productRow, inCart && editStyles.productRowInCart]}
+                            onPress={() => { Haptics.selectionAsync(); setSelectedProduct(p); setQuantity(inCart ? String(inCart.quantity) : "1"); }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={editStyles.productName}>{p.name}</Text>
+                              <Text style={editStyles.productPrice}>Rs. {p.salesPrice.toLocaleString()} / unit</Text>
+                            </View>
+                            {inCart ? (
+                              <View style={editStyles.inCartBadge}>
+                                <Text style={editStyles.inCartText}>{inCart.quantity} in cart</Text>
+                              </View>
+                            ) : (
+                              <Feather name="plus" size={18} color={Colors.primary} />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({
   order,
   onConfirm,
   onCancel,
+  onEdit,
   isUpdating,
 }: {
   order: Order;
   onConfirm: (id: number) => void;
   onCancel: (id: number) => void;
+  onEdit: (order: Order) => void;
   isUpdating: boolean;
 }) {
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
@@ -94,7 +440,7 @@ function OrderCard({
 
   return (
     <View style={styles.card}>
-      {/* ── Card header: retailer + date + status ── */}
+      {/* Header */}
       <View style={styles.cardHeader}>
         <View style={styles.avatarCircle}>
           <Feather name="user" size={16} color={Colors.primary} />
@@ -112,9 +458,8 @@ function OrderCard({
         </View>
       </View>
 
-      {/* ── Invoice-style line-item table ── */}
+      {/* Invoice table */}
       <View style={styles.table}>
-        {/* Column headers */}
         <View style={styles.tableRow}>
           <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
           <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
@@ -123,7 +468,6 @@ function OrderCard({
         </View>
         <View style={styles.tableDivider} />
 
-        {/* Item rows */}
         {items.length === 0 ? (
           <View style={[styles.tableRow, { paddingVertical: 12 }]}>
             <Text style={[styles.colVal, { color: Colors.textLight }]}>No items</Text>
@@ -131,12 +475,8 @@ function OrderCard({
         ) : (
           items.map((item, idx) => (
             <View key={idx} style={[styles.tableRow, { paddingVertical: 10 }]}>
-              <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>
-                {item.productName || "—"}
-              </Text>
-              <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>
-                {item.quantity}
-              </Text>
+              <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
+              <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
               <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
                 {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
               </Text>
@@ -147,16 +487,13 @@ function OrderCard({
           ))
         )}
 
-        {/* Total footer */}
         <View style={styles.totalFooter}>
           <Text style={styles.totalFooterLabel}>Order Total</Text>
-          <Text style={styles.totalFooterValue}>
-            Rs. {grandTotal.toLocaleString()}
-          </Text>
+          <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
         </View>
       </View>
 
-      {/* ── Actions (pending only) ── */}
+      {/* Actions */}
       {order.status === "pending" && (
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -183,15 +520,30 @@ function OrderCard({
           </TouchableOpacity>
         </View>
       )}
+
+      {order.status === "confirmed" && (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.editBtn]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEdit(order); }}
+            activeOpacity={0.8}
+          >
+            <Feather name="edit-2" size={15} color={Colors.primary} />
+            <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit Order</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function AdminOrdersScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<FilterTab>("all");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -218,7 +570,14 @@ export default function AdminOrdersScreen() {
   }, [updateStatus]);
 
   const handleCancel = useCallback((id: number) => {
-    updateStatus.mutate({ id, status: "cancelled" });
+    Alert.alert("Cancel Order", "Are you sure you want to cancel this order?", [
+      { text: "No", style: "cancel" },
+      {
+        text: "Yes, Cancel",
+        style: "destructive",
+        onPress: () => updateStatus.mutate({ id, status: "cancelled" }),
+      },
+    ]);
   }, [updateStatus]);
 
   const FILTERS: FilterTab[] = ["all", "pending", "confirmed", "cancelled"];
@@ -276,6 +635,7 @@ export default function AdminOrdersScreen() {
               order={item}
               onConfirm={handleConfirm}
               onCancel={handleCancel}
+              onEdit={setEditingOrder}
               isUpdating={updatingId === item.id}
             />
           )}
@@ -290,10 +650,18 @@ export default function AdminOrdersScreen() {
           }
         />
       )}
+
+      <EditOrderModal
+        order={editingOrder}
+        visible={editingOrder !== null}
+        onClose={() => setEditingOrder(null)}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["admin-orders"] })}
+      />
     </View>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F7F8FA" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
@@ -354,38 +722,17 @@ const styles = StyleSheet.create({
   },
   retailerName: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
   cardDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
-  statusPill: {
-    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
-  },
+  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   statusText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
 
   table: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0 },
   tableRow: { flexDirection: "row", alignItems: "center" },
   tableDivider: { height: 1, backgroundColor: "#EEEEEE", marginVertical: 8 },
-  colHead: {
-    fontSize: 10, fontFamily: "Inter_700Bold",
-    color: Colors.textLight, letterSpacing: 0.7, textTransform: "uppercase",
-  },
-  colVal: {
-    fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text,
-  },
+  colHead: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.textLight, letterSpacing: 0.7, textTransform: "uppercase" },
+  colVal: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
   colCenter: { textAlign: "center" },
   colRight: { textAlign: "right" },
   colTotal: { color: Colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 },
-
-  pointsRow: {
-    flexDirection: "row", gap: 8, paddingTop: 10, paddingBottom: 4,
-    borderTopWidth: 1, borderTopColor: "#F0F0F0", marginTop: 4,
-  },
-  pointsBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: `${Colors.primary}12`,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 20,
-  },
-  pointsBadgeText: {
-    fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.primary,
-  },
 
   totalFooter: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -396,9 +743,7 @@ const styles = StyleSheet.create({
     fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary,
     textTransform: "uppercase", letterSpacing: 0.5,
   },
-  totalFooterValue: {
-    fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text,
-  },
+  totalFooterValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
 
   actionRow: {
     flexDirection: "row", gap: 10, padding: 14,
@@ -411,8 +756,127 @@ const styles = StyleSheet.create({
   },
   confirmBtn: { backgroundColor: "#10B981" },
   cancelBtn: { backgroundColor: "#FEE2E2" },
+  editBtn: { backgroundColor: `${Colors.primary}12`, borderWidth: 1, borderColor: `${Colors.primary}30` },
   actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+});
+
+const editStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#F7F8FA" },
+  header: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  headerBtn: { width: 36, height: 36, justifyContent: "center" },
+  headerTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  saveBtn: {
+    backgroundColor: Colors.primary, paddingHorizontal: 18, paddingVertical: 8,
+    borderRadius: 20, minWidth: 60, alignItems: "center",
+  },
+  saveBtnDisabled: { opacity: 0.5 },
+  saveBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  tabRow: {
+    flexDirection: "row", gap: 10, padding: 12, paddingHorizontal: 16,
+    backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  tabBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "#F0F0F0",
+  },
+  tabBtnActive: { backgroundColor: `${Colors.primary}15`, borderWidth: 1, borderColor: `${Colors.primary}30` },
+  tabBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
+  tabBtnTextActive: { color: Colors.primary },
+
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#FEE2E2", padding: 12, paddingHorizontal: 16,
+  },
+  errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#EF4444", flex: 1 },
+
+  emptyState: { alignItems: "center", paddingVertical: 48, gap: 10 },
+  emptyTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
+  emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  addTabBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 20, marginTop: 8,
+  },
+  addTabBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+
+  cartRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: "#EEEEEE",
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  cartItemName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text, marginBottom: 2 },
+  cartItemPrice: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  cartItemTotal: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.primary },
+  qtyControls: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 8 },
+  qtyBtn: {
+    width: 30, height: 30, borderRadius: 15, borderWidth: 1,
+    borderColor: Colors.primary, alignItems: "center", justifyContent: "center",
+  },
+  qtyInput: {
+    width: 36, height: 30, borderWidth: 1, borderColor: "#E0E0E0",
+    borderRadius: 8, fontSize: 13, fontFamily: "Inter_600SemiBold",
+    color: Colors.text, backgroundColor: "#F8F8F8",
+  },
+
+  totalRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 12, padding: 16, marginTop: 8,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  totalLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  totalValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+
+  selectedProductCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: `${Colors.primary}0D`, borderRadius: 12, padding: 14, marginBottom: 12,
+    borderWidth: 1.5, borderColor: `${Colors.primary}40`,
+  },
+  selectedProductName: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
+  selectedProductPrice: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+
+  qtyRowStandalone: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 20, marginVertical: 12,
+  },
+  qtyInputLarge: {
+    width: 64, height: 44, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 10, fontSize: 18, fontFamily: "Inter_700Bold",
+    color: Colors.text, backgroundColor: "#fff",
+  },
+  previewTotal: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 10, padding: 14, marginBottom: 12,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  addToCartBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, backgroundColor: Colors.primary, padding: 14, borderRadius: 12,
+  },
+  addToCartBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  catHeader: {
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, marginTop: 14, marginBottom: 6,
+  },
+  catHeaderText: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  productRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  productRowInCart: { borderColor: "#10B981", backgroundColor: "#F0FDF4" },
+  productName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  productPrice: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  inCartBadge: { backgroundColor: "#D1FAE5", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  inCartText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#059669" },
 });
