@@ -208,6 +208,8 @@ export default function AdminOrdersScreen() {
     onSettled: () => {
       setUpdatingId(null);
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      qc.invalidateQueries({ queryKey: ["retailer-orders"] });
     },
   });
 

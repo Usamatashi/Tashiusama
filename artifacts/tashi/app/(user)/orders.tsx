@@ -203,11 +203,22 @@ function RetailerOrderCard({
   onConfirm: () => void;
   isConfirming: boolean;
 }) {
+  const [pendingTap, setPendingTap] = useState(false);
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
   const safeItems = order.items ?? [];
   const firstProduct = safeItems[0]?.productName ?? "Order";
+
+  const handlePress = () => {
+    if (pendingTap) {
+      setPendingTap(false);
+      onConfirm();
+    } else {
+      setPendingTap(true);
+    }
+  };
+
   return (
     <View>
       <InvoiceCard
@@ -218,21 +229,43 @@ function RetailerOrderCard({
         items={safeItems}
       />
       {order.status === "pending" && (
-        <TouchableOpacity
-          style={[styles.confirmOrderBtn, isConfirming && styles.btnDisabled]}
-          onPress={onConfirm}
-          disabled={isConfirming}
-          activeOpacity={0.82}
-        >
-          {isConfirming ? (
-            <ActivityIndicator color="#FFF" size="small" />
-          ) : (
-            <>
-              <Feather name="check-circle" size={18} color="#FFF" />
-              <Text style={styles.confirmOrderBtnText}>Confirm Order</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        pendingTap ? (
+          <View style={styles.confirmRowInline}>
+            <TouchableOpacity
+              style={styles.confirmRowCancel}
+              onPress={() => setPendingTap(false)}
+              activeOpacity={0.8}
+            >
+              <Feather name="x" size={16} color="#EF4444" />
+              <Text style={styles.confirmRowCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmOrderBtn, { flex: 1, marginTop: 0, marginHorizontal: 0, marginBottom: 0 }, isConfirming && styles.btnDisabled]}
+              onPress={handlePress}
+              disabled={isConfirming}
+              activeOpacity={0.82}
+            >
+              {isConfirming ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Feather name="check-circle" size={16} color="#FFF" />
+                  <Text style={styles.confirmOrderBtnText}>Yes, Confirm</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.confirmOrderBtn, isConfirming && styles.btnDisabled]}
+            onPress={handlePress}
+            disabled={isConfirming}
+            activeOpacity={0.82}
+          >
+            <Feather name="check-circle" size={18} color="#FFF" />
+            <Text style={styles.confirmOrderBtnText}>Confirm Order</Text>
+          </TouchableOpacity>
+        )
       )}
     </View>
   );
@@ -266,14 +299,7 @@ function RetailerOrdersScreen() {
   });
 
   const handleConfirm = (orderId: number) => {
-    Alert.alert(
-      "Confirm Order",
-      "Are you sure you want to confirm this order?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Confirm", style: "default", onPress: () => confirmMutation.mutate(orderId) },
-      ]
-    );
+    confirmMutation.mutate(orderId);
   };
 
   return (
@@ -1149,6 +1175,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
   confirmOrderBtnText: { fontSize: 15, fontWeight: "700", color: "#FFF" },
+
+  confirmRowInline: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    marginHorizontal: 16, marginTop: 8, marginBottom: 16,
+  },
+  confirmRowCancel: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    borderWidth: 1.5, borderColor: "#EF4444", borderRadius: 12,
+    paddingVertical: 13, paddingHorizontal: 16, backgroundColor: "#FFF",
+  },
+  confirmRowCancelText: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
 
   smsBtn: {
     flexDirection: "row", alignItems: "center", gap: 14,

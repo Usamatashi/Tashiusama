@@ -105,7 +105,11 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
       .from(ordersTable)
       .leftJoin(productsTable, eq(ordersTable.productId, productsTable.id))
       .leftJoin(usersTable, eq(ordersTable.retailerId, usersTable.id))
-      .where(caller.role === "admin" ? undefined : eq(ordersTable.salesmanId, caller.userId));
+      .where(
+        (caller.role === "admin" || caller.role === "super_admin")
+          ? undefined
+          : eq(ordersTable.salesmanId, caller.userId)
+      );
 
     const itemsMap = await getItemsForOrders(rows.map(r => r.id));
 
