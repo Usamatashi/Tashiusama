@@ -1,9 +1,13 @@
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +16,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Colors } from "@/constants/colors";
@@ -33,9 +37,257 @@ interface CommissionEntry {
   confirmedBonus: number;
 }
 
-function fmt(n: number) { return n.toLocaleString(); }
+interface SalesData {
+  salesmanId: number;
+  salesmanName: string | null;
+  salesmanPhone: string;
+  lastCommissionAt: string | null;
+  periodFrom: string | null;
+  periodTo: string;
+  salesAmount: number;
+  orderCount: number;
+  orders: Array<{
+    id: number;
+    createdAt: string;
+    retailerName: string | null;
+    retailerPhone: string | null;
+    totalValue: number;
+  }>;
+}
 
-function SalesmanCard({ item }: { item: CommissionEntry }) {
+function fmt(n: number) { return n.toLocaleString(); }
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// ─── Commission Modal ─────────────────────────────────────────────────────────
+function CommissionModal({
+  visible,
+  salesman,
+  onClose,
+  onSuccess,
+}: {
+  visible: boolean;
+  salesman: CommissionEntry | null;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [percentage, setPercentage] = useState("");
+  const queryClient = useQueryClient();
+
+  const { data: salesData, isLoading: salesLoading } = useQuery<SalesData>({
+    queryKey: ["salesman-sales", salesman?.salesmanId],
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${BASE}/commission/salesman-sales/${salesman!.salesmanId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch sales");
+      return res.json();
+    },
+    enabled: visible && !!salesman,
+  });
+
+  const { mutate: approveCommission, isPending } = useMutation({
+    mutationFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${BASE}/commission`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          salesmanId: salesman!.salesmanId,
+          percentage: Number(percentage),
+          salesAmount: salesData!.salesAmount,
+          periodFrom: salesData!.periodFrom,
+          periodTo: salesData!.periodTo,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || "Failed to save commission");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["salesman-commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["salesman-sales", salesman?.salesmanId] });
+      setPercentage("");
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      Alert.alert("Error", err.message);
+    },
+  });
+
+  const pct = parseFloat(percentage);
+  const salesAmt = salesData?.salesAmount ?? 0;
+  const commission = !isNaN(pct) && pct > 0 ? Math.round((salesAmt * pct) / 100) : null;
+
+  function handleApprove() {
+    if (!salesData || salesAmt === 0) {
+      Alert.alert("No Sales", "There are no confirmed sales since the last commission for this salesman.");
+      return;
+    }
+    if (!pct || isNaN(pct) || pct <= 0 || pct > 100) {
+      Alert.alert("Invalid Percentage", "Please enter a percentage between 1 and 100.");
+      return;
+    }
+    Alert.alert(
+      "Approve Commission",
+      `Approve Rs. ${fmt(commission!)} commission (${pct}% of Rs. ${fmt(salesAmt)}) for ${salesman?.name || salesman?.phone}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Approve", onPress: () => approveCommission() },
+      ]
+    );
+  }
+
+  function handleClose() {
+    setPercentage("");
+    onClose();
+  }
+
+  const displayName = salesman ? (salesman.name || salesman.phone) : "";
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+      <View style={modal.overlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <View style={modal.sheet}>
+            {/* Header */}
+            <View style={modal.sheetHeader}>
+              <View style={modal.sheetAvatar}>
+                <Text style={modal.sheetAvatarText}>{displayName.slice(0, 2).toUpperCase()}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={modal.sheetName}>{displayName}</Text>
+                <Text style={modal.sheetSub}>Commission Calculation</Text>
+              </View>
+              <TouchableOpacity onPress={handleClose} style={modal.closeBtn}>
+                <Feather name="x" size={18} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              {salesLoading ? (
+                <View style={modal.loading}>
+                  <ActivityIndicator size="large" color={Colors.adminAccent} />
+                  <Text style={modal.loadingText}>Loading sales data…</Text>
+                </View>
+              ) : (
+                <>
+                  {/* Period info */}
+                  <View style={modal.periodRow}>
+                    <View style={modal.periodItem}>
+                      <Text style={modal.periodLabel}>Last Commission</Text>
+                      <Text style={modal.periodValue}>
+                        {salesData?.lastCommissionAt ? fmtDate(salesData.lastCommissionAt) : "Never"}
+                      </Text>
+                    </View>
+                    <View style={modal.divider} />
+                    <View style={modal.periodItem}>
+                      <Text style={modal.periodLabel}>Current Period</Text>
+                      <Text style={modal.periodValue}>
+                        {salesData?.periodFrom ? fmtDate(salesData.periodFrom) : "All Time"} → Now
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Sales summary */}
+                  <View style={modal.salesBox}>
+                    <View style={modal.salesRow}>
+                      <View style={modal.salesItem}>
+                        <Text style={modal.salesLabel}>Confirmed Orders</Text>
+                        <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
+                      </View>
+                      <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
+                        <Text style={modal.salesLabel}>Total Sales Value</Text>
+                        <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData?.salesAmount ?? 0)}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Order list */}
+                  {salesData && salesData.orders.length > 0 && (
+                    <View style={modal.orderList}>
+                      <Text style={modal.sectionLabel}>Order Breakdown</Text>
+                      {salesData.orders.map((o) => (
+                        <View key={o.id} style={modal.orderRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={modal.orderRetailer} numberOfLines={1}>
+                              {o.retailerName || o.retailerPhone || "Unknown"}
+                            </Text>
+                            <Text style={modal.orderDate}>{fmtDate(o.createdAt)}</Text>
+                          </View>
+                          <Text style={modal.orderValue}>Rs. {fmt(o.totalValue)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {salesData?.salesAmount === 0 && (
+                    <View style={modal.noSales}>
+                      <Feather name="info" size={20} color={Colors.textLight} />
+                      <Text style={modal.noSalesText}>No confirmed sales since last commission</Text>
+                    </View>
+                  )}
+
+                  {/* Percentage input */}
+                  <View style={modal.inputSection}>
+                    <Text style={modal.inputLabel}>Commission Percentage</Text>
+                    <View style={modal.inputRow}>
+                      <TextInput
+                        style={modal.percentInput}
+                        placeholder="e.g. 5"
+                        placeholderTextColor={Colors.textLight}
+                        value={percentage}
+                        onChangeText={setPercentage}
+                        keyboardType="decimal-pad"
+                        maxLength={5}
+                      />
+                      <View style={modal.percentSymbol}>
+                        <Text style={modal.percentText}>%</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Commission preview */}
+                  {commission !== null && (
+                    <View style={modal.preview}>
+                      <Text style={modal.previewLabel}>Total Commission</Text>
+                      <Text style={modal.previewValue}>Rs. {fmt(commission)}</Text>
+                      <Text style={modal.previewSub}>{pct}% of Rs. {fmt(salesAmt)}</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+
+            {/* Approve button */}
+            <TouchableOpacity
+              style={[modal.approveBtn, (isPending || salesLoading) && { opacity: 0.6 }]}
+              onPress={handleApprove}
+              activeOpacity={0.8}
+              disabled={isPending || salesLoading}
+            >
+              {isPending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Feather name="check-circle" size={18} color="#fff" />
+                  <Text style={modal.approveBtnText}>Approve Commission</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Salesman Card ─────────────────────────────────────────────────────────────
+function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () => void }) {
   const displayName = item.name || item.phone;
   const initials = displayName.slice(0, 2).toUpperCase();
   const conversionRate = item.totalOrders > 0
@@ -43,7 +295,7 @@ function SalesmanCard({ item }: { item: CommissionEntry }) {
     : 0;
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials}</Text>
@@ -52,16 +304,15 @@ function SalesmanCard({ item }: { item: CommissionEntry }) {
           <Text style={styles.cardName} numberOfLines={1}>{displayName}</Text>
           <Text style={styles.cardPhone}>{item.phone}</Text>
         </View>
-        <View style={[styles.convBadge, { backgroundColor: conversionRate >= 60 ? "#DCFCE7" : conversionRate >= 30 ? "#FEF9C3" : "#FEE2E2" }]}>
-          <Text style={[styles.convText, { color: conversionRate >= 60 ? "#15803D" : conversionRate >= 30 ? "#92400E" : "#B91C1C" }]}>
-            {conversionRate}% conv.
-          </Text>
+        <View style={styles.calcBadge}>
+          <Feather name="percent" size={12} color={Colors.adminAccent} />
+          <Text style={styles.calcText}>Calculate</Text>
         </View>
       </View>
 
       <View style={styles.statsGrid}>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Total Orders</Text>
+          <Text style={styles.statLabel}>Orders</Text>
           <Text style={styles.statValue}>{item.totalOrders}</Text>
           <Text style={styles.statSub}>{item.confirmedOrders} confirmed</Text>
         </View>
@@ -71,9 +322,11 @@ function SalesmanCard({ item }: { item: CommissionEntry }) {
           <Text style={styles.statSub}>of Rs. {fmt(item.totalSalesValue)}</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Commission</Text>
-          <Text style={[styles.statValue, { color: "#059669" }]}>{fmt(item.confirmedBonus)} pts</Text>
-          <Text style={styles.statSub}>{fmt(item.totalBonus)} total</Text>
+          <Text style={styles.statLabel}>Conv. Rate</Text>
+          <Text style={[styles.statValue, { color: conversionRate >= 60 ? "#059669" : conversionRate >= 30 ? "#D97706" : "#DC2626" }]}>
+            {conversionRate}%
+          </Text>
+          <Text style={styles.statSub}>of orders</Text>
         </View>
       </View>
 
@@ -82,13 +335,15 @@ function SalesmanCard({ item }: { item: CommissionEntry }) {
           <View style={[styles.progressBarFill, { width: `${conversionRate}%` as any, backgroundColor: conversionRate >= 60 ? "#059669" : conversionRate >= 30 ? "#D97706" : "#DC2626" }]} />
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<CommissionEntry | null>(null);
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
@@ -110,7 +365,6 @@ export default function CommissionScreen() {
   });
 
   const totalConfirmedSales = (data ?? []).reduce((s, e) => s + e.confirmedSalesValue, 0);
-  const totalCommission = (data ?? []).reduce((s, e) => s + e.confirmedBonus, 0);
   const totalSalesmen = (data ?? []).length;
 
   const renderHeader = useCallback(() => (
@@ -127,9 +381,9 @@ export default function CommissionScreen() {
           <Text style={styles.summarySub}>Confirmed Sales</Text>
         </View>
         <View style={[styles.summaryCard, { backgroundColor: "#FEF3C7" }]}>
-          <Feather name="award" size={16} color="#D97706" />
-          <Text style={[styles.summaryVal, { color: "#D97706" }]}>{fmt(totalCommission)}</Text>
-          <Text style={styles.summarySub}>Total Pts Earned</Text>
+          <Feather name="percent" size={16} color="#D97706" />
+          <Text style={[styles.summaryVal, { color: "#D97706" }]}>Tap to</Text>
+          <Text style={styles.summarySub}>Calculate</Text>
         </View>
       </View>
 
@@ -158,7 +412,7 @@ export default function CommissionScreen() {
         </View>
       )}
     </>
-  ), [totalSalesmen, totalConfirmedSales, totalCommission, search, entries.length, isLoading]);
+  ), [totalSalesmen, totalConfirmedSales, search, entries.length, isLoading]);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -178,13 +432,25 @@ export default function CommissionScreen() {
         <FlatList
           data={entries}
           keyExtractor={(item) => String(item.salesmanId)}
-          renderItem={({ item }) => <SalesmanCard item={item} />}
+          renderItem={({ item }) => (
+            <SalesmanCard item={item} onPress={() => setSelected(item)} />
+          )}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={[styles.list, { paddingBottom: bottomPad + 24 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={Colors.adminAccent} />}
         />
       )}
+
+      <CommissionModal
+        visible={!!selected}
+        salesman={selected}
+        onClose={() => setSelected(null)}
+        onSuccess={() => {
+          setSelected(null);
+          Alert.alert("Success", "Commission approved and saved to salesman's account.");
+        }}
+      />
     </View>
   );
 }
@@ -232,8 +498,12 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
   cardName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   cardPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
-  convBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 12 },
-  convText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  calcBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    backgroundColor: "#FEF3C7",
+  },
+  calcText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.adminAccent },
 
   statsGrid: { flexDirection: "row" },
   statBox: { flex: 1, alignItems: "center", gap: 2 },
@@ -251,4 +521,91 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   emptySub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", paddingHorizontal: 24 },
+});
+
+const modal = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end", alignItems: "center",
+  },
+  sheet: {
+    backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 20, paddingBottom: 32, width: "100%", gap: 16,
+  },
+  sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  sheetAvatar: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: "#E87722", justifyContent: "center", alignItems: "center",
+  },
+  sheetAvatarText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  sheetName: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.adminText },
+  sheetSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  closeBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.border, justifyContent: "center", alignItems: "center",
+  },
+
+  loading: { alignItems: "center", paddingVertical: 32, gap: 10 },
+  loadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+
+  periodRow: {
+    flexDirection: "row", backgroundColor: "#F7F8FA",
+    borderRadius: 14, padding: 14, gap: 0,
+  },
+  periodItem: { flex: 1, alignItems: "center", gap: 4 },
+  periodLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  periodValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.adminText, textAlign: "center" },
+  divider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
+
+  salesBox: {
+    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 14, overflow: "hidden",
+  },
+  salesRow: { flexDirection: "row" },
+  salesItem: { flex: 1, alignItems: "center", padding: 14, gap: 4 },
+  salesLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  salesValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+
+  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 6 },
+  orderList: { gap: 8 },
+  orderRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#F7F8FA", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+  },
+  orderRetailer: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.adminText },
+  orderDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  orderValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#059669" },
+
+  noSales: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: "#FEF9C3", borderRadius: 10 },
+  noSalesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#92400E", flex: 1 },
+
+  inputSection: { gap: 8 },
+  inputLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
+  inputRow: {
+    flexDirection: "row", borderWidth: 1.5, borderColor: Colors.adminAccent,
+    borderRadius: 14, overflow: "hidden",
+  },
+  percentInput: {
+    flex: 1, paddingHorizontal: 16, paddingVertical: 14,
+    fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText,
+  },
+  percentSymbol: {
+    paddingHorizontal: 16, justifyContent: "center", alignItems: "center",
+    backgroundColor: "#FEF3C7",
+  },
+  percentText: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminAccent },
+
+  preview: {
+    backgroundColor: "#DCFCE7", borderRadius: 14, padding: 16,
+    alignItems: "center", gap: 4,
+  },
+  previewLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#059669" },
+  previewValue: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#065F46" },
+  previewSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#059669" },
+
+  approveBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16,
+  },
+  approveBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });

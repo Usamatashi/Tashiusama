@@ -153,3 +153,19 @@ export const adminUserSettingsTable = pgTable("admin_user_settings", {
   settingsJson: text("settings_json").notNull().default("{}"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const commissionsTable = pgTable("commissions", {
+  id: serial("id").primaryKey(),
+  salesmanId: integer("salesman_id").notNull().references(() => usersTable.id),
+  adminId: integer("admin_id").notNull().references(() => usersTable.id),
+  periodFrom: timestamp("period_from"),
+  periodTo: timestamp("period_to").notNull(),
+  salesAmount: integer("sales_amount").notNull(),
+  percentage: integer("percentage").notNull(),
+  commissionAmount: integer("commission_amount").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCommissionSchema = createInsertSchema(commissionsTable).omit({ id: true, createdAt: true });
+export type InsertCommission = z.infer<typeof insertCommissionSchema>;
+export type Commission = typeof commissionsTable.$inferSelect;

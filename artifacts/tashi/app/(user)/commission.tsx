@@ -42,6 +42,18 @@ interface BonusSummary {
   orders: BonusOrder[];
 }
 
+interface CommissionRecord {
+  id: number;
+  adminName: string | null;
+  adminPhone: string | null;
+  periodFrom: string | null;
+  periodTo: string;
+  salesAmount: number;
+  percentage: number;
+  commissionAmount: number;
+  createdAt: string;
+}
+
 function fmt(n: number) { return n.toLocaleString(); }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -53,6 +65,50 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
   cancelled: { label: "Cancelled", color: "#DC2626", bg: "#FEE2E2" },
 };
 
+// ─── Commission Payout Card ────────────────────────────────────────────────────
+function CommissionCard({ record }: { record: CommissionRecord }) {
+  const approvedBy = record.adminName || record.adminPhone || "Admin";
+  const period = record.periodFrom
+    ? `${fmtDate(record.periodFrom)} – ${fmtDate(record.periodTo)}`
+    : `Up to ${fmtDate(record.periodTo)}`;
+
+  return (
+    <View style={styles.commCard}>
+      <View style={styles.commHeader}>
+        <View style={styles.commIconBox}>
+          <Feather name="award" size={18} color="#059669" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.commAmount}>Rs. {fmt(record.commissionAmount)}</Text>
+          <Text style={styles.commDate}>{fmtDate(record.createdAt)}</Text>
+        </View>
+        <View style={styles.commPctBadge}>
+          <Text style={styles.commPctText}>{record.percentage}%</Text>
+        </View>
+      </View>
+
+      <View style={styles.commDetails}>
+        <View style={styles.commDetailRow}>
+          <Feather name="calendar" size={12} color={Colors.textSecondary} />
+          <Text style={styles.commDetailLabel}>Period</Text>
+          <Text style={styles.commDetailValue}>{period}</Text>
+        </View>
+        <View style={styles.commDetailRow}>
+          <Feather name="trending-up" size={12} color={Colors.textSecondary} />
+          <Text style={styles.commDetailLabel}>Sales</Text>
+          <Text style={styles.commDetailValue}>Rs. {fmt(record.salesAmount)}</Text>
+        </View>
+        <View style={styles.commDetailRow}>
+          <Feather name="user" size={12} color={Colors.textSecondary} />
+          <Text style={styles.commDetailLabel}>Approved by</Text>
+          <Text style={styles.commDetailValue}>{approvedBy}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({ order }: { order: BonusOrder }) {
   const meta = STATUS_META[order.status] ?? STATUS_META.pending;
   const retailer = order.retailerName || order.retailerPhone || "Unknown retailer";
@@ -79,7 +135,7 @@ function OrderCard({ order }: { order: BonusOrder }) {
           <Text style={styles.orderStatValue}>{fmt(order.totalPoints)} pts</Text>
         </View>
         <View style={styles.orderStat}>
-          <Text style={styles.orderStatLabel}>Commission</Text>
+          <Text style={styles.orderStatLabel}>Bonus Pts</Text>
           <Text style={[styles.orderStatValue, order.status === "confirmed" ? { color: "#059669" } : {}]}>
             {fmt(order.bonusPoints)} pts
           </Text>
@@ -101,6 +157,7 @@ function OrderCard({ order }: { order: BonusOrder }) {
   );
 }
 
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -118,12 +175,30 @@ export default function CommissionScreen() {
     },
   });
 
+  const { data: commissions, isLoading: commLoading, refetch: refetchComm } = useQuery<CommissionRecord[]>({
+    queryKey: ["my-commissions"],
+    queryFn: async () => {
+      const token = await getToken();
+      const res = await fetch(`${BASE}/commission/my-commissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  async function handleRefresh() {
+    await Promise.all([refetch(), refetchComm()]);
+  }
+
+  const totalCommissionEarned = (commissions ?? []).reduce((s, c) => s + c.commissionAmount, 0);
   const pendingBonus = (data?.totalBonus ?? 0) - (data?.confirmedBonus ?? 0);
   const activeOrders = (data?.orders ?? []).filter((o) => o.status !== "cancelled");
   const confirmedOrders = activeOrders.filter((o) => o.status === "confirmed");
 
   const renderHeader = useCallback(() => (
     <>
+      {/* Hero: total commission earned */}
       <LinearGradient
         colors={["#065F46", "#059669", "#34D399"]}
         start={{ x: 0, y: 0 }}
@@ -132,20 +207,23 @@ export default function CommissionScreen() {
       >
         <View style={styles.heroDec1} />
         <View style={styles.heroDec2} />
-        <Text style={styles.heroLabel}>Confirmed Commission</Text>
+        <Text style={styles.heroLabel}>Total Commission Earned</Text>
         <Text style={styles.heroValue}>
-          {isLoading ? "—" : `${fmt(data?.confirmedBonus ?? 0)} pts`}
+          {(isLoading || commLoading) ? "—" : `Rs. ${fmt(totalCommissionEarned)}`}
         </Text>
         <Text style={styles.heroSub}>
-          {isLoading ? "" : `from Rs. ${fmt(data?.confirmedSalesValue ?? 0)} confirmed sales`}
+          {commissions?.length
+            ? `${commissions.length} payout${commissions.length === 1 ? "" : "s"} approved`
+            : "No payouts yet"}
         </Text>
       </LinearGradient>
 
+      {/* Stats row */}
       <View style={styles.statRow}>
         <View style={[styles.statCard, { backgroundColor: "#FEF9C3" }]}>
           <Feather name="clock" size={16} color="#D97706" />
           <Text style={[styles.statVal, { color: "#D97706" }]}>{fmt(pendingBonus)} pts</Text>
-          <Text style={styles.statLbl}>Pending</Text>
+          <Text style={styles.statLbl}>Pending Bonus</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: "#EFF6FF" }]}>
           <Feather name="clipboard" size={16} color="#1D4ED8" />
@@ -159,7 +237,20 @@ export default function CommissionScreen() {
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Order Breakdown</Text>
+      {/* Commission Payouts section */}
+      {(commissions?.length ?? 0) > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Commission Payouts</Text>
+          {commissions!.map((c) => (
+            <CommissionCard key={c.id} record={c} />
+          ))}
+        </>
+      )}
+
+      {/* Order Breakdown section */}
+      <Text style={[styles.sectionTitle, { marginTop: (commissions?.length ?? 0) > 0 ? 8 : 0 }]}>
+        Order Breakdown
+      </Text>
 
       {activeOrders.length === 0 && !isLoading && (
         <View style={styles.empty}>
@@ -169,7 +260,7 @@ export default function CommissionScreen() {
         </View>
       )}
     </>
-  ), [data, isLoading, pendingBonus, confirmedOrders.length, activeOrders.length]);
+  ), [data, isLoading, commLoading, commissions, pendingBonus, confirmedOrders.length, activeOrders.length, totalCommissionEarned]);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -193,7 +284,13 @@ export default function CommissionScreen() {
           ListHeaderComponent={renderHeader}
           contentContainerStyle={[styles.list, { paddingBottom: bottomPad + 24 }]}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor="#059669" />}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching && !isLoading}
+              onRefresh={handleRefresh}
+              tintColor="#059669"
+            />
+          }
         />
       )}
     </View>
@@ -242,6 +339,30 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 8 },
 
+  // Commission payout card
+  commCard: {
+    backgroundColor: "#fff", borderRadius: 16, padding: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    gap: 12, borderLeftWidth: 3, borderLeftColor: "#059669",
+  },
+  commHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  commIconBox: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#DCFCE7", justifyContent: "center", alignItems: "center",
+  },
+  commAmount: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#065F46" },
+  commDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  commPctBadge: {
+    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: "#DCFCE7", borderRadius: 12,
+  },
+  commPctText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#059669" },
+  commDetails: { gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border },
+  commDetailRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  commDetailLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, width: 70 },
+  commDetailValue: { flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
+
+  // Order card
   orderCard: {
     backgroundColor: "#fff", borderRadius: 16, padding: 16,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
