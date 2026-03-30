@@ -37,8 +37,8 @@ const ACTIONS = [
   },
   {
     icon: "clipboard" as const,
-    label: "Disc Pads",
-    desc: "Review and manage disc pad orders",
+    label: "Orders",
+    desc: "Review and manage sales orders",
     route: "/(admin)/orders" as const,
     gradient: ["#2563EB", "#60A5FA"] as [string, string],
     decoration: "#60A5FA",
@@ -117,7 +117,7 @@ const ACTIONS = [
 
 const CARD_KEY_MAP: Record<string, keyof AdminSettings> = {
   "Create QR Code": "card_create_qr",
-  "Disc Pads": "card_orders",
+  "Orders": "card_orders",
   "Claim Rewards": "card_claims",
   "Create Ads": "card_create_ads",
   "Create Text": "card_create_text",
