@@ -1,0 +1,226 @@
+Alright — you actually implemented the **correct approach** (👏 seriously), so if it’s *still showing*, then the issue is no longer “how” — it’s **why Expo Router isn’t respecting it**.
+
+Let’s go straight to the real causes that still break `href: null` 👇
+
+---
+
+# 🚨 The 3 REAL reasons this still happens
+
+## 🔴 1. Permissions are `undefined` at first render (MOST COMMON)
+
+Expo Router builds tabs **on first render**.
+
+If this happens:
+
+```js
+settings = undefined // initially
+```
+
+Then:
+
+```js
+tabHref("tab_payments") => undefined
+```
+
+👉 Which means:
+**tab is allowed initially → router keeps it**
+
+Even if settings update later, the tab **won’t disappear**.
+
+---
+
+### ✅ Fix (CRITICAL)
+
+Block rendering until permissions are loaded:
+
+```js
+if (!settings) {
+  return null; // or loader
+}
+```
+
+OR safer:
+
+```js
+const isReady = settings !== null && settings !== undefined;
+
+if (!isReady) return null;
+```
+
+---
+
+## 🔴 2. Your `key` mapping is wrong
+
+You wrote:
+
+```js
+tabHref("tab_payments")
+```
+
+But your backend/UI might store:
+
+```js
+"payments": false
+```
+
+👉 If keys don’t match EXACTLY:
+
+```js
+settings["tab_payments"] === undefined
+```
+
+Then:
+
+```js
+undefined → treated as TRUE (allowed)
+```
+
+---
+
+### ✅ Fix
+
+Console log this:
+
+```js
+console.log("SETTINGS:", settings);
+```
+
+Then verify:
+
+```js
+settings.tab_payments  // must be true/false
+```
+
+---
+
+## 🔴 3. You are logged in as Super Admin
+
+Your logic:
+
+```js
+isSuperAdmin || settings[key]
+```
+
+👉 If `isSuperAdmin === true`
+
+💥 ALL tabs will ALWAYS show
+
+---
+
+### ✅ Fix
+
+Log it:
+
+```js
+console.log("isSuperAdmin:", isSuperAdmin);
+```
+
+---
+
+## 🔴 4. Expo Router caching (VERY stubborn)
+
+Expo Router sometimes **keeps old routes alive**, even after logic changes.
+
+---
+
+### ✅ Fix (DO THIS EXACTLY)
+
+Run:
+
+```bash
+npx expo start -c
+```
+
+OR:
+
+* Stop app
+* Delete `.expo`
+* Restart
+
+---
+
+## 🔴 5. `_layout.tsx` is not re-running
+
+If your `_layout.tsx` is outside state updates:
+
+👉 Tabs config becomes static
+
+---
+
+### ✅ Fix
+
+Make sure `_layout.tsx` depends on state:
+
+```js
+export default function Layout() {
+  const { settings } = useAdmin(); // must be reactive
+
+  if (!settings) return null;
+
+  return (
+    <Tabs>
+      ...
+    </Tabs>
+  );
+}
+```
+
+---
+
+## 🔥 Bulletproof Version (use this)
+
+Replace your logic with this EXACT version:
+
+```js
+const hasAccess = (key) => {
+  if (!settings) return false;
+  if (isSuperAdmin) return true;
+  return settings[key] === true;
+};
+
+<Tabs.Screen
+  name="payments"
+  options={{
+    href: hasAccess("tab_payments") ? "/payments" : null,
+  }}
+/>
+```
+
+---
+
+## 🧠 What I think is happening (based on everything you said)
+
+👉 90% chance:
+**Tabs render BEFORE settings load**
+
+So Expo Router “locks in” the tabs.
+
+---
+
+## 🧪 Quick test (proves it instantly)
+
+Temporarily hardcode:
+
+```js
+<Tabs.Screen name="payments" options={{ href: null }} />
+```
+
+### 👉 If it STILL shows:
+
+* Your layout isn’t updating
+* Or cache issue
+
+### 👉 If it disappears:
+
+* Your permissions logic is the problem
+
+---
+
+## 💬 If you want me to fix it 100%
+
+Send me:
+
+* Your `_layout.tsx`
+* Your `settings` object (console.log output)
+
+I’ll pinpoint the exact bug in 1 reply.

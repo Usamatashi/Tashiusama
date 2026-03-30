@@ -13,7 +13,9 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
@@ -27,7 +29,8 @@ interface Product {
 }
 
 export default function ProductsScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const { settings } = useAdminSettings();
   const insets = useSafeAreaInsets();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -160,6 +163,8 @@ export default function ProductsScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (user?.role !== "super_admin" && !settings.tab_products) return <Redirect href="/(admin)" />;
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>

@@ -19,7 +19,9 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
+import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
@@ -112,6 +114,8 @@ function PaymentHistoryCard({ item }: { item: Payment }) {
 }
 
 export default function AdminPaymentsScreen() {
+  const { user } = useAuth();
+  const { settings } = useAdminSettings();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -150,6 +154,8 @@ export default function AdminPaymentsScreen() {
 
   const totalOutstanding = balances.reduce((s, b) => s + Math.max(0, b.outstanding), 0);
   const totalPaidAll = balances.reduce((s, b) => s + b.totalPaid, 0);
+
+  if (user?.role !== "super_admin" && !settings.tab_payments) return <Redirect href="/(admin)" />;
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>

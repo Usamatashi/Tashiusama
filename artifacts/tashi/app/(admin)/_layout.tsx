@@ -138,8 +138,15 @@ export default function AdminLayout() {
   const tabHref = (key: keyof AdminSettings): null | undefined =>
     isSuperAdmin || settings[key] ? undefined : null;
 
+  // Force Tabs to fully re-mount when permissions change so Expo Router
+  // re-registers routes. Without this, href:null changes are ignored on
+  // an already-mounted navigator.
+  const tabsKey = isSuperAdmin
+    ? "super"
+    : `${+settings.tab_dashboard}${+settings.tab_products}${+settings.tab_users}${+settings.tab_payments}`;
+
   return (
-    <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs key={tabsKey} tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" options={{ href: tabHref("tab_dashboard") }} />
       <Tabs.Screen name="products" options={{ href: tabHref("tab_products") }} />
       <Tabs.Screen name="create-account" options={{ href: tabHref("tab_users") }} />

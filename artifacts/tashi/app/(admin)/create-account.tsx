@@ -13,7 +13,9 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
@@ -48,6 +50,7 @@ interface User {
 
 export default function CreateAccountScreen() {
   const { token, user: currentUser } = useAuth();
+  const { settings } = useAdminSettings();
   const insets = useSafeAreaInsets();
   const ROLES = ALL_ROLES.filter(
     (r) => r.value !== "super_admin" || currentUser?.role === "super_admin"
@@ -198,6 +201,8 @@ export default function CreateAccountScreen() {
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+
+  if (currentUser?.role !== "super_admin" && !settings.tab_users) return <Redirect href="/(admin)" />;
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
