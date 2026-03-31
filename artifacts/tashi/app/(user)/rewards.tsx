@@ -87,7 +87,7 @@ export default function RewardsScreen() {
         {/* Points card */}
         <View style={styles.pointsCard}>
           <View>
-            <Text style={styles.pointsCardLabel}>Your Balance</Text>
+            <Text style={styles.pointsCardLabel}>{isMechanic ? "Claimed Points" : "Your Balance"}</Text>
             <Text style={styles.pointsCardValue}>{userPoints.toLocaleString()}</Text>
             <Text style={styles.pointsCardUnit}>points</Text>
           </View>
