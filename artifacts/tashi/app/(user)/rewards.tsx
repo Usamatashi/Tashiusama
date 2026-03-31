@@ -47,6 +47,9 @@ export default function RewardsScreen() {
 
   const isMechanic = user?.role !== "retailer" && user?.role !== "salesman";
 
+  const totalClaimed = claimHistory.reduce((s, c) => s + c.pointsClaimed, 0);
+  const totalReceived = claimHistory.filter(c => c.status === "received").reduce((s, c) => s + c.pointsClaimed, 0);
+
   const fetchClaims = useCallback(async () => {
     if (!isMechanic) return;
     setLoadingClaims(true);
@@ -85,14 +88,33 @@ export default function RewardsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Points card */}
-        <View style={styles.pointsCard}>
-          <View>
-            <Text style={styles.pointsCardLabel}>{isMechanic ? "Claimed Points" : "Your Balance"}</Text>
-            <Text style={styles.pointsCardValue}>{userPoints.toLocaleString()}</Text>
-            <Text style={styles.pointsCardUnit}>points</Text>
+        {isMechanic ? (
+          <View style={styles.mechStatRow}>
+            <View style={[styles.mechStatCard, styles.mechStatCardClaimed]}>
+              <Text style={styles.mechStatLabel}>Claimed Points</Text>
+              <Text style={styles.mechStatValue}>
+                {loadingClaims ? "—" : totalClaimed.toLocaleString()}
+              </Text>
+              <Text style={styles.mechStatUnit}>pts submitted</Text>
+            </View>
+            <View style={[styles.mechStatCard, styles.mechStatCardReceived]}>
+              <Text style={styles.mechStatLabel}>Received Points</Text>
+              <Text style={[styles.mechStatValue, styles.mechStatValueReceived]}>
+                {loadingClaims ? "—" : totalReceived.toLocaleString()}
+              </Text>
+              <Text style={[styles.mechStatUnit, styles.mechStatUnitReceived]}>pts paid out</Text>
+            </View>
           </View>
-          <Text style={styles.pointsCardStar}>★</Text>
-        </View>
+        ) : (
+          <View style={styles.pointsCard}>
+            <View>
+              <Text style={styles.pointsCardLabel}>Your Balance</Text>
+              <Text style={styles.pointsCardValue}>{userPoints.toLocaleString()}</Text>
+              <Text style={styles.pointsCardUnit}>points</Text>
+            </View>
+            <Text style={styles.pointsCardStar}>★</Text>
+          </View>
+        )}
 
         {/* Next milestone — hidden for mechanics */}
         {!isMechanic && nextReward && (
@@ -196,6 +218,31 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   scroll: { padding: 16, gap: 14, paddingBottom: 40 },
+
+  mechStatRow: { flexDirection: "row", gap: 12 },
+  mechStatCard: {
+    flex: 1, borderRadius: 22, padding: 20,
+    justifyContent: "flex-end", minHeight: 130,
+    shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+  },
+  mechStatCardClaimed: { backgroundColor: Colors.primary },
+  mechStatCardReceived: { backgroundColor: "#065F46" },
+  mechStatLabel: {
+    fontSize: 10, fontFamily: "Inter_700Bold",
+    color: "rgba(255,255,255,0.7)", letterSpacing: 0.8,
+    textTransform: "uppercase", marginBottom: 6,
+  },
+  mechStatValue: {
+    fontSize: 36, fontFamily: "Inter_700Bold",
+    color: Colors.white, includeFontPadding: false,
+  },
+  mechStatValueReceived: { color: "#A7F3D0" },
+  mechStatUnit: {
+    fontSize: 11, fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.6)", marginTop: 3,
+  },
+  mechStatUnitReceived: { color: "rgba(167,243,208,0.7)" },
 
   pointsCard: {
     backgroundColor: Colors.primary, borderRadius: 24, padding: 24,
