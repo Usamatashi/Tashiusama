@@ -1645,8 +1645,9 @@ const editModal = StyleSheet.create({
     borderColor: Colors.primary, alignItems: "center", justifyContent: "center",
   },
   qtyInput: {
-    width: 36, height: 30, borderWidth: 1, borderColor: "#E0E0E0",
-    borderRadius: 8, fontSize: 13, fontWeight: "600", color: "#1A1A1A", backgroundColor: "#F8F8F8",
+    width: 44, height: 30, borderWidth: 1, borderColor: "#E0E0E0",
+    borderRadius: 8, fontSize: 13, fontWeight: "600", color: "#1A1A1A",
+    backgroundColor: "#F8F8F8", textAlign: "center", textAlignVertical: "center",
   },
   totalRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -1666,8 +1667,9 @@ const editModal = StyleSheet.create({
 
   qtyRowCenter: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20, marginVertical: 12 },
   qtyInputLarge: {
-    width: 64, height: 44, borderWidth: 1.5, borderColor: "#E0E0E0",
-    borderRadius: 10, fontSize: 18, fontWeight: "700", color: "#1A1A1A", backgroundColor: "#fff",
+    width: 64, height: 36, borderWidth: 1.5, borderColor: "#E0E0E0",
+    borderRadius: 10, fontSize: 15, fontWeight: "600", color: "#1A1A1A",
+    backgroundColor: "#fff", textAlign: "center", textAlignVertical: "center",
   },
   previewTotal: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
