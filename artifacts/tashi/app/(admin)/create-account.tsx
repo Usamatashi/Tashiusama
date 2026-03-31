@@ -621,8 +621,8 @@ const styles = StyleSheet.create({
   roleText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
   userCardSelected: {
     borderColor: Colors.adminAccent,
-    borderWidth: 1.5,
-    backgroundColor: `${Colors.adminAccent}06`,
+    borderWidth: 2,
+    backgroundColor: "#FFF3E6",
   },
   actions: { flexDirection: "row", gap: 6, flexShrink: 0 },
   actionBtn: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },

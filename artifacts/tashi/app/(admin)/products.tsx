@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   cardSelected: {
-    borderColor: Colors.adminAccent, borderWidth: 1.5, backgroundColor: `${Colors.adminAccent}06`,
+    borderColor: Colors.adminAccent, borderWidth: 2, backgroundColor: "#FFF3E6",
   },
   cardIconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   productImage: { width: 44, height: 44, borderRadius: 10, flexShrink: 0 },
