@@ -24,7 +24,7 @@ import { Colors } from "@/constants/colors";
 import TickerMarquee from "@/components/TickerMarquee";
 import { BrakePadCard } from "@/components/BrakePadCard";
 
-const PROFILE_PIC_KEY = "tashi_profile_pic";
+const profilePicKey = (userId?: number) => `tashi_profile_pic_${userId ?? "unknown"}`;
 const ROLE_COLORS: Record<string, string> = {
   admin: "#8B5CF6",
   salesman: "#3B82F6",
@@ -163,10 +163,11 @@ export default function UserHomeScreen() {
   }, [user?.role]);
 
   useEffect(() => { fetchAdsTickers(); }, [fetchAdsTickers]);
+  useEffect(() => { refreshUser(); }, []);
   useEffect(() => {
-    refreshUser();
-    AsyncStorage.getItem(PROFILE_PIC_KEY).then((uri) => { if (uri) setProfilePic(uri); });
-  }, []);
+    if (!user?.id) return;
+    AsyncStorage.getItem(profilePicKey(user.id)).then((uri) => { if (uri) setProfilePic(uri); else setProfilePic(null); });
+  }, [user?.id]);
   useEffect(() => {
     if (user?.points !== undefined) setLocalPoints(user.points);
   }, [user?.points]);

@@ -16,7 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
-const PROFILE_PIC_KEY = "tashi_profile_pic";
+const profilePicKey = (userId?: number) => `tashi_profile_pic_${userId ?? "unknown"}`;
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -39,10 +39,14 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     refreshUser();
-    AsyncStorage.getItem(PROFILE_PIC_KEY).then((uri) => {
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    AsyncStorage.getItem(profilePicKey(user.id)).then((uri) => {
       if (uri) setProfilePic(uri);
     });
-  }, []);
+  }, [user?.id]);
 
   const isRetailer = user?.role === "retailer";
   const isSalesman = user?.role === "salesman";
@@ -69,7 +73,7 @@ export default function ProfileScreen() {
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
       setProfilePic(uri);
-      await AsyncStorage.setItem(PROFILE_PIC_KEY, uri);
+      await AsyncStorage.setItem(profilePicKey(user?.id), uri);
     }
   };
 
