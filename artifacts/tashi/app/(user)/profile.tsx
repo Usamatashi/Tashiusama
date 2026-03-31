@@ -45,6 +45,8 @@ export default function ProfileScreen() {
   }, []);
 
   const isRetailer = user?.role === "retailer";
+  const isSalesman = user?.role === "salesman";
+  const isMechanic = user?.role === "mechanic";
   const roleColor = ROLE_COLORS[user?.role || ""] || Colors.primary;
   const roleLabel = ROLE_LABELS[user?.role || ""] || user?.role || "-";
   const initial = user?.name?.[0]?.toUpperCase() || user?.phone?.[0]?.toUpperCase() || "U";
@@ -127,17 +129,21 @@ export default function ProfileScreen() {
         <View style={styles.infoCard}>
           <InfoRow label="Name" value={user?.name || "-"} />
           <InfoRow label="Phone" value={user?.phone || "-"} />
-          <InfoRow label="Role" value={roleLabel} valueColor={roleColor} />
-          {!isRetailer && (
+          {!isSalesman && !isMechanic && (
+            <InfoRow label="Role" value={roleLabel} valueColor={roleColor} />
+          )}
+          {!isRetailer && !isSalesman && !isMechanic && (
             <InfoRow label="Total Points" value={`${user?.points ?? 0} pts`} valueColor={Colors.primary} />
           )}
           <InfoRow label="Member Since" value={memberSince} last />
         </View>
 
-        <View style={styles.logoutCard}>
-          <Text style={styles.logoutLabel}>Want to switch accounts?</Text>
-          <Text style={styles.logoutBtn} onPress={logout}>Sign Out</Text>
-        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.82}>
+          <View style={styles.logoutBtnInner}>
+            <Feather name="log-out" size={18} color="#fff" />
+            <Text style={styles.logoutBtnText}>Sign Out</Text>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -224,12 +230,19 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   rowValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
 
-  logoutCard: {
-    backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 16, flexDirection: "row",
-    justifyContent: "space-between", alignItems: "center",
+  logoutBtn: {
+    backgroundColor: "#EF4444",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  logoutLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  logoutBtn: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.error },
+  logoutBtnInner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, paddingVertical: 16,
+  },
+  logoutBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.3 },
 });
