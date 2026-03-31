@@ -411,7 +411,7 @@ export default function ProductsScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Feather name={cat.icon} size={12} color={isActive ? "#fff" : cat.color} />
+              <Feather name={cat.icon} size={10} color={isActive ? "#fff" : cat.color} />
               <Text style={[styles.filterBtnText, { color: isActive ? "#fff" : cat.color }]}>
                 {cat.label}
               </Text>
@@ -831,14 +831,14 @@ const styles = StyleSheet.create({
   confirmDelete: { flex: 1, backgroundColor: "#EF4444", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   confirmDeleteText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 15 },
   filterScroll: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  filterRow: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 5, gap: 6 },
+  filterRow: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 4, gap: 5 },
   filterBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    borderWidth: 1.5, borderRadius: 14,
-    paddingVertical: 3, paddingHorizontal: 10,
+    flexDirection: "row", alignItems: "center", gap: 3,
+    borderWidth: 1, borderRadius: 10,
+    paddingVertical: 2, paddingHorizontal: 7,
     backgroundColor: Colors.white,
   },
-  filterBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  filterCount: { borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
-  filterCountText: { fontSize: 10, fontFamily: "Inter_700Bold" },
+  filterBtnText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  filterCount: { borderRadius: 6, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
+  filterCountText: { fontSize: 9, fontFamily: "Inter_700Bold" },
 });
