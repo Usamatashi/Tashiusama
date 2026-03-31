@@ -152,6 +152,7 @@ export default function AdminDashboard() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [pendingClaims, setPendingClaims] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
+  const [totalOutstanding, setTotalOutstanding] = useState<number | null>(null);
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -161,11 +162,14 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
       const endpoints = ACTIONS.filter((a) => a.countEndpoint).map((a) => a.countEndpoint!);
 
-      const [claimsRes, ordersRes, ...countResults] = await Promise.all([
+      const [claimsRes, ordersRes, balancesRes, ...countResults] = await Promise.all([
         fetch(`${BASE}/claims`, { headers })
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
         fetch(`${BASE}/orders`, { headers })
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        fetch(`${BASE}/payments/retailer-balances`, { headers })
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
         ...endpoints.map((ep) =>
@@ -184,6 +188,11 @@ export default function AdminDashboard() {
         ? ordersRes.filter((o: { status: string }) => o.status === "pending").length
         : 0;
       setPendingOrders(pendingOrd);
+
+      if (Array.isArray(balancesRes)) {
+        const outstanding = balancesRes.reduce((s: number, b: { outstanding: number }) => s + Math.max(0, b.outstanding), 0);
+        setTotalOutstanding(outstanding);
+      }
 
       const newCounts: Record<string, number> = {};
       endpoints.forEach((ep, i) => {
@@ -276,6 +285,19 @@ export default function AdminDashboard() {
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <Text style={styles.countNumber}>{count}</Text>
+                        )}
+                      </View>
+                    ) : action.label === "Payments" ? (
+                      <View style={styles.outstandingBadge}>
+                        {loadingCounts ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <Text style={styles.outstandingLabel}>Due</Text>
+                            <Text style={styles.outstandingAmount}>
+                              Rs.{totalOutstanding !== null ? totalOutstanding.toLocaleString() : "—"}
+                            </Text>
+                          </>
                         )}
                       </View>
                     ) : (
@@ -445,5 +467,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF3B30",
     borderWidth: 2,
     borderColor: "#fff",
+  },
+  outstandingBadge: {
+    minWidth: 56,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  outstandingLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 1,
+  },
+  outstandingAmount: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: 0.2,
   },
 });
