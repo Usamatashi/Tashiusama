@@ -153,6 +153,7 @@ export default function AdminDashboard() {
   const [pendingClaims, setPendingClaims] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
   const [totalOutstanding, setTotalOutstanding] = useState<number | null>(null);
+  const [pendingPayments, setPendingPayments] = useState(0);
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -162,7 +163,7 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
       const endpoints = ACTIONS.filter((a) => a.countEndpoint).map((a) => a.countEndpoint!);
 
-      const [claimsRes, ordersRes, balancesRes, ...countResults] = await Promise.all([
+      const [claimsRes, ordersRes, balancesRes, pendingPayRes, ...countResults] = await Promise.all([
         fetch(`${BASE}/claims`, { headers })
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
@@ -172,6 +173,9 @@ export default function AdminDashboard() {
         fetch(`${BASE}/payments/retailer-balances`, { headers })
           .then((r) => (r.ok ? r.json() : []))
           .catch(() => []),
+        fetch(`${BASE}/payments/pending-count`, { headers })
+          .then((r) => (r.ok ? r.json() : { count: 0 }))
+          .catch(() => ({ count: 0 })),
         ...endpoints.map((ep) =>
           fetch(`${BASE}${ep}`, { headers })
             .then((r) => (r.ok ? r.json() : []))
@@ -193,6 +197,8 @@ export default function AdminDashboard() {
         const outstanding = balancesRes.reduce((s: number, b: { outstanding: number }) => s + Math.max(0, b.outstanding), 0);
         setTotalOutstanding(outstanding);
       }
+
+      setPendingPayments(pendingPayRes?.count ?? 0);
 
       const newCounts: Record<string, number> = {};
       endpoints.forEach((ep, i) => {
@@ -288,16 +294,23 @@ export default function AdminDashboard() {
                         )}
                       </View>
                     ) : action.label === "Payments" ? (
-                      <View style={styles.outstandingBadge}>
-                        {loadingCounts ? (
-                          <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                          <>
-                            <Text style={styles.outstandingLabel}>Due</Text>
-                            <Text style={styles.outstandingAmount}>
-                              Rs.{totalOutstanding !== null ? totalOutstanding.toLocaleString() : "—"}
-                            </Text>
-                          </>
+                      <View style={{ alignItems: "flex-end", gap: 6 }}>
+                        <View style={styles.outstandingBadge}>
+                          {loadingCounts ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <>
+                              <Text style={styles.outstandingLabel}>Due</Text>
+                              <Text style={styles.outstandingAmount}>
+                                Rs.{totalOutstanding !== null ? totalOutstanding.toLocaleString() : "—"}
+                              </Text>
+                            </>
+                          )}
+                        </View>
+                        {!loadingCounts && pendingPayments > 0 && (
+                          <View style={styles.pendingPayBadge}>
+                            <Text style={styles.pendingPayText}>{pendingPayments} to verify</Text>
+                          </View>
                         )}
                       </View>
                     ) : (
@@ -492,5 +505,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#fff",
     letterSpacing: 0.2,
+  },
+  pendingPayBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: "#FDE68A",
+    alignItems: "center",
+  },
+  pendingPayText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#92400E",
+    letterSpacing: 0.3,
   },
 });

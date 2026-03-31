@@ -40,6 +40,9 @@ interface RetailerBalance {
 
 interface Payment {
   id: number; amount: number; notes: string | null; createdAt: string;
+  status: "pending" | "verified";
+  verifiedAt: string | null;
+  verifiedByName: string | null;
   retailerName: string | null; retailerPhone: string | null;
   collectorName: string | null;
 }
@@ -48,6 +51,8 @@ interface MyBalance {
   totalOrdered: number; totalPaid: number; outstanding: number;
   payments: {
     id: number; amount: number; notes: string | null; createdAt: string;
+    status: "pending" | "verified";
+    verifiedAt: string | null;
     collectorName: string | null;
   }[];
 }
@@ -57,6 +62,18 @@ type Tab = "balances" | "history";
 function fmt(n: number) { return n.toLocaleString(); }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function StatusBadge({ status }: { status: "pending" | "verified" }) {
+  const verified = status === "verified";
+  return (
+    <View style={[styles.badge, verified ? styles.badgeVerified : styles.badgePending]}>
+      <Feather name={verified ? "check-circle" : "clock"} size={10} color={verified ? "#065F46" : "#92400E"} />
+      <Text style={[styles.badgeText, { color: verified ? "#065F46" : "#92400E" }]}>
+        {verified ? "Verified" : "Under Review"}
+      </Text>
+    </View>
+  );
 }
 
 // ─── Salesman view ─────────────────────────────────────────────────────────────
@@ -99,6 +116,7 @@ function SalesmanPayments() {
 
   const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
   const totalOutstanding = balances.reduce((s, b) => s + Math.max(0, b.outstanding), 0);
+  const pendingVerification = payments.filter(p => p.status === "pending").length;
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -115,6 +133,11 @@ function SalesmanPayments() {
         <View style={styles.summaryCell}>
           <Text style={styles.summaryCellLabel}>Outstanding</Text>
           <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>Rs. {fmt(totalOutstanding)}</Text>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryCell}>
+          <Text style={styles.summaryCellLabel}>Pending</Text>
+          <Text style={[styles.summaryCellValue, { color: pendingVerification > 0 ? "#D97706" : "#10B981" }]}>{pendingVerification}</Text>
         </View>
       </View>
 
@@ -199,11 +222,14 @@ function SalesmanPayments() {
             renderItem={({ item }) => (
               <View style={styles.historyCard}>
                 <View style={styles.historyLeft}>
-                  <View style={styles.cashIcon}><Feather name="arrow-down-circle" size={18} color="#10B981" /></View>
-                  <View>
+                  <View style={[styles.cashIcon, item.status === "verified" ? styles.cashIconVerified : styles.cashIconPending]}>
+                    <Feather name={item.status === "verified" ? "check-circle" : "clock"} size={18} color={item.status === "verified" ? "#10B981" : "#D97706"} />
+                  </View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.historyRetailer} numberOfLines={1}>{item.retailerName || item.retailerPhone || "Retailer"}</Text>
                     <Text style={styles.historySub}>{fmtDate(item.createdAt)}</Text>
                     {item.notes ? <Text style={styles.historyNotes} numberOfLines={1}>{item.notes}</Text> : null}
+                    <StatusBadge status={item.status} />
                   </View>
                 </View>
                 <Text style={styles.historyAmount}>+ Rs. {fmt(item.amount)}</Text>
@@ -216,7 +242,6 @@ function SalesmanPayments() {
         )
       )}
 
-      {/* Collect Modal */}
       <Modal visible={!!collectTarget} transparent animationType="slide" onRequestClose={() => setCollectTarget(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <Pressable style={{ flex: 1 }} onPress={() => setCollectTarget(null)} />
@@ -230,12 +255,16 @@ function SalesmanPayments() {
                   <Text style={styles.modalRetailerName}>{collectTarget.name || collectTarget.phone}</Text>
                   <Text style={styles.modalRetailerBalance}>Due: Rs. {fmt(collectTarget.outstanding)}</Text>
                 </View>
+                <View style={styles.noteBox}>
+                  <Feather name="info" size={13} color="#2563EB" />
+                  <Text style={styles.noteBoxText}>Payment will be sent to admin for verification</Text>
+                </View>
                 <Text style={styles.fieldLabel}>Amount Received (Rs.)</Text>
                 <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="e.g. 50000" placeholderTextColor={Colors.textLight} autoFocus />
                 <Text style={styles.fieldLabel}>Notes (optional)</Text>
                 <TextInput style={[styles.input, { height: 70 }]} value={notes} onChangeText={setNotes} placeholder="e.g. Partial payment" placeholderTextColor={Colors.textLight} multiline />
                 <TouchableOpacity style={[styles.confirmBtn, (!amount || recordPayment.isPending) && { opacity: 0.5 }]} onPress={handleCollect} disabled={!amount || recordPayment.isPending} activeOpacity={0.8}>
-                  {recordPayment.isPending ? <ActivityIndicator color="#fff" /> : <><Feather name="check-circle" size={18} color="#fff" /><Text style={styles.confirmBtnText}>Confirm Payment</Text></>}
+                  {recordPayment.isPending ? <ActivityIndicator color="#fff" /> : <><Feather name="check-circle" size={18} color="#fff" /><Text style={styles.confirmBtnText}>Submit for Verification</Text></>}
                 </TouchableOpacity>
               </>
             )}
@@ -261,6 +290,7 @@ function RetailerPayments() {
   const totalOrdered = data?.totalOrdered ?? 0;
   const totalPaid = data?.totalPaid ?? 0;
   const payments = data?.payments ?? [];
+  const pendingCount = payments.filter(p => p.status === "pending").length;
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -276,7 +306,6 @@ function RetailerPayments() {
           keyExtractor={i => String(i.id)}
           ListHeaderComponent={
             <>
-              {/* Balance Summary Card */}
               <View style={styles.balanceSummaryCard}>
                 <Text style={styles.balanceSummaryLabel}>Outstanding Balance</Text>
                 <Text style={[styles.balanceSummaryAmount, { color: outstanding > 0 ? "#EF4444" : "#10B981" }]}>
@@ -297,6 +326,13 @@ function RetailerPayments() {
                 </View>
               </View>
 
+              {pendingCount > 0 && (
+                <View style={styles.pendingBanner}>
+                  <Feather name="clock" size={14} color="#92400E" />
+                  <Text style={styles.pendingBannerText}>{pendingCount} payment{pendingCount !== 1 ? "s" : ""} under review by admin</Text>
+                </View>
+              )}
+
               <Text style={styles.sectionHeading}>Payment History</Text>
               {payments.length === 0 && (
                 <View style={[styles.center, { paddingVertical: 40 }]}>
@@ -310,13 +346,16 @@ function RetailerPayments() {
           renderItem={({ item }) => (
             <View style={styles.historyCard}>
               <View style={styles.historyLeft}>
-                <View style={styles.cashIcon}><Feather name="check-circle" size={18} color="#10B981" /></View>
-                <View>
+                <View style={[styles.cashIcon, item.status === "verified" ? styles.cashIconVerified : styles.cashIconPending]}>
+                  <Feather name={item.status === "verified" ? "check-circle" : "clock"} size={18} color={item.status === "verified" ? "#10B981" : "#D97706"} />
+                </View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.historyRetailer}>Cash Payment</Text>
                   <Text style={styles.historySub}>
-                    {item.collectorName ? `Received by ${item.collectorName}` : "Recorded"} · {fmtDate(item.createdAt)}
+                    {item.collectorName ? `Collected by ${item.collectorName}` : "Recorded"} · {fmtDate(item.createdAt)}
                   </Text>
                   {item.notes ? <Text style={styles.historyNotes} numberOfLines={1}>{item.notes}</Text> : null}
+                  <StatusBadge status={item.status} />
                 </View>
               </View>
               <Text style={styles.historyAmount}>Rs. {fmt(item.amount)}</Text>
@@ -349,11 +388,11 @@ const styles = StyleSheet.create({
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 14,
   },
   summaryCell: { flex: 1, alignItems: "center", gap: 4 },
-  summaryCellLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  summaryCellValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+  summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  summaryCellValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
   tabRow: {
     flexDirection: "row", backgroundColor: "#fff", gap: 8, padding: 12, paddingHorizontal: 16,
@@ -383,19 +422,25 @@ const styles = StyleSheet.create({
   balanceCellValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
   balanceDivider: { width: 1, backgroundColor: "#EEEEEE" },
   historyCard: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
     backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10,
     borderWidth: 1, borderColor: "#F0F0F0",
     shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
-  historyLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  cashIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#D1FAE5", alignItems: "center", justifyContent: "center" },
+  historyLeft: { flexDirection: "row", alignItems: "flex-start", gap: 12, flex: 1 },
+  cashIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  cashIconVerified: { backgroundColor: "#D1FAE5" },
+  cashIconPending: { backgroundColor: "#FEF3C7" },
   historyRetailer: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text },
   historySub: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   historyNotes: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, fontStyle: "italic", marginTop: 1 },
   historyAmount: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#10B981" },
+  badge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, marginTop: 4, alignSelf: "flex-start" },
+  badgeVerified: { backgroundColor: "#D1FAE5" },
+  badgePending: { backgroundColor: "#FEF3C7" },
+  badgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
   balanceSummaryCard: {
-    backgroundColor: "#fff", borderRadius: 20, padding: 24, marginBottom: 20,
+    backgroundColor: "#fff", borderRadius: 20, padding: 24, marginBottom: 16,
     borderWidth: 1, borderColor: "#F0F0F0", alignItems: "center", gap: 6,
     shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
@@ -403,9 +448,21 @@ const styles = StyleSheet.create({
   balanceSummaryAmount: { fontSize: 36, fontFamily: "Inter_700Bold" },
   creditNote: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   balanceSummaryRow: { flexDirection: "row", width: "100%", marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.border },
+  pendingBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, marginBottom: 16,
+    borderWidth: 1, borderColor: "#FDE68A",
+  },
+  pendingBannerText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#92400E", flex: 1 },
   sectionHeading: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 12 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+  noteBox: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#EFF6FF", borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: "#BFDBFE",
+  },
+  noteBoxText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#1D4ED8", flex: 1 },
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
   modalSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingTop: 12, gap: 14 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 8 },
@@ -422,7 +479,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: "#10B981", borderRadius: 14, paddingVertical: 15,
+    backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 15,
   },
   confirmBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });

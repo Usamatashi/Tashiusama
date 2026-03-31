@@ -129,12 +129,17 @@ export const insertOrderItemSchema = createInsertSchema(orderItemsTable).omit({ 
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type OrderItem = typeof orderItemsTable.$inferSelect;
 
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "verified"]);
+
 export const paymentsTable = pgTable("payments", {
   id: serial("id").primaryKey(),
   retailerId: integer("retailer_id").notNull().references(() => usersTable.id),
   receivedBy: integer("received_by").notNull().references(() => usersTable.id),
   amount: integer("amount").notNull(),
   notes: text("notes"),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  verifiedBy: integer("verified_by").references(() => usersTable.id),
+  verifiedAt: timestamp("verified_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

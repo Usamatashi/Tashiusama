@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, usersTable, ordersTable, orderItemsTable, paymentsTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
-import { requireAuth, requireSalesman } from "../lib/auth";
+import { eq, and, inArray, sql } from "drizzle-orm";
+import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
 const router = Router();
@@ -21,7 +21,6 @@ async function computeOrderValues(orderRows: {
   for (const r of items) {
     itemMap[r.orderId] = (itemMap[r.orderId] ?? 0) + r.qty * r.price;
   }
-  // fallback for old single-vehicle orders
   for (const o of orderRows) {
     if (!itemMap[o.id] && o.quantity && o.salesPrice) {
       itemMap[o.id] = o.quantity * o.salesPrice;
@@ -34,7 +33,6 @@ async function computeOrderValues(orderRows: {
 async function getBalances(retailerIds: number[]) {
   if (!retailerIds.length) return {} as Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }>;
 
-  // confirmed orders
   const orders = await db
     .select({ id: ordersTable.id, retailerId: ordersTable.retailerId, vehicleId: ordersTable.vehicleId, quantity: ordersTable.quantity })
     .from(ordersTable)
@@ -49,7 +47,6 @@ async function getBalances(retailerIds: number[]) {
     debtByRetailer[o.retailerId] = (debtByRetailer[o.retailerId] ?? 0) + (valueMap[o.id] ?? 0);
   }
 
-  // payments
   const payments = await db
     .select({ retailerId: paymentsTable.retailerId, amount: paymentsTable.amount })
     .from(paymentsTable)
@@ -70,18 +67,15 @@ async function getBalances(retailerIds: number[]) {
 }
 
 // ─── GET /payments/retailer-balances ─────────────────────────────────────────
-// Admin: all retailer balances | Salesman: their retailers only
 router.get("/retailer-balances", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
 
-    // Get retailer IDs based on role
     let retailerIds: number[];
-    if (caller.role === "admin") {
+    if (caller.role === "admin" || caller.role === "super_admin") {
       const rows = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "retailer"));
       retailerIds = rows.map(r => r.id);
     } else {
-      // Salesman: retailers they've dealt with via orders
       const rows = await db
         .select({ retailerId: ordersTable.retailerId })
         .from(ordersTable)
@@ -111,8 +105,22 @@ router.get("/retailer-balances", requireAuth, requireSalesman, async (req, res) 
   }
 });
 
+// ─── GET /payments/pending-count ──────────────────────────────────────────────
+// Admin only: count of payments awaiting verification
+router.get("/pending-count", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(paymentsTable)
+      .where(eq(paymentsTable.status, "pending"));
+    res.json({ count: Number(rows[0]?.count ?? 0) });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ─── GET /payments/my-balance ─────────────────────────────────────────────────
-// Retailer: own balance summary
 router.get("/my-balance", requireAuth, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
@@ -121,12 +129,13 @@ router.get("/my-balance", requireAuth, async (req, res) => {
     const balances = await getBalances([caller.userId]);
     const balance = balances[caller.userId] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 };
 
-    // Also get payment history
     const payments = await db
       .select({
         id: paymentsTable.id,
         amount: paymentsTable.amount,
         notes: paymentsTable.notes,
+        status: paymentsTable.status,
+        verifiedAt: paymentsTable.verifiedAt,
         createdAt: paymentsTable.createdAt,
         collectorName: usersTable.name,
         collectorPhone: usersTable.phone,
@@ -141,6 +150,8 @@ router.get("/my-balance", requireAuth, async (req, res) => {
         id: p.id,
         amount: p.amount,
         notes: p.notes,
+        status: p.status,
+        verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
         createdAt: p.createdAt.toISOString(),
         collectorName: p.collectorName,
         collectorPhone: p.collectorPhone,
@@ -153,26 +164,26 @@ router.get("/my-balance", requireAuth, async (req, res) => {
 });
 
 // ─── GET /payments ─────────────────────────────────────────────────────────────
-// Admin: all payments | Salesman: payments they collected | Retailer: their payments
 router.get("/", requireAuth, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
 
-    const retailerAlias = usersTable;
     const rows = await db
       .select({
         id: paymentsTable.id,
         amount: paymentsTable.amount,
         notes: paymentsTable.notes,
+        status: paymentsTable.status,
+        verifiedBy: paymentsTable.verifiedBy,
+        verifiedAt: paymentsTable.verifiedAt,
         createdAt: paymentsTable.createdAt,
         retailerId: paymentsTable.retailerId,
         receivedBy: paymentsTable.receivedBy,
       })
       .from(paymentsTable);
 
-    // Filter based on role
     const filtered = rows.filter(p => {
-      if (caller.role === "admin") return true;
+      if (caller.role === "admin" || caller.role === "super_admin") return true;
       if (caller.role === "salesman") return p.receivedBy === caller.userId;
       if (caller.role === "retailer") return p.retailerId === caller.userId;
       return false;
@@ -180,8 +191,11 @@ router.get("/", requireAuth, async (req, res) => {
 
     if (!filtered.length) { res.json([]); return; }
 
-    // Enrich with names
-    const allUserIds = [...new Set([...filtered.map(p => p.retailerId), ...filtered.map(p => p.receivedBy)])];
+    const allUserIds = [...new Set([
+      ...filtered.map(p => p.retailerId),
+      ...filtered.map(p => p.receivedBy),
+      ...filtered.filter(p => p.verifiedBy).map(p => p.verifiedBy!),
+    ])];
     const users = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
       .from(usersTable).where(inArray(usersTable.id, allUserIds));
     const userMap = Object.fromEntries(users.map(u => [u.id, u]));
@@ -190,6 +204,9 @@ router.get("/", requireAuth, async (req, res) => {
       id: p.id,
       amount: p.amount,
       notes: p.notes,
+      status: p.status,
+      verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
+      verifiedByName: p.verifiedBy ? (userMap[p.verifiedBy]?.name ?? null) : null,
       createdAt: p.createdAt.toISOString(),
       retailerId: p.retailerId,
       retailerName: userMap[p.retailerId]?.name ?? null,
@@ -205,7 +222,6 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 // ─── POST /payments ────────────────────────────────────────────────────────────
-// Salesman or Admin records a cash payment received from a retailer
 router.post("/", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
@@ -227,6 +243,7 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
       receivedBy: caller.userId,
       amount: Math.round(Number(amount)),
       notes: notes ?? null,
+      status: "pending",
     }).returning();
 
     const p = inserted[0];
@@ -238,7 +255,60 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
       receivedBy: p.receivedBy,
       amount: p.amount,
       notes: p.notes,
+      status: p.status,
+      verifiedAt: null,
+      verifiedByName: null,
       createdAt: p.createdAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── PATCH /payments/:id/verify ───────────────────────────────────────────────
+// Admin only: verify (approve) a pending payment
+router.patch("/:id/verify", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+    const paymentId = Number(req.params.id);
+
+    const existing = await db.select().from(paymentsTable).where(eq(paymentsTable.id, paymentId));
+    if (!existing.length) {
+      res.status(404).json({ error: "Payment not found" });
+      return;
+    }
+    if (existing[0].status === "verified") {
+      res.status(400).json({ error: "Payment already verified" });
+      return;
+    }
+
+    const updated = await db
+      .update(paymentsTable)
+      .set({ status: "verified", verifiedBy: caller.userId, verifiedAt: new Date() })
+      .where(eq(paymentsTable.id, paymentId))
+      .returning();
+
+    const p = updated[0];
+
+    const allIds = [p.retailerId, p.receivedBy, caller.userId];
+    const users = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
+      .from(usersTable).where(inArray(usersTable.id, allIds));
+    const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    res.json({
+      id: p.id,
+      amount: p.amount,
+      notes: p.notes,
+      status: p.status,
+      verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
+      verifiedByName: userMap[caller.userId]?.name ?? null,
+      createdAt: p.createdAt.toISOString(),
+      retailerId: p.retailerId,
+      retailerName: userMap[p.retailerId]?.name ?? null,
+      retailerPhone: userMap[p.retailerId]?.phone ?? null,
+      receivedBy: p.receivedBy,
+      collectorName: userMap[p.receivedBy]?.name ?? null,
     });
   } catch (err) {
     req.log.error(err);

@@ -42,15 +42,30 @@ interface RetailerBalance {
 }
 interface Payment {
   id: number; amount: number; notes: string | null; createdAt: string;
+  status: "pending" | "verified";
+  verifiedAt: string | null;
+  verifiedByName: string | null;
   retailerName: string | null; retailerPhone: string | null;
   collectorName: string | null;
 }
 
-type Tab = "balances" | "history";
+type Tab = "balances" | "history" | "pending";
 
 function fmt(n: number) { return n.toLocaleString(); }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function StatusBadge({ status }: { status: "pending" | "verified" }) {
+  const verified = status === "verified";
+  return (
+    <View style={[styles.badge, verified ? styles.badgeVerified : styles.badgePending]}>
+      <Feather name={verified ? "check-circle" : "clock"} size={10} color={verified ? "#065F46" : "#92400E"} />
+      <Text style={[styles.badgeText, { color: verified ? "#065F46" : "#92400E" }]}>
+        {verified ? "Verified" : "Pending"}
+      </Text>
+    </View>
+  );
 }
 
 function BalanceCard({ item, onCollect }: { item: RetailerBalance; onCollect: (r: RetailerBalance) => void }) {
@@ -95,20 +110,38 @@ function BalanceCard({ item, onCollect }: { item: RetailerBalance; onCollect: (r
   );
 }
 
-function PaymentHistoryCard({ item }: { item: Payment }) {
+function PaymentHistoryCard({ item, onVerify, verifying }: { item: Payment; onVerify?: (id: number) => void; verifying?: boolean }) {
   return (
     <View style={styles.historyCard}>
       <View style={styles.historyLeft}>
-        <View style={styles.cashIcon}>
-          <Feather name="arrow-down-circle" size={18} color="#10B981" />
+        <View style={[styles.cashIcon, item.status === "verified" ? styles.cashIconVerified : styles.cashIconPending]}>
+          <Feather name={item.status === "verified" ? "check-circle" : "clock"} size={18} color={item.status === "verified" ? "#10B981" : "#D97706"} />
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.historyRetailer} numberOfLines={1}>{item.retailerName || item.retailerPhone || "Retailer"}</Text>
-          <Text style={styles.historySub}>via {item.collectorName || "Staff"} · {fmtDate(item.createdAt)}</Text>
+          <Text style={styles.historySub}>by {item.collectorName || "Staff"} · {fmtDate(item.createdAt)}</Text>
           {item.notes ? <Text style={styles.historyNotes} numberOfLines={1}>{item.notes}</Text> : null}
+          {item.status === "verified" && item.verifiedByName ? (
+            <Text style={styles.verifiedNote}>Verified by {item.verifiedByName}</Text>
+          ) : null}
         </View>
       </View>
-      <Text style={styles.historyAmount}>+ Rs. {fmt(item.amount)}</Text>
+      <View style={styles.historyRight}>
+        <Text style={styles.historyAmount}>Rs. {fmt(item.amount)}</Text>
+        <StatusBadge status={item.status} />
+        {item.status === "pending" && onVerify && (
+          <TouchableOpacity
+            style={[styles.verifyBtn, verifying && { opacity: 0.5 }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onVerify(item.id); }}
+            disabled={verifying}
+            activeOpacity={0.8}
+          >
+            {verifying ? <ActivityIndicator size="small" color="#fff" /> : (
+              <><Feather name="check" size={12} color="#fff" /><Text style={styles.verifyBtnText}>Verify</Text></>
+            )}
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -125,6 +158,7 @@ export default function AdminPaymentsScreen() {
   const [collectTarget, setCollectTarget] = useState<RetailerBalance | null>(null);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [verifyingId, setVerifyingId] = useState<number | null>(null);
 
   const { data: balances = [], isLoading: loadingBalances, refetch: refetchBalances, isRefetching: refetchingBalances } = useQuery<RetailerBalance[]>({
     queryKey: ["admin-retailer-balances"],
@@ -136,6 +170,8 @@ export default function AdminPaymentsScreen() {
     queryFn: () => apiFetch("/payments"),
   });
 
+  const pendingPayments = payments.filter(p => p.status === "pending");
+
   const recordPayment = useMutation({
     mutationFn: ({ retailerId, amount, notes }: { retailerId: number; amount: number; notes: string }) =>
       apiFetch("/payments", { method: "POST", body: JSON.stringify({ retailerId, amount, notes }) }),
@@ -143,6 +179,18 @@ export default function AdminPaymentsScreen() {
       qc.invalidateQueries({ queryKey: ["admin-retailer-balances"] });
       qc.invalidateQueries({ queryKey: ["admin-payments"] });
       setCollectTarget(null); setAmount(""); setNotes("");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
+
+  const verifyPayment = useMutation({
+    mutationFn: (paymentId: number) =>
+      apiFetch(`/payments/${paymentId}/verify`, { method: "PATCH" }),
+    onMutate: (paymentId) => setVerifyingId(paymentId),
+    onSettled: () => setVerifyingId(null),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      qc.invalidateQueries({ queryKey: ["admin-retailer-balances"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
   });
@@ -157,9 +205,14 @@ export default function AdminPaymentsScreen() {
 
   if (user?.role !== "super_admin" && !settings.tab_payments) return <Redirect href="/(admin)" />;
 
+  const TABS: { key: Tab; label: string; count?: number }[] = [
+    { key: "balances", label: "Balances" },
+    { key: "history", label: "History" },
+    { key: "pending", label: "Verify", count: pendingPayments.length },
+  ];
+
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={Colors.text} />
@@ -168,7 +221,6 @@ export default function AdminPaymentsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Summary bar */}
       <View style={styles.summaryBar}>
         <View style={styles.summaryCell}>
           <Text style={styles.summaryCellLabel}>Total Collected</Text>
@@ -179,15 +231,24 @@ export default function AdminPaymentsScreen() {
           <Text style={styles.summaryCellLabel}>Outstanding</Text>
           <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>Rs. {fmt(totalOutstanding)}</Text>
         </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryCell}>
+          <Text style={styles.summaryCellLabel}>Awaiting</Text>
+          <Text style={[styles.summaryCellValue, { color: pendingPayments.length > 0 ? "#D97706" : Colors.text }]}>{pendingPayments.length}</Text>
+        </View>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
-        {(["balances", "history"] as Tab[]).map(t => (
-          <Pressable key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
-              {t === "balances" ? "Retailer Balances" : "Payment History"}
-            </Text>
+        {TABS.map(t => (
+          <Pressable key={t.key} style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]} onPress={() => setTab(t.key)}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Text style={[styles.tabBtnText, tab === t.key && styles.tabBtnTextActive]}>{t.label}</Text>
+              {t.count != null && t.count > 0 && (
+                <View style={[styles.tabBadge, tab === t.key && styles.tabBadgeActive]}>
+                  <Text style={[styles.tabBadgeText, tab === t.key && styles.tabBadgeTextActive]}>{t.count}</Text>
+                </View>
+              )}
+            </View>
           </Pressable>
         ))}
       </View>
@@ -210,7 +271,7 @@ export default function AdminPaymentsScreen() {
             refreshControl={<RefreshControl refreshing={refetchingBalances} onRefresh={refetchBalances} tintColor={Colors.primary} />}
           />
         )
-      ) : (
+      ) : tab === "history" ? (
         loadingHistory ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
         ) : payments.length === 0 ? (
@@ -223,15 +284,51 @@ export default function AdminPaymentsScreen() {
           <FlatList
             data={payments}
             keyExtractor={i => String(i.id)}
-            renderItem={({ item }) => <PaymentHistoryCard item={item} />}
+            renderItem={({ item }) => (
+              <PaymentHistoryCard
+                item={item}
+                onVerify={id => verifyPayment.mutate(id)}
+                verifying={verifyingId === item.id}
+              />
+            )}
             contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refetchingHistory} onRefresh={refetchHistory} tintColor={Colors.primary} />}
           />
         )
+      ) : (
+        loadingHistory ? (
+          <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
+        ) : pendingPayments.length === 0 ? (
+          <View style={styles.center}>
+            <Feather name="check-circle" size={48} color="#10B981" />
+            <Text style={styles.emptyTitle}>All verified</Text>
+            <Text style={styles.emptyText}>No payments awaiting verification</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={pendingPayments}
+            keyExtractor={i => String(i.id)}
+            renderItem={({ item }) => (
+              <PaymentHistoryCard
+                item={item}
+                onVerify={id => verifyPayment.mutate(id)}
+                verifying={verifyingId === item.id}
+              />
+            )}
+            contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refetchingHistory} onRefresh={refetchHistory} tintColor={Colors.primary} />}
+            ListHeaderComponent={
+              <View style={styles.pendingHeader}>
+                <Feather name="alert-circle" size={15} color="#D97706" />
+                <Text style={styles.pendingHeaderText}>{pendingPayments.length} payment{pendingPayments.length !== 1 ? "s" : ""} awaiting your verification</Text>
+              </View>
+            }
+          />
+        )
       )}
 
-      {/* Collect Payment Modal */}
       <Modal visible={!!collectTarget} transparent animationType="slide" onRequestClose={() => setCollectTarget(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <Pressable style={{ flex: 1 }} onPress={() => setCollectTarget(null)} />
@@ -297,11 +394,11 @@ const styles = StyleSheet.create({
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 14,
   },
   summaryCell: { flex: 1, alignItems: "center", gap: 4 },
-  summaryCellLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  summaryCellValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+  summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  summaryCellValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
   tabRow: {
     flexDirection: "row", backgroundColor: "#fff", gap: 8, padding: 12, paddingHorizontal: 16,
@@ -311,6 +408,10 @@ const styles = StyleSheet.create({
   tabBtnActive: { backgroundColor: Colors.primary },
   tabBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
   tabBtnTextActive: { color: "#fff" },
+  tabBadge: { backgroundColor: "#D97706", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
+  tabBadgeActive: { backgroundColor: "rgba(255,255,255,0.3)" },
+  tabBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
+  tabBadgeTextActive: { color: "#fff" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginBottom: 12,
     borderWidth: 1, borderColor: "#F0F0F0",
@@ -331,17 +432,36 @@ const styles = StyleSheet.create({
   balanceCellValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
   balanceDivider: { width: 1, backgroundColor: "#EEEEEE" },
   historyCard: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
     backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10,
     borderWidth: 1, borderColor: "#F0F0F0",
     shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
-  historyLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  cashIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#D1FAE5", alignItems: "center", justifyContent: "center" },
+  historyLeft: { flexDirection: "row", alignItems: "flex-start", gap: 12, flex: 1 },
+  historyRight: { alignItems: "flex-end", gap: 6 },
+  cashIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  cashIconVerified: { backgroundColor: "#D1FAE5" },
+  cashIconPending: { backgroundColor: "#FEF3C7" },
   historyRetailer: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text },
   historySub: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   historyNotes: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, fontStyle: "italic", marginTop: 1 },
+  verifiedNote: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#10B981", marginTop: 2 },
   historyAmount: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#10B981" },
+  badge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  badgeVerified: { backgroundColor: "#D1FAE5" },
+  badgePending: { backgroundColor: "#FEF3C7" },
+  badgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  verifyBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: Colors.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+  },
+  verifyBtnText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  pendingHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#FEF3C7", borderRadius: 10, padding: 12, marginBottom: 12,
+    borderWidth: 1, borderColor: "#FDE68A",
+  },
+  pendingHeaderText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#92400E", flex: 1 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
