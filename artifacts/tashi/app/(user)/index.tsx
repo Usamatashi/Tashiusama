@@ -273,17 +273,7 @@ export default function UserHomeScreen() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerGreet}>Hello, {firstName} 👋</Text>
-          <Text style={styles.headerSub}>{headerSub}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
-            style={styles.waBtn}
-          >
-            <FontAwesome name="whatsapp" size={22} color="#25D366" />
-          </TouchableOpacity>
+        <View style={styles.headerLeft}>
           <TouchableOpacity
             onPress={() => router.push("/(user)/profile" as any)}
             style={[styles.headerAvatar, { borderColor: `${ROLE_COLORS[user?.role || ""] || Colors.primary}50` }]}
@@ -299,7 +289,17 @@ export default function UserHomeScreen() {
               </View>
             )}
           </TouchableOpacity>
+          <View>
+            <Text style={styles.headerGreet}>Hello, {firstName} 👋</Text>
+            <Text style={styles.headerSub}>{headerSub}</Text>
+          </View>
         </View>
+        <TouchableOpacity
+          onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
+          style={styles.waBtn}
+        >
+          <FontAwesome name="whatsapp" size={22} color="#25D366" />
+        </TouchableOpacity>
       </View>
 
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   },
   headerGreet: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
   waBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#E8F8EF",
