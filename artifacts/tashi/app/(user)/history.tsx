@@ -104,9 +104,6 @@ export default function HistoryScreen() {
                     <Text style={styles.vehicleName}>
                       {item.productName || "Unknown Product"}
                     </Text>
-                    {item.qrNumber ? (
-                      <Text style={styles.qrNumber}>QR: {item.qrNumber}</Text>
-                    ) : null}
                     <Text style={styles.scanDate}>{date} · {time}</Text>
                   </View>
                   <View style={styles.ptsBox}>
