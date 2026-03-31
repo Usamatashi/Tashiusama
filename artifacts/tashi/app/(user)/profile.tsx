@@ -111,6 +111,13 @@ export default function ProfileScreen() {
                 </Text>
                 <Text style={styles.heroStatLabel}>Phone</Text>
               </View>
+            ) : isSalesman ? (
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>
+                  {user?.city || "-"}
+                </Text>
+                <Text style={styles.heroStatLabel}>City</Text>
+              </View>
             ) : (
               <View style={styles.heroStat}>
                 <Text style={styles.heroStatValue}>{user?.points ?? 0}</Text>

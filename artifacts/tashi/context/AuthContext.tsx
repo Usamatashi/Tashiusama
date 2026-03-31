@@ -8,6 +8,7 @@ export interface AuthUser {
   name: string | null;
   role: "super_admin" | "admin" | "salesman" | "mechanic" | "retailer";
   points: number;
+  city: string | null;
   createdAt: string;
 }
 
