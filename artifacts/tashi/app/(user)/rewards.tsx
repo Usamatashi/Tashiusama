@@ -94,8 +94,8 @@ export default function RewardsScreen() {
           <Text style={styles.pointsCardStar}>★</Text>
         </View>
 
-        {/* Next milestone */}
-        {nextReward && (
+        {/* Next milestone — hidden for mechanics */}
+        {!isMechanic && nextReward && (
           <View style={styles.milestoneCard}>
             <View>
               <Text style={styles.milestoneLabel}>NEXT REWARD</Text>
@@ -111,9 +111,9 @@ export default function RewardsScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionLabel}>All Rewards</Text>
+        {!isMechanic && <Text style={styles.sectionLabel}>All Rewards</Text>}
 
-        {REWARDS.map((r) => {
+        {!isMechanic && REWARDS.map((r) => {
           const canRedeem = userPoints >= r.points;
           const pct = Math.min((userPoints / r.points) * 100, 100);
           return (
