@@ -18,10 +18,19 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Feather, FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import TickerMarquee from "@/components/TickerMarquee";
 import { BrakePadCard } from "@/components/BrakePadCard";
+
+const PROFILE_PIC_KEY = "tashi_profile_pic";
+const ROLE_COLORS: Record<string, string> = {
+  admin: "#8B5CF6",
+  salesman: "#3B82F6",
+  mechanic: "#F59E0B",
+  retailer: Colors.primary,
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
@@ -81,6 +90,7 @@ const SALESMAN_QUICK_ACTIONS = [
 export default function UserHomeScreen() {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
+  const [profilePic, setProfilePic] = useState<string | null>(null);
   const [bannerIndex, setBannerIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const blinkAnim = useRef(new Animated.Value(1)).current;
@@ -153,7 +163,10 @@ export default function UserHomeScreen() {
   }, [user?.role]);
 
   useEffect(() => { fetchAdsTickers(); }, [fetchAdsTickers]);
-  useEffect(() => { refreshUser(); }, []);
+  useEffect(() => {
+    refreshUser();
+    AsyncStorage.getItem(PROFILE_PIC_KEY).then((uri) => { if (uri) setProfilePic(uri); });
+  }, []);
   useEffect(() => {
     if (user?.points !== undefined) setLocalPoints(user.points);
   }, [user?.points]);
@@ -260,16 +273,33 @@ export default function UserHomeScreen() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerGreet}>Hello, {firstName} 👋</Text>
           <Text style={styles.headerSub}>{headerSub}</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
-          style={styles.waBtn}
-        >
-          <FontAwesome name="whatsapp" size={22} color="#25D366" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
+            style={styles.waBtn}
+          >
+            <FontAwesome name="whatsapp" size={22} color="#25D366" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push("/(user)/profile" as any)}
+            style={[styles.headerAvatar, { borderColor: `${ROLE_COLORS[user?.role || ""] || Colors.primary}50` }]}
+            activeOpacity={0.8}
+          >
+            {profilePic ? (
+              <Image source={{ uri: profilePic }} style={styles.headerAvatarImg} />
+            ) : (
+              <View style={[styles.headerAvatarFallback, { backgroundColor: ROLE_COLORS[user?.role || ""] || Colors.primary }]}>
+                <Text style={styles.headerAvatarText}>
+                  {(user?.name?.[0] || user?.phone?.[0] || "U").toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {tickerText.length > 0 && <TickerMarquee text={tickerText} height={32} />}
@@ -601,12 +631,24 @@ const styles = StyleSheet.create({
   },
   headerGreet: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   waBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#E8F8EF",
     justifyContent: "center", alignItems: "center",
   },
   waBtnText: { fontSize: 20 },
+  headerAvatar: {
+    width: 42, height: 42, borderRadius: 21,
+    borderWidth: 2, overflow: "hidden",
+    justifyContent: "center", alignItems: "center",
+  },
+  headerAvatarImg: { width: 42, height: 42, borderRadius: 21 },
+  headerAvatarFallback: {
+    width: 42, height: 42, borderRadius: 21,
+    justifyContent: "center", alignItems: "center",
+  },
+  headerAvatarText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 18, paddingBottom: 32 },
