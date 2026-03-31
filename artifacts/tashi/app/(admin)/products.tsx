@@ -407,7 +407,12 @@ export default function ProductsScreen() {
               activeOpacity={0.8}
             >
               <Feather name={cat.icon} size={12} color={isActive ? "#fff" : cat.color} />
-              <Text style={[styles.filterBtnText, { color: isActive ? "#fff" : cat.color }]}>
+              <Text
+                style={[styles.filterBtnText, { color: isActive ? "#fff" : cat.color }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {cat.label}
               </Text>
               <View style={[styles.filterCount, { backgroundColor: isActive ? "rgba(255,255,255,0.25)" : cat.bg }]}>
@@ -835,7 +840,7 @@ const styles = StyleSheet.create({
     height: 45,
     backgroundColor: Colors.white,
   },
-  filterBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  filterBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
   filterCount: { borderRadius: 6, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   filterCountText: { fontSize: 9, fontFamily: "Inter_700Bold" },
 });
