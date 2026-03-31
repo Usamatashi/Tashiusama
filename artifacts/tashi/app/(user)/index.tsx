@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   Linking,
@@ -82,6 +83,8 @@ export default function UserHomeScreen() {
   const insets = useSafeAreaInsets();
   const [bannerIndex, setBannerIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const [claimModalVisible, setClaimModalVisible] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [localPoints, setLocalPoints] = useState<number | null>(null);
@@ -144,6 +147,29 @@ export default function UserHomeScreen() {
     if (user?.points !== undefined) setLocalPoints(user.points);
   }, [user?.points]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  const currentPoints = localPoints ?? user?.points ?? 0;
+  useEffect(() => {
+    if (currentPoints > 0) {
+      const anim = Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(blinkAnim, { toValue: 0.55, duration: 750, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1.06, duration: 750, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(blinkAnim, { toValue: 1, duration: 750, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 750, useNativeDriver: true }),
+          ]),
+        ])
+      );
+      anim.start();
+      return () => anim.stop();
+    } else {
+      blinkAnim.setValue(1);
+      pulseAnim.setValue(1);
+    }
+  }, [currentPoints]);
 
   const activeBanners = adBanners.length > 0 ? adBanners : FALLBACK_BANNERS;
 
@@ -261,17 +287,21 @@ export default function UserHomeScreen() {
               <Text style={styles.heroUnit}>points</Text>
             </LinearGradient>
 
-            <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimTabOuter}>
-              <LinearGradient
-                colors={["#C5611A", "#A84E14"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.claimTabInner}
-              >
-                <Text style={styles.claimTabIcon}>🎁</Text>
-                <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            {displayPoints > 0 && (
+              <Animated.View style={{ opacity: blinkAnim, transform: [{ scale: pulseAnim }] }}>
+                <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimTabOuter}>
+                  <LinearGradient
+                    colors={["#C5611A", "#A84E14"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.claimTabInner}
+                  >
+                    <Text style={styles.claimTabIcon}>🎁</Text>
+                    <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
           </View>
         )}
 

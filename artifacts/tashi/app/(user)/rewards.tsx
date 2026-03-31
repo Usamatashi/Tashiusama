@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   RefreshControl,
   ScrollView,
@@ -10,6 +11,24 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+
+interface ClaimRecord {
+  id: number;
+  pointsClaimed: number;
+  status: "pending" | "received";
+  claimedAt: string;
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
+    "  " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+async function getToken(): Promise<string> {
+  const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+  return (await AsyncStorage.getItem("tashi_token")) || "";
+}
 
 const REWARDS = [
   { points: 500, title: "Oil Change Voucher", desc: "Free oil change at any Tashi partner" },
@@ -22,13 +41,32 @@ export default function RewardsScreen() {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
+  const [claimHistory, setClaimHistory] = useState<ClaimRecord[]>([]);
+  const [loadingClaims, setLoadingClaims] = useState(false);
   const userPoints = user?.points ?? 0;
+
+  const isMechanic = user?.role !== "retailer" && user?.role !== "salesman";
+
+  const fetchClaims = useCallback(async () => {
+    if (!isMechanic) return;
+    setLoadingClaims(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setClaimHistory(await res.json());
+    } catch {}
+    finally { setLoadingClaims(false); }
+  }, [isMechanic]);
+
+  useEffect(() => { fetchClaims(); }, [fetchClaims]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshUser();
+    await Promise.all([refreshUser(), fetchClaims()]);
     setRefreshing(false);
-  }, [refreshUser]);
+  }, [refreshUser, fetchClaims]);
 
   const nextReward = REWARDS.find(r => userPoints < r.points);
   const progressPct = nextReward
@@ -103,6 +141,47 @@ export default function RewardsScreen() {
             </View>
           );
         })}
+
+        {/* ── Claimed Rewards — mechanics only ─────────────── */}
+        {isMechanic && (
+          <>
+            <View style={styles.claimedDivider}>
+              <View style={styles.claimedDividerLine} />
+              <Text style={styles.claimedDividerText}>Claimed Rewards</Text>
+              <View style={styles.claimedDividerLine} />
+            </View>
+
+            {loadingClaims ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
+            ) : claimHistory.length === 0 ? (
+              <View style={styles.claimedEmpty}>
+                <Text style={styles.claimedEmptyIcon}>🏷️</Text>
+                <Text style={styles.claimedEmptyTitle}>No claims yet</Text>
+                <Text style={styles.claimedEmptyText}>When you claim points they will appear here</Text>
+              </View>
+            ) : (
+              claimHistory.map((c) => {
+                const isPending = c.status === "pending";
+                return (
+                  <View key={c.id} style={styles.claimItem}>
+                    <View style={[styles.claimIconWrap, { backgroundColor: isPending ? `${Colors.primary}15` : `${Colors.success}15` }]}>
+                      <Text style={styles.claimIcon}>{isPending ? "⏳" : "✅"}</Text>
+                    </View>
+                    <View style={styles.claimInfo}>
+                      <Text style={styles.claimPts}>{c.pointsClaimed} points claimed</Text>
+                      <Text style={styles.claimDate}>{formatDate(c.claimedAt)}</Text>
+                    </View>
+                    <View style={[styles.claimBadge, isPending ? styles.claimBadgePending : styles.claimBadgeReceived]}>
+                      <Text style={[styles.claimBadgeText, { color: isPending ? Colors.primary : Colors.success }]}>
+                        {isPending ? "Pending" : "Received"}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -166,4 +245,28 @@ const styles = StyleSheet.create({
   rewardProgressTrack: { flex: 1, height: 5, backgroundColor: "#F0EDE9", borderRadius: 3, overflow: "hidden" },
   rewardProgressFill: { height: "100%", backgroundColor: Colors.primary, borderRadius: 3 },
   rewardProgressPct: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, minWidth: 30, textAlign: "right" },
+
+  claimedDivider: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
+  claimedDividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  claimedDividerText: { fontSize: 11, fontFamily: "Inter_700Bold", color: Colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" },
+
+  claimedEmpty: { alignItems: "center", gap: 6, paddingVertical: 24 },
+  claimedEmptyIcon: { fontSize: 32 },
+  claimedEmptyTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  claimedEmptyText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", maxWidth: 220 },
+
+  claimItem: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: Colors.white, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  claimIconWrap: { width: 38, height: 38, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  claimIcon: { fontSize: 18 },
+  claimInfo: { flex: 1 },
+  claimPts: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  claimDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  claimBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  claimBadgePending: { backgroundColor: `${Colors.primary}15` },
+  claimBadgeReceived: { backgroundColor: `${Colors.success}15` },
+  claimBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold" },
 });
