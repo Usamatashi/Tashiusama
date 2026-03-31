@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const W = SCREEN_WIDTH - 32;
+const W = SCREEN_WIDTH;
 const IMG_RATIO = 1000 / 667;
 const H = (W / IMG_RATIO) * 1.2;
 
@@ -65,7 +65,7 @@ export function BrakePadCard({ leftAction, rightAction, centerRoute, centerLabel
 const styles = StyleSheet.create({
   wrapper: {
     width: W,
-    alignSelf: "center",
+    marginHorizontal: -16,
     marginTop: 0,
     marginBottom: 8,
     position: "relative",
