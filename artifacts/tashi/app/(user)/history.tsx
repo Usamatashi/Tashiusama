@@ -13,7 +13,8 @@ import { Colors } from "@/constants/colors";
 
 interface Scan {
   id: number;
-  vehicleName: string;
+  qrNumber: string;
+  productName: string;
   pointsEarned: number;
   scannedAt: string;
 }
@@ -100,7 +101,12 @@ export default function HistoryScreen() {
                 </View>
                 <View style={styles.cardContent}>
                   <View style={styles.cardInfo}>
-                    <Text style={styles.vehicleName}>{item.vehicleName}</Text>
+                    <Text style={styles.vehicleName}>
+                      {item.productName || "Unknown Product"}
+                    </Text>
+                    {item.qrNumber ? (
+                      <Text style={styles.qrNumber}>QR: {item.qrNumber}</Text>
+                    ) : null}
                     <Text style={styles.scanDate}>{date} · {time}</Text>
                   </View>
                   <View style={styles.ptsBox}>
@@ -167,7 +173,8 @@ const styles = StyleSheet.create({
   },
   cardInfo: { flex: 1 },
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  scanDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 3 },
+  qrNumber: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  scanDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   ptsBox: { alignItems: "flex-end" },
   ptsValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.primary },
   ptsLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
