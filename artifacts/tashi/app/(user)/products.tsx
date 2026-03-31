@@ -18,7 +18,6 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams } from "expo-router";
-import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -137,8 +136,7 @@ export default function ProductsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  useLocalSearchParams<{ category?: string }>();
-  const [activeFilter, setActiveFilter] = useState<ProductCategory>("disc_pad");
+  const { category } = useLocalSearchParams<{ category?: string }>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const { data: products = [], isLoading, refetch, isRefetching } = useQuery<Product[]>({
@@ -146,56 +144,38 @@ export default function ProductsScreen() {
     queryFn: fetchProducts,
   });
 
-  const filteredProducts = products.filter((p) => (p.category ?? "other") === activeFilter);
+  const visibleCategories: ProductCategory[] =
+    category === "disc_pad"
+      ? ["disc_pad"]
+      : category === "brake_shoes"
+      ? ["brake_shoes", "other"]
+      : CATEGORY_ORDER;
 
-  const sections = [{
-    key: activeFilter,
-    title: CATEGORY_META[activeFilter].label,
-    meta: CATEGORY_META[activeFilter],
-    data: filteredProducts,
-  }].filter((s) => s.data.length > 0);
+  const headerTitle =
+    category === "disc_pad"
+      ? "Disc Pads"
+      : category === "brake_shoes"
+      ? "Brake Shoes & Other"
+      : "Products";
+
+  const filteredProducts = products.filter((p) =>
+    visibleCategories.includes(p.category ?? "other")
+  );
+
+  const sections = visibleCategories
+    .map((cat) => ({
+      key: cat,
+      title: CATEGORY_META[cat].label,
+      meta: CATEGORY_META[cat],
+      data: products.filter((p) => (p.category ?? "other") === cat),
+    }))
+    .filter((s) => s.data.length > 0);
 
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: topPad + 14 }]}>
-        <Text style={styles.headerTitle}>Products</Text>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
         <Text style={styles.headerSub}>{filteredProducts.length} available</Text>
-      </View>
-
-      {/* Category filter buttons */}
-      <View style={styles.filterRow}>
-        {CATEGORY_ORDER.map((cat) => {
-          const meta = CATEGORY_META[cat];
-          const isActive = activeFilter === cat;
-          return (
-            <TouchableOpacity
-              key={cat}
-              style={[
-                styles.filterBtn,
-                isActive
-                  ? { backgroundColor: meta.color, borderColor: meta.color }
-                  : { borderColor: meta.color + "55" },
-              ]}
-              onPress={() => { Haptics.selectionAsync(); setActiveFilter(cat); }}
-              activeOpacity={0.8}
-            >
-              <Feather name={meta.icon} size={12} color={isActive ? "#fff" : meta.color} />
-              <Text
-                style={[styles.filterBtnText, { color: isActive ? "#fff" : meta.color }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {meta.label}
-              </Text>
-              <View style={[styles.filterCount, { backgroundColor: isActive ? "rgba(255,255,255,0.25)" : meta.bg }]}>
-                <Text style={[styles.filterCountText, { color: isActive ? "#fff" : meta.color }]}>
-                  {products.filter((p) => (p.category ?? "other") === cat).length}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
       </View>
 
       {isLoading ? (
@@ -215,9 +195,16 @@ export default function ProductsScreen() {
           renderItem={({ item }) => (
             <ProductRow product={item} onPress={setSelectedProduct} />
           )}
-          renderSectionHeader={() => null}
+          renderSectionHeader={({ section }) => (
+            <View style={[styles.sectionHeader, { backgroundColor: section.meta.bg }]}>
+              <Feather name={section.meta.icon} size={14} color={section.meta.color} />
+              <Text style={[styles.sectionTitle, { color: section.meta.color }]}>
+                {section.title}
+              </Text>
+            </View>
+          )}
           stickySectionHeadersEnabled={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: botPad + 100 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: botPad + 100 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
@@ -244,18 +231,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
   emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", fontFamily: "Inter_400Regular" },
-
-  filterRow: {
-    flexDirection: "row", paddingHorizontal: 12, paddingVertical: 8, gap: 8,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#EFEFEF",
-  },
-  filterBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
-    borderWidth: 1.5, borderRadius: 12, height: 45, backgroundColor: "#FFFFFF",
-  },
-  filterBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
-  filterCount: { borderRadius: 6, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
-  filterCountText: { fontSize: 9, fontFamily: "Inter_700Bold" },
 
   sectionHeader: {
     flexDirection: "row", alignItems: "center", gap: 8,
