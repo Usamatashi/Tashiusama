@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../lib/auth";
+import { requireAuth, requireAdmin, requireSuperAdmin } from "../lib/auth";
 
 const router = Router();
 
@@ -75,6 +75,32 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       res.status(400).json({ error: "Phone number already exists" });
       return;
     }
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/change-password", requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const requestingUser = (req as any).user;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: "Current password and new password are required" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: "New password must be at least 6 characters" });
+      return;
+    }
+    const rows = await db.select({ passwordHash: usersTable.passwordHash })
+      .from(usersTable).where(eq(usersTable.id, requestingUser.userId));
+    if (!rows.length) { res.status(404).json({ error: "User not found" }); return; }
+    const match = await bcrypt.compare(currentPassword, rows[0].passwordHash);
+    if (!match) { res.status(400).json({ error: "Current password is incorrect" }); return; }
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, requestingUser.userId));
+    res.json({ success: true });
+  } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }

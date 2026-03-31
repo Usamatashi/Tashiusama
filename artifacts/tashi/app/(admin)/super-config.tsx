@@ -20,7 +20,10 @@ import {
   type AdminUserEntry,
   DEFAULT_SETTINGS,
 } from "@/context/AdminSettingsContext";
+import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+
+const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 const SUPER_ACCENT = "#7B2FBE";
 
@@ -500,6 +503,178 @@ const perAdminStyles = StyleSheet.create({
   spinner: { width: 51, height: 31 },
 });
 
+// ─── Change Password ──────────────────────────────────────────────────────────
+
+function ChangePasswordPanel() {
+  const { token } = useAuth();
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async () => {
+    setError("");
+    setSuccess(false);
+    if (!currentPw) { setError("Current password is required"); return; }
+    if (newPw.length < 6) { setError("New password must be at least 6 characters"); return; }
+    if (newPw !== confirmPw) { setError("Passwords do not match"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/users/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Failed to change password"); return; }
+      setSuccess(true);
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={pwStyles.card}>
+      <View style={pwStyles.fieldWrap}>
+        <Text style={pwStyles.label}>Current Password</Text>
+        <TextInput
+          style={pwStyles.input}
+          placeholder="Enter current password"
+          placeholderTextColor={Colors.textLight}
+          value={currentPw}
+          onChangeText={setCurrentPw}
+          secureTextEntry
+          autoCorrect={false}
+        />
+      </View>
+      <View style={pwStyles.fieldWrap}>
+        <Text style={pwStyles.label}>New Password</Text>
+        <TextInput
+          style={pwStyles.input}
+          placeholder="Min. 6 characters"
+          placeholderTextColor={Colors.textLight}
+          value={newPw}
+          onChangeText={setNewPw}
+          secureTextEntry
+          autoCorrect={false}
+        />
+      </View>
+      <View style={pwStyles.fieldWrap}>
+        <Text style={pwStyles.label}>Confirm New Password</Text>
+        <TextInput
+          style={pwStyles.input}
+          placeholder="Re-enter new password"
+          placeholderTextColor={Colors.textLight}
+          value={confirmPw}
+          onChangeText={setConfirmPw}
+          secureTextEntry
+          autoCorrect={false}
+        />
+      </View>
+      {error ? (
+        <View style={pwStyles.errorBox}>
+          <Feather name="alert-circle" size={13} color="#EF4444" />
+          <Text style={pwStyles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+      {success ? (
+        <View style={pwStyles.successBox}>
+          <Feather name="check-circle" size={13} color="#16A34A" />
+          <Text style={pwStyles.successText}>Password changed successfully</Text>
+        </View>
+      ) : null}
+      <TouchableOpacity
+        style={[pwStyles.btn, loading && { opacity: 0.6 }]}
+        onPress={handleSubmit}
+        disabled={loading}
+        activeOpacity={0.8}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" size="small" />
+          : <Text style={pwStyles.btnText}>Update Password</Text>
+        }
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const pwStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    gap: 12,
+  },
+  fieldWrap: { gap: 4 },
+  label: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 11 : 9,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminText,
+    backgroundColor: "#FAFAFA",
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#EF4444",
+  },
+  successBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  successText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#16A34A",
+  },
+  btn: {
+    backgroundColor: SUPER_ACCENT,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  btnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+});
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function SuperConfigScreen() {
@@ -523,6 +698,15 @@ export default function SuperConfigScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 24 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Change Password Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Change Password</Text>
+            <Text style={styles.sectionSubtitle}>Update your super admin account password</Text>
+          </View>
+          <ChangePasswordPanel />
+        </View>
+
         {/* Per-Admin Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
