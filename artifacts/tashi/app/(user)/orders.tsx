@@ -399,7 +399,7 @@ const STATUS_BG: Record<string, string> = {
   pending: "#FEF3C7", confirmed: "#D1FAE5", dispatched: "#DBEAFE", cancelled: "#FEE2E2",
 };
 
-// ─── Invoice Card (supports multiple line items) ─────────────────────────────
+// ─── Invoice Card (accordion — tap header to expand/collapse) ─────────────────
 function InvoiceCard({
   headerIcon,
   headerTitle,
@@ -407,6 +407,8 @@ function InvoiceCard({
   date,
   status,
   items = [],
+  expanded,
+  onToggle,
 }: {
   headerIcon: "user" | "truck";
   headerTitle: string;
@@ -414,12 +416,14 @@ function InvoiceCard({
   date: string;
   status: string;
   items: OrderItemResponse[];
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
   return (
     <View style={styles.card}>
-      {/* Header */}
-      <View style={styles.cardHeader}>
+      {/* Tappable summary row — always visible */}
+      <TouchableOpacity style={styles.cardHeader} onPress={onToggle} activeOpacity={0.7}>
         <View style={styles.avatarCircle}>
           <Feather name={headerIcon} size={15} color={Colors.primary} />
         </View>
@@ -428,38 +432,50 @@ function InvoiceCard({
           {headerSub ? <Text style={styles.cardSecondaryTitle} numberOfLines={1}>{headerSub}</Text> : null}
           <Text style={styles.cardDate}>{date}</Text>
         </View>
-        <View style={[styles.statusPill, { backgroundColor: STATUS_BG[status] ?? "#eee" }]}>
-          <Text style={[styles.statusText, { color: STATUS_COLOR[status] ?? "#999" }]}>
-            {status.toUpperCase()}
-          </Text>
-        </View>
-      </View>
-      {/* Invoice table */}
-      <View style={styles.table}>
-        <View style={styles.tableRow}>
-          <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
-          <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
-          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
-          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
-        </View>
-        <View style={styles.tableDivider} />
-        {items.map((item, idx) => (
-          <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-            <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName}</Text>
-            <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
-            <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-              {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
-            </Text>
-            <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-              {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <View style={[styles.statusPill, { backgroundColor: STATUS_BG[status] ?? "#eee" }]}>
+            <Text style={[styles.statusText, { color: STATUS_COLOR[status] ?? "#999" }]}>
+              {status.toUpperCase()}
             </Text>
           </View>
-        ))}
-        <View style={styles.totalFooter}>
-          <Text style={styles.totalFooterLabel}>Order Total</Text>
-          <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
+          <Text style={styles.cardTotalInline}>Rs. {grandTotal.toLocaleString()}</Text>
         </View>
-      </View>
+        <Feather
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={18}
+          color="#B0AAA4"
+          style={{ marginLeft: 8 }}
+        />
+      </TouchableOpacity>
+
+      {/* Expanded: full items table */}
+      {expanded && (
+        <View style={styles.table}>
+          <View style={styles.tableRow}>
+            <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
+            <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+            <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
+            <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
+          </View>
+          <View style={styles.tableDivider} />
+          {items.map((item, idx) => (
+            <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+              <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName}</Text>
+              <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+              <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+                {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
+              </Text>
+              <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+                {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
+              </Text>
+            </View>
+          ))}
+          <View style={styles.totalFooter}>
+            <Text style={styles.totalFooterLabel}>Order Total</Text>
+            <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -475,6 +491,7 @@ function OrderCard({
   onEdit?: (order: Order) => void;
   isCancelling?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
@@ -487,8 +504,10 @@ function OrderCard({
         date={date}
         status={order.status}
         items={order.items}
+        expanded={expanded}
+        onToggle={() => { Haptics.selectionAsync(); setExpanded(prev => !prev); }}
       />
-      {order.status === "pending" && (onCancel || onEdit) && (
+      {expanded && order.status === "pending" && (onCancel || onEdit) && (
         <View style={styles.orderActionRow}>
           {onEdit && (
             <TouchableOpacity
@@ -536,6 +555,7 @@ function RetailerOrderCard({
   onConfirm: () => void;
   isConfirming: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [pendingTap, setPendingTap] = useState(false);
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
@@ -543,7 +563,13 @@ function RetailerOrderCard({
   const safeItems = order.items ?? [];
   const firstProduct = safeItems[0]?.productName ?? "Order";
 
-  const handlePress = () => {
+  const handleToggle = () => {
+    Haptics.selectionAsync();
+    if (expanded) setPendingTap(false);
+    setExpanded(prev => !prev);
+  };
+
+  const handleConfirmPress = () => {
     if (pendingTap) {
       setPendingTap(false);
       onConfirm();
@@ -560,8 +586,10 @@ function RetailerOrderCard({
         date={date}
         status={order.status}
         items={safeItems}
+        expanded={expanded}
+        onToggle={handleToggle}
       />
-      {order.status === "pending" && (
+      {expanded && order.status === "pending" && (
         pendingTap ? (
           <View style={styles.confirmRowInline}>
             <TouchableOpacity
@@ -574,7 +602,7 @@ function RetailerOrderCard({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.confirmOrderBtn, { flex: 1, marginTop: 0, marginHorizontal: 0, marginBottom: 0 }, isConfirming && styles.btnDisabled]}
-              onPress={handlePress}
+              onPress={handleConfirmPress}
               disabled={isConfirming}
               activeOpacity={0.82}
             >
@@ -591,7 +619,7 @@ function RetailerOrderCard({
         ) : (
           <TouchableOpacity
             style={[styles.confirmOrderBtn, isConfirming && styles.btnDisabled]}
-            onPress={handlePress}
+            onPress={handleConfirmPress}
             disabled={isConfirming}
             activeOpacity={0.82}
           >
@@ -1495,6 +1523,7 @@ const styles = StyleSheet.create({
   cardPrimaryTitle: { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
   cardSecondaryTitle: { fontSize: 12, color: Colors.textLight, marginTop: 1 },
   cardDate: { fontSize: 11, color: "#B0AAA4", marginTop: 1 },
+  cardTotalInline: { fontSize: 12, fontWeight: "700", color: Colors.primary },
   statusPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   statusText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
 
