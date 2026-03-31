@@ -8,6 +8,7 @@ const router = Router();
 
 router.get("/", requireAuth, requireAdmin, async (req, res) => {
   try {
+    const requestingUser = (req as any).user;
     const users = await db.select({
       id: usersTable.id,
       phone: usersTable.phone,
@@ -18,7 +19,10 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
       points: usersTable.points,
       createdAt: usersTable.createdAt,
     }).from(usersTable);
-    res.json(users.map(u => ({ ...u, createdAt: u.createdAt.toISOString() })));
+    const filtered = requestingUser.role === "super_admin"
+      ? users
+      : users.filter(u => u.role !== "super_admin");
+    res.json(filtered.map(u => ({ ...u, createdAt: u.createdAt.toISOString() })));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
