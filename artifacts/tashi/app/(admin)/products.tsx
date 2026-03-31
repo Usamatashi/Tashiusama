@@ -131,7 +131,7 @@ export default function ProductsScreen() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("disc_pad");
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   // Modal state
@@ -411,7 +411,7 @@ export default function ProductsScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Feather name={cat.icon} size={14} color={isActive ? "#fff" : cat.color} />
+              <Feather name={cat.icon} size={12} color={isActive ? "#fff" : cat.color} />
               <Text style={[styles.filterBtnText, { color: isActive ? "#fff" : cat.color }]}>
                 {cat.label}
               </Text>
@@ -443,7 +443,7 @@ export default function ProductsScreen() {
           refreshing={loading}
           onRefresh={fetchProducts}
           renderItem={renderProduct}
-          renderSectionHeader={renderSectionHeader}
+          renderSectionHeader={() => null}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
         />
@@ -831,14 +831,14 @@ const styles = StyleSheet.create({
   confirmDelete: { flex: 1, backgroundColor: "#EF4444", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   confirmDeleteText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 15 },
   filterScroll: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  filterRow: { flexDirection: "row", paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  filterRow: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 7, gap: 6 },
   filterBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    borderWidth: 1.5, borderRadius: 20,
-    paddingVertical: 7, paddingHorizontal: 12,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderWidth: 1.5, borderRadius: 16,
+    paddingVertical: 5, paddingHorizontal: 10,
     backgroundColor: Colors.white,
   },
-  filterBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  filterCount: { borderRadius: 10, minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
-  filterCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  filterBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  filterCount: { borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  filterCountText: { fontSize: 10, fontFamily: "Inter_700Bold" },
 });
