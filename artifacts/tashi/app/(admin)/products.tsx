@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 4,
     borderWidth: 1, borderRadius: 12,
     paddingVertical: 0, paddingHorizontal: 10,
-    height: 28,
+    height: 35,
     backgroundColor: Colors.white,
   },
   filterBtnText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
