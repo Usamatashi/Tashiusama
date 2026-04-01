@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -156,6 +159,48 @@ export default function AdminDashboard() {
   const [pendingPayments, setPendingPayments] = useState(0);
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [showPwModal, setShowPwModal] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+
+  const closePwModal = () => {
+    setShowPwModal(false);
+    setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    setPwError(""); setPwSuccess(false);
+    setShowCurrent(false); setShowNew(false); setShowConfirm(false);
+  };
+
+  const handleChangePassword = async () => {
+    setPwError("");
+    if (!currentPw || !newPw || !confirmPw) { setPwError("All fields are required."); return; }
+    if (newPw.length < 6) { setPwError("New password must be at least 6 characters."); return; }
+    if (newPw !== confirmPw) { setPwError("New passwords do not match."); return; }
+    setPwSaving(true);
+    try {
+      const token = (await AsyncStorage.getItem("tashi_token")) || "";
+      const res = await fetch(`${BASE}/users/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setPwError(data.error || "Incorrect current password."); return; }
+      setPwSuccess(true);
+      setTimeout(closePwModal, 1500);
+    } catch {
+      setPwError("Network error. Please try again.");
+    } finally {
+      setPwSaving(false);
+    }
+  };
 
   const fetchCounts = useCallback(async () => {
     try {
@@ -327,12 +372,126 @@ export default function AdminDashboard() {
                       </View>
                     )}
                   </View>
+
+                  {action.label === "Config" && (
+                    <>
+                      <View style={styles.cardDivider} />
+                      <TouchableOpacity
+                        style={styles.changePwBtn}
+                        onPress={(e) => { e.stopPropagation(); setShowPwModal(true); }}
+                        activeOpacity={0.75}
+                      >
+                        <Feather name="lock" size={14} color="rgba(255,255,255,0.9)" />
+                        <Text style={styles.changePwBtnText}>Change Password</Text>
+                        <Feather name="chevron-right" size={14} color="rgba(255,255,255,0.6)" />
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
             );
           })}
         </View>
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal visible={showPwModal} transparent animationType="slide" onRequestClose={closePwModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closePwModal} />
+          <View style={styles.pwSheet}>
+            <View style={styles.pwSheetHandle} />
+            <View style={styles.pwSheetHeader}>
+              <View style={styles.pwSheetIconWrap}>
+                <Feather name="lock" size={20} color="#7B2FBE" />
+              </View>
+              <Text style={styles.pwSheetTitle}>Change Password</Text>
+              <TouchableOpacity onPress={closePwModal} style={styles.pwSheetClose}>
+                <Feather name="x" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {pwSuccess ? (
+              <View style={styles.pwSuccessBox}>
+                <Feather name="check-circle" size={36} color="#10B981" />
+                <Text style={styles.pwSuccessText}>Password updated successfully!</Text>
+              </View>
+            ) : (
+              <>
+                {/* Current Password */}
+                <Text style={styles.pwLabel}>Current Password</Text>
+                <View style={styles.pwInputRow}>
+                  <TextInput
+                    style={styles.pwInput}
+                    placeholder="Enter current password"
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showCurrent}
+                    value={currentPw}
+                    onChangeText={setCurrentPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowCurrent(v => !v)} style={styles.pwEye}>
+                    <Feather name={showCurrent ? "eye-off" : "eye"} size={18} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* New Password */}
+                <Text style={styles.pwLabel}>New Password</Text>
+                <View style={styles.pwInputRow}>
+                  <TextInput
+                    style={styles.pwInput}
+                    placeholder="Enter new password"
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showNew}
+                    value={newPw}
+                    onChangeText={setNewPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowNew(v => !v)} style={styles.pwEye}>
+                    <Feather name={showNew ? "eye-off" : "eye"} size={18} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Confirm Password */}
+                <Text style={styles.pwLabel}>Confirm New Password</Text>
+                <View style={styles.pwInputRow}>
+                  <TextInput
+                    style={styles.pwInput}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showConfirm}
+                    value={confirmPw}
+                    onChangeText={setConfirmPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={styles.pwEye}>
+                    <Feather name={showConfirm ? "eye-off" : "eye"} size={18} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+
+                {pwError ? (
+                  <View style={styles.pwErrorBox}>
+                    <Feather name="alert-circle" size={14} color="#DC2626" />
+                    <Text style={styles.pwErrorText}>{pwError}</Text>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[styles.pwSaveBtn, pwSaving && { opacity: 0.7 }]}
+                  onPress={handleChangePassword}
+                  disabled={pwSaving}
+                  activeOpacity={0.85}
+                >
+                  {pwSaving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.pwSaveBtnText}>Update Password</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -518,5 +677,131 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#92400E",
     letterSpacing: 0.3,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginTop: 16,
+    marginHorizontal: -4,
+  },
+  changePwBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 12,
+    paddingHorizontal: 4,
+  },
+  changePwBtnText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.9)",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  pwSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 0,
+  },
+  pwSheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  pwSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 24,
+  },
+  pwSheetIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: "#7B2FBE14",
+    alignItems: "center", justifyContent: "center",
+  },
+  pwSheetTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: Colors.adminText,
+  },
+  pwSheetClose: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center", justifyContent: "center",
+  },
+  pwLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary,
+    marginBottom: 6,
+    marginTop: 14,
+  },
+  pwInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    backgroundColor: "#FAFAFA",
+    paddingHorizontal: 14,
+  },
+  pwInput: {
+    flex: 1,
+    height: 48,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminText,
+  },
+  pwEye: {
+    padding: 6,
+  },
+  pwErrorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEE2E2",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 12,
+  },
+  pwErrorText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#DC2626",
+  },
+  pwSaveBtn: {
+    backgroundColor: "#7B2FBE",
+    borderRadius: 14,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  pwSaveBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  pwSuccessBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 32,
+  },
+  pwSuccessText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminText,
+    textAlign: "center",
   },
 });
