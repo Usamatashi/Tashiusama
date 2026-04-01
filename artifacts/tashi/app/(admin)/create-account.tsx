@@ -157,7 +157,8 @@ export default function CreateAccountScreen() {
   const openAdd = () => {
     setEditingUser(null);
     setErrorMsg("");
-    setName(""); setPhone(""); setCity(""); setPassword(""); setRole("retailer");
+    setName(""); setPhone(""); setCity(""); setPassword("");
+    setRole(activeFilter !== "all" ? activeFilter : "retailer");
     setAccess({ ...DEFAULT_ACCESS });
     setModalVisible(true);
   };
