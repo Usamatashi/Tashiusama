@@ -429,46 +429,6 @@ export default function CreateAccountScreen() {
                   ))}
                 </View>
 
-                {role === "admin" && currentUser?.role === "super_admin" && (
-                  <>
-                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Access Level</Text>
-                    <Text style={styles.accessSectionHead}>Tabs</Text>
-                    <View style={styles.accessGrid}>
-                      {ACCESS_TABS.map((item) => {
-                        const on = access[item.key];
-                        return (
-                          <TouchableOpacity
-                            key={item.key}
-                            style={[styles.accessChip, on && styles.accessChipOn]}
-                            onPress={() => setAccess(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                            activeOpacity={0.8}
-                          >
-                            <Feather name={on ? "check-square" : "square"} size={14} color={on ? Colors.adminAccent : Colors.textLight} />
-                            <Text style={[styles.accessChipText, on && styles.accessChipTextOn]}>{item.label}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                    <Text style={styles.accessSectionHead}>Dashboard Cards</Text>
-                    <View style={styles.accessGrid}>
-                      {ACCESS_CARDS.map((item) => {
-                        const on = access[item.key];
-                        return (
-                          <TouchableOpacity
-                            key={item.key}
-                            style={[styles.accessChip, on && styles.accessChipOn]}
-                            onPress={() => setAccess(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                            activeOpacity={0.8}
-                          >
-                            <Feather name={on ? "check-square" : "square"} size={14} color={on ? Colors.adminAccent : Colors.textLight} />
-                            <Text style={[styles.accessChipText, on && styles.accessChipTextOn]}>{item.label}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </>
-                )}
-
                 <Text style={styles.fieldLabel}>Phone Number *</Text>
                 <TextInput
                   style={styles.modalInput}
