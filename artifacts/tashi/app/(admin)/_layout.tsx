@@ -26,14 +26,12 @@ type TabItem = {
 const ALL_TAB_ITEMS: TabItem[] = [
   { name: "index", label: "Dashboard", icon: "grid" },
   { name: "products", label: "Products", icon: "truck" },
-  { name: "create-account", label: "Users", icon: "users" },
   { name: "payments", label: "Payments", icon: "dollar-sign" },
 ];
 
 export const SETTINGS_KEY_MAP: Record<string, keyof AdminSettings> = {
   index: "tab_dashboard",
   products: "tab_products",
-  "create-account": "tab_users",
   payments: "tab_payments",
 };
 
@@ -143,14 +141,14 @@ export default function AdminLayout() {
   // an already-mounted navigator.
   const tabsKey = isSuperAdmin
     ? "super"
-    : `${+settings.tab_dashboard}${+settings.tab_products}${+settings.tab_users}${+settings.tab_payments}`;
+    : `${+settings.tab_dashboard}${+settings.tab_products}${+settings.tab_payments}`;
 
   return (
     <Tabs key={tabsKey} tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" options={{ href: tabHref("tab_dashboard") }} />
       <Tabs.Screen name="products" options={{ href: tabHref("tab_products") }} />
-      <Tabs.Screen name="create-account" options={{ href: tabHref("tab_users") }} />
       <Tabs.Screen name="payments" options={{ href: tabHref("tab_payments") }} />
+      <Tabs.Screen name="create-account" options={{ href: null }} />
       <Tabs.Screen name="super-config" options={{ href: null }} />
       <Tabs.Screen name="create-qr" options={{ href: null }} />
       <Tabs.Screen name="claims" options={{ href: null }} />

@@ -37,7 +37,6 @@ type SettingItem = {
 const TAB_SETTINGS: SettingItem[] = [
   { key: "tab_dashboard", label: "Dashboard", desc: "Main overview and quick action cards", icon: "grid" },
   { key: "tab_products", label: "Products", desc: "Product and points management", icon: "truck" },
-  { key: "tab_users", label: "Users", desc: "Account creation and management", icon: "users" },
   { key: "tab_payments", label: "Payments", desc: "Retailer balances and collections", icon: "dollar-sign" },
 ];
 
