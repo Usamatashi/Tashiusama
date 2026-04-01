@@ -67,6 +67,19 @@ const ROLE_COLORS: Record<Role, string> = {
   retailer: "#2563EB",
 };
 
+const ADMIN_ROLE_FILTERS = [
+  { value: "mechanic" as Role, label: "Mechanic", icon: "tool" as const, color: "#9333EA", bg: "#F5F0FF" },
+  { value: "salesman" as Role, label: "Salesman", icon: "briefcase" as const, color: "#0D9488", bg: "#F0FDFA" },
+  { value: "retailer" as Role, label: "Retailer", icon: "shopping-bag" as const, color: "#2563EB", bg: "#EFF6FF" },
+];
+
+const SUPER_ADMIN_ROLE_FILTERS = [
+  { value: "admin" as Role, label: "Admin", icon: "shield" as const, color: "#E87722", bg: "#FFF4EC" },
+  { value: "mechanic" as Role, label: "Mechanic", icon: "tool" as const, color: "#9333EA", bg: "#F5F0FF" },
+  { value: "salesman" as Role, label: "Salesman", icon: "briefcase" as const, color: "#0D9488", bg: "#F0FDFA" },
+  { value: "retailer" as Role, label: "Retailer", icon: "shopping-bag" as const, color: "#2563EB", bg: "#EFF6FF" },
+];
+
 interface User {
   id: number;
   phone: string;
@@ -83,10 +96,12 @@ export default function CreateAccountScreen() {
   const insets = useSafeAreaInsets();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const ROLES = ALL_ROLES.filter((r) => {
-    if (r.value === "super_admin") return isSuperAdmin;
+    if (r.value === "super_admin") return false;
     if (r.value === "admin") return isSuperAdmin;
     return true;
   });
+  const ROLE_FILTERS = isSuperAdmin ? SUPER_ADMIN_ROLE_FILTERS : ADMIN_ROLE_FILTERS;
+  const [activeFilter, setActiveFilter] = useState<Role | "all">("all");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -282,6 +297,12 @@ export default function CreateAccountScreen() {
 
   const selectedUser = users.find((u) => u.id === selectedUserId) ?? null;
 
+  const filteredUsers = users.filter((u) => {
+    if (u.role === "super_admin") return false;
+    if (activeFilter !== "all" && u.role !== activeFilter) return false;
+    return true;
+  });
+
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
@@ -329,8 +350,41 @@ export default function CreateAccountScreen() {
         )}
       </View>
 
+      {/* Role filter buttons */}
+      <View style={styles.filterRow}>
+        {ROLE_FILTERS.map((rf) => {
+          const isActive = activeFilter === rf.value;
+          const count = users.filter((u) => u.role === rf.value).length;
+          return (
+            <TouchableOpacity
+              key={rf.value}
+              style={[
+                styles.filterBtn,
+                isActive && { backgroundColor: rf.color, borderColor: rf.color },
+                !isActive && { borderColor: rf.color + "55" },
+              ]}
+              onPress={() => setActiveFilter(isActive ? "all" : rf.value)}
+              activeOpacity={0.8}
+            >
+              <Feather name={rf.icon} size={12} color={isActive ? "#fff" : rf.color} />
+              <Text
+                style={[styles.filterBtnText, { color: isActive ? "#fff" : rf.color }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {rf.label}
+              </Text>
+              <View style={[styles.filterCount, { backgroundColor: isActive ? "rgba(255,255,255,0.25)" : rf.bg }]}>
+                <Text style={[styles.filterCountText, { color: isActive ? "#fff" : rf.color }]}>{count}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <FlatList
-        data={users}
+        data={filteredUsers}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[styles.list, { paddingBottom: bottomPad + 16 }]}
         refreshing={loading}
@@ -565,6 +619,44 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: Colors.adminAccent,
     alignItems: "center", justifyContent: "center",
+  },
+  filterRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  filterBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    backgroundColor: "transparent",
+  },
+  filterBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    flexShrink: 1,
+  },
+  filterCount: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  filterCountText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
   },
   list: { padding: 16, gap: 10 },
   userCard: {
