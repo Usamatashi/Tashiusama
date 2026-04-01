@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Redirect } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
@@ -343,6 +343,9 @@ export default function CreateAccountScreen() {
           </>
         ) : (
           <>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+              <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
+            </TouchableOpacity>
             <Text style={styles.headerTitle}>Accounts</Text>
             <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
               <Feather name="plus" size={20} color={Colors.white} />
@@ -555,7 +558,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
+  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText, flex: 1, textAlign: "center" },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitleSelected: {
     flex: 1,
     fontSize: 16,
