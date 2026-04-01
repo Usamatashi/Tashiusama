@@ -37,7 +37,7 @@ interface Order {
   id: number;
   salesmanId: number;
   retailerId: number;
-  status: "pending" | "confirmed" | "cancelled";
+  status: "pending" | "confirmed" | "dispatched" | "cancelled";
   createdAt: string;
   retailerName: string | null;
   retailerPhone: string | null;
@@ -422,14 +422,12 @@ function EditOrderModal({
 // ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({
   order,
-  onConfirm,
   onCancel,
   onEdit,
   onDispatch,
   isUpdating,
 }: {
   order: Order;
-  onConfirm: (id: number) => void;
   onCancel: (id: number) => void;
   onEdit: (order: Order) => void;
   onDispatch: (id: number) => void;
@@ -510,16 +508,16 @@ function OrderCard({
             <Text style={[styles.actionBtnText, { color: "#EF4444" }]}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBtn, styles.confirmBtn]}
-            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onConfirm(order.id); }}
+            style={[styles.actionBtn, styles.dispatchBtn]}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onDispatch(order.id); }}
             disabled={isUpdating}
             activeOpacity={0.8}
           >
             {isUpdating
               ? <ActivityIndicator size="small" color="#fff" />
               : <>
-                  <Feather name="check" size={15} color="#fff" />
-                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>Confirm</Text>
+                  <Feather name="send" size={15} color="#fff" />
+                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>Dispatch</Text>
                 </>}
           </TouchableOpacity>
         </View>
@@ -600,10 +598,6 @@ export default function AdminOrdersScreen() {
     onError: (e: Error) => Alert.alert("Error", e.message),
   });
 
-  const handleConfirm = useCallback((id: number) => {
-    updateStatus.mutate({ id, status: "confirmed" });
-  }, [updateStatus]);
-
   const handleCancel = useCallback((id: number) => {
     Alert.alert("Cancel Order", "Are you sure you want to cancel this order?", [
       { text: "No", style: "cancel" },
@@ -668,7 +662,6 @@ export default function AdminOrdersScreen() {
           renderItem={({ item }) => (
             <OrderCard
               order={item}
-              onConfirm={handleConfirm}
               onCancel={handleCancel}
               onEdit={setEditingOrder}
               onDispatch={(id) => dispatchMutation.mutate(id)}
@@ -790,7 +783,6 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 6, paddingVertical: 11, borderRadius: 10,
   },
-  confirmBtn: { backgroundColor: "#10B981" },
   cancelBtn: { backgroundColor: "#FEE2E2" },
   editBtn: { backgroundColor: `${Colors.primary}12`, borderWidth: 1, borderColor: `${Colors.primary}30` },
   dispatchBtn: { backgroundColor: "#3B82F6" },

@@ -278,13 +278,13 @@ router.put("/:id/status", requireAuth, async (req, res) => {
       return;
     }
 
-    // Validate dispatch transition: must be confirmed → dispatched
+    // Validate dispatch transition: must be pending or confirmed → dispatched
     if (status === "dispatched" && isAdmin) {
       const order = await db.select({ status: ordersTable.status })
         .from(ordersTable).where(eq(ordersTable.id, id));
       if (!order.length) { res.status(404).json({ error: "Order not found" }); return; }
-      if (order[0].status !== "confirmed") {
-        res.status(400).json({ error: "Only confirmed orders can be dispatched" });
+      if (order[0].status !== "confirmed" && order[0].status !== "pending") {
+        res.status(400).json({ error: "Only pending or confirmed orders can be dispatched" });
         return;
       }
     }
