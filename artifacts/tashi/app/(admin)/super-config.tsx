@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -64,9 +65,11 @@ function PerAdminPanel() {
   const [query, setQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  useEffect(() => {
-    fetchAdminUsers();
-  }, [fetchAdminUsers]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchAdminUsers();
+    }, [fetchAdminUsers])
+  );
 
   const selectedAdmin = adminUsers.find((a) => a.id === selectedId) ?? null;
 
