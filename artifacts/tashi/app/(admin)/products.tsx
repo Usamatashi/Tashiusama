@@ -406,18 +406,18 @@ export default function ProductsScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Feather name={cat.icon} size={12} color={isActive ? "#fff" : cat.color} />
-              <Text
-                style={[styles.filterBtnText, { color: isActive ? "#fff" : cat.color }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {cat.label}
+              <Text style={[styles.filterCountText, { color: isActive ? "#fff" : cat.color }]}>
+                {products.filter((p) => (p.category ?? "other") === cat.key).length}
               </Text>
-              <View style={[styles.filterCount, { backgroundColor: isActive ? "rgba(255,255,255,0.25)" : cat.bg }]}>
-                <Text style={[styles.filterCountText, { color: isActive ? "#fff" : cat.color }]}>
-                  {products.filter((p) => (p.category ?? "other") === cat.key).length}
+              <View style={styles.filterBtnBottom}>
+                <Feather name={cat.icon} size={12} color={isActive ? "#fff" : cat.color} />
+                <Text
+                  style={[styles.filterBtnText, { color: isActive ? "#fff" : cat.color }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {cat.label}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -835,12 +835,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   filterBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
-    borderWidth: 1.5, borderRadius: 12,
-    height: 45,
+    flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+    borderWidth: 1.5, borderRadius: 16,
+    height: 60,
+    paddingHorizontal: 4,
     backgroundColor: Colors.white,
   },
-  filterBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
-  filterCount: { borderRadius: 6, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
-  filterCountText: { fontSize: 9, fontFamily: "Inter_700Bold" },
+  filterBtnBottom: { flexDirection: "row", alignItems: "center", gap: 4 },
+  filterBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  filterCountText: { fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 19 },
 });
