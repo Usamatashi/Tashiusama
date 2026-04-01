@@ -101,7 +101,7 @@ export default function CreateAccountScreen() {
     return true;
   });
   const ROLE_FILTERS = isSuperAdmin ? SUPER_ADMIN_ROLE_FILTERS : ADMIN_ROLE_FILTERS;
-  const [activeFilter, setActiveFilter] = useState<Role | "all">("all");
+  const [activeFilter, setActiveFilter] = useState<Role | "all">(ROLE_FILTERS[0].value);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
