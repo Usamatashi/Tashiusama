@@ -418,7 +418,7 @@ export default function CommissionScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={Colors.adminText} />
+          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Commission</Text>
         <View style={{ width: 36 }} />
@@ -462,10 +462,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: Colors.border, justifyContent: "center", alignItems: "center",
-  },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.adminText },
   loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   list: { padding: 16, gap: 12 },

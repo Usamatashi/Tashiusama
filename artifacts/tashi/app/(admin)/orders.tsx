@@ -624,7 +624,7 @@ export default function AdminOrdersScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={Colors.text} />
+          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Orders</Text>
         {pendingCount > 0 ? (
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
-  backBtn: { width: 36, height: 36, justifyContent: "center" },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   pendingBadge: {
     minWidth: 28, height: 28, borderRadius: 14,

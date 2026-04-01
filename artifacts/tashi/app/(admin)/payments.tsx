@@ -215,7 +215,7 @@ export default function AdminPaymentsScreen() {
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={Colors.text} />
+          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Payments</Text>
         <View style={{ width: 36 }} />
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { width: 36, height: 36, justifyContent: "center" },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",

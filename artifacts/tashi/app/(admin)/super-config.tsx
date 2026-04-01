@@ -811,8 +811,8 @@ export default function SuperConfigScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={Colors.adminText} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
         </TouchableOpacity>
         <View style={styles.headerIconWrap}>
           <Feather name="shield" size={22} color={SUPER_ACCENT} />
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     gap: 14,
   },
-  backBtn: { padding: 8, borderRadius: 12, backgroundColor: "#F0F0F0", flexShrink: 0 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center", flexShrink: 0 },
   headerIconWrap: {
     width: 44,
     height: 44,

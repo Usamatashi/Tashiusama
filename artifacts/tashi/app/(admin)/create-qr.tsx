@@ -133,8 +133,8 @@ export default function CreateQRScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={Colors.adminText} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create QR Code</Text>
         <View style={{ width: 38 }} />
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText, flex: 1, textAlign: "center" },
-  backBtn: { padding: 8, borderRadius: 12, backgroundColor: "#F0F0F0" },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   scroll: { padding: 20, gap: 20 },
   resultScroll: { padding: 20, alignItems: "center", gap: 20 },
   inputGroup: { gap: 8 },
