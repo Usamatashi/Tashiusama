@@ -366,7 +366,7 @@ const perAdminStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 11 : 2,
+    height: 45,
     gap: 8,
   },
   searchIcon: {},
