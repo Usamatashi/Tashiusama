@@ -366,17 +366,17 @@ export default function CreateAccountScreen() {
               onPress={() => setActiveFilter(isActive ? "all" : rf.value)}
               activeOpacity={0.8}
             >
-              <Feather name={rf.icon} size={12} color={isActive ? "#fff" : rf.color} />
-              <Text
-                style={[styles.filterBtnText, { color: isActive ? "#fff" : rf.color }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {rf.label}
-              </Text>
-              <View style={[styles.filterCount, { backgroundColor: isActive ? "rgba(255,255,255,0.25)" : rf.bg }]}>
-                <Text style={[styles.filterCountText, { color: isActive ? "#fff" : rf.color }]}>{count}</Text>
+              <Text style={[styles.filterCountText, { color: isActive ? "#fff" : rf.color }]}>{count}</Text>
+              <View style={styles.filterBtnBottom}>
+                <Feather name={rf.icon} size={12} color={isActive ? "#fff" : rf.color} />
+                <Text
+                  style={[styles.filterBtnText, { color: isActive ? "#fff" : rf.color }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {rf.label}
+                </Text>
               </View>
             </TouchableOpacity>
           );
@@ -632,31 +632,29 @@ const styles = StyleSheet.create({
   filterBtn: {
     flex: 1,
     height: 60,
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    paddingHorizontal: 6,
-    borderRadius: 30,
+    gap: 3,
+    paddingHorizontal: 4,
+    borderRadius: 16,
     borderWidth: 1.5,
     backgroundColor: "transparent",
+  },
+  filterBtnBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   filterBtnText: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     flexShrink: 1,
   },
-  filterCount: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
   filterCountText: {
-    fontSize: 10,
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
+    lineHeight: 19,
   },
   list: { padding: 16, gap: 10 },
   userCard: {
