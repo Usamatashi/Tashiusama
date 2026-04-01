@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -507,17 +509,27 @@ const perAdminStyles = StyleSheet.create({
 
 function ChangePasswordPanel() {
   const { token } = useAuth();
+  const [modalVisible, setModalVisible] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const closeModal = () => {
+    setModalVisible(false);
+    setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    setError(""); setSuccess(false);
+    setShowCurrent(false); setShowNew(false); setShowConfirm(false);
+  };
+
   const handleSubmit = async () => {
     setError("");
-    setSuccess(false);
-    if (!currentPw) { setError("Current password is required"); return; }
+    if (!currentPw || !newPw || !confirmPw) { setError("All fields are required"); return; }
     if (newPw.length < 6) { setError("New password must be at least 6 characters"); return; }
     if (newPw !== confirmPw) { setError("Passwords do not match"); return; }
     setLoading(true);
@@ -530,7 +542,7 @@ function ChangePasswordPanel() {
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to change password"); return; }
       setSuccess(true);
-      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setTimeout(closeModal, 1500);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -539,103 +551,217 @@ function ChangePasswordPanel() {
   };
 
   return (
-    <View style={pwStyles.card}>
-      <View style={pwStyles.fieldWrap}>
-        <Text style={pwStyles.label}>Current Password</Text>
-        <TextInput
-          style={pwStyles.input}
-          placeholder="Enter current password"
-          placeholderTextColor={Colors.textLight}
-          value={currentPw}
-          onChangeText={setCurrentPw}
-          secureTextEntry
-          autoCorrect={false}
-        />
-      </View>
-      <View style={pwStyles.fieldWrap}>
-        <Text style={pwStyles.label}>New Password</Text>
-        <TextInput
-          style={pwStyles.input}
-          placeholder="Min. 6 characters"
-          placeholderTextColor={Colors.textLight}
-          value={newPw}
-          onChangeText={setNewPw}
-          secureTextEntry
-          autoCorrect={false}
-        />
-      </View>
-      <View style={pwStyles.fieldWrap}>
-        <Text style={pwStyles.label}>Confirm New Password</Text>
-        <TextInput
-          style={pwStyles.input}
-          placeholder="Re-enter new password"
-          placeholderTextColor={Colors.textLight}
-          value={confirmPw}
-          onChangeText={setConfirmPw}
-          secureTextEntry
-          autoCorrect={false}
-        />
-      </View>
-      {error ? (
-        <View style={pwStyles.errorBox}>
-          <Feather name="alert-circle" size={13} color="#EF4444" />
-          <Text style={pwStyles.errorText}>{error}</Text>
+    <>
+      <TouchableOpacity style={pwStyles.triggerBtn} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
+        <View style={pwStyles.triggerIconWrap}>
+          <Feather name="lock" size={18} color={SUPER_ACCENT} />
         </View>
-      ) : null}
-      {success ? (
-        <View style={pwStyles.successBox}>
-          <Feather name="check-circle" size={13} color="#16A34A" />
-          <Text style={pwStyles.successText}>Password changed successfully</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={pwStyles.triggerLabel}>Change Password</Text>
+          <Text style={pwStyles.triggerDesc}>Update your super admin account password</Text>
         </View>
-      ) : null}
-      <TouchableOpacity
-        style={[pwStyles.btn, loading && { opacity: 0.6 }]}
-        onPress={handleSubmit}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
-        {loading
-          ? <ActivityIndicator color="#fff" size="small" />
-          : <Text style={pwStyles.btnText}>Update Password</Text>
-        }
+        <Feather name="chevron-right" size={18} color={Colors.textLight} />
       </TouchableOpacity>
-    </View>
+
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={pwStyles.overlay}>
+          <TouchableOpacity style={{ ...StyleSheet.absoluteFillObject }} activeOpacity={1} onPress={closeModal} />
+          <View style={pwStyles.sheet}>
+            <View style={pwStyles.handle} />
+            <View style={pwStyles.sheetHeader}>
+              <View style={pwStyles.sheetIconWrap}>
+                <Feather name="lock" size={20} color={SUPER_ACCENT} />
+              </View>
+              <Text style={pwStyles.sheetTitle}>Change Password</Text>
+              <TouchableOpacity onPress={closeModal} style={pwStyles.sheetClose}>
+                <Feather name="x" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {success ? (
+              <View style={pwStyles.successBig}>
+                <Feather name="check-circle" size={40} color="#10B981" />
+                <Text style={pwStyles.successBigText}>Password updated!</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={pwStyles.label}>Current Password</Text>
+                <View style={pwStyles.inputRow}>
+                  <TextInput
+                    style={pwStyles.input}
+                    placeholder="Enter current password"
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showCurrent}
+                    value={currentPw}
+                    onChangeText={setCurrentPw}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={() => setShowCurrent(v => !v)} style={pwStyles.eye}>
+                    <Feather name={showCurrent ? "eye-off" : "eye"} size={18} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={pwStyles.label}>New Password</Text>
+                <View style={pwStyles.inputRow}>
+                  <TextInput
+                    style={pwStyles.input}
+                    placeholder="Min. 6 characters"
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showNew}
+                    value={newPw}
+                    onChangeText={setNewPw}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={() => setShowNew(v => !v)} style={pwStyles.eye}>
+                    <Feather name={showNew ? "eye-off" : "eye"} size={18} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={pwStyles.label}>Confirm New Password</Text>
+                <View style={pwStyles.inputRow}>
+                  <TextInput
+                    style={pwStyles.input}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showConfirm}
+                    value={confirmPw}
+                    onChangeText={setConfirmPw}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={pwStyles.eye}>
+                    <Feather name={showConfirm ? "eye-off" : "eye"} size={18} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
+
+                {error ? (
+                  <View style={pwStyles.errorBox}>
+                    <Feather name="alert-circle" size={13} color="#EF4444" />
+                    <Text style={pwStyles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[pwStyles.btn, loading && { opacity: 0.6 }]}
+                  onPress={handleSubmit}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={pwStyles.btnText}>Update Password</Text>
+                  }
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 }
 
 const pwStyles = StyleSheet.create({
-  card: {
+  triggerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     backgroundColor: Colors.white,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 16,
-    gap: 12,
   },
-  fieldWrap: { gap: 4 },
+  triggerIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: `${SUPER_ACCENT}14`,
+    alignItems: "center", justifyContent: "center",
+  },
+  triggerLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminText,
+  },
+  triggerDesc: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+  sheetIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: `${SUPER_ACCENT}14`,
+    alignItems: "center", justifyContent: "center",
+  },
+  sheetTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: Colors.adminText,
+  },
+  sheetClose: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center", justifyContent: "center",
+  },
   label: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     color: Colors.textSecondary,
+    marginBottom: 6,
+    marginTop: 14,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    backgroundColor: "#FAFAFA",
+    paddingHorizontal: 14,
   },
   input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 11 : 9,
-    fontSize: 14,
+    flex: 1,
+    height: 48,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: Colors.adminText,
-    backgroundColor: "#FAFAFA",
   },
+  eye: { padding: 6 },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "#FEF2F2",
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 10,
+    marginTop: 12,
     borderWidth: 1,
     borderColor: "#FECACA",
   },
@@ -645,33 +771,30 @@ const pwStyles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "#EF4444",
   },
-  successBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  successText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#16A34A",
-  },
   btn: {
     backgroundColor: SUPER_ACCENT,
-    borderRadius: 12,
-    paddingVertical: 13,
+    borderRadius: 14,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
+    marginTop: 20,
   },
   btnText: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     color: "#fff",
+  },
+  successBig: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 32,
+  },
+  successBigText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminText,
+    textAlign: "center",
   },
 });
 
@@ -701,8 +824,7 @@ export default function SuperConfigScreen() {
         {/* Change Password Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Change Password</Text>
-            <Text style={styles.sectionSubtitle}>Update your super admin account password</Text>
+            <Text style={styles.sectionTitle}>Security</Text>
           </View>
           <ChangePasswordPanel />
         </View>
