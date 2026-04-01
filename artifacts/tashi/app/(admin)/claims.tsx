@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as SMS from "expo-sms";
@@ -136,6 +136,9 @@ export default function AdminClaimsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={22} color={Colors.adminText} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Claimed Rewards</Text>
         <TouchableOpacity onPress={fetchClaims} style={styles.refreshBtn}>
           <Feather name="refresh-cw" size={20} color={Colors.adminAccent} />
@@ -351,7 +354,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText },
+  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText, flex: 1, textAlign: "center" },
+  backBtn: { padding: 8, borderRadius: 12, backgroundColor: "#F0F0F0" },
   refreshBtn: { padding: 8 },
   summaryCard: {
     flexDirection: "row",

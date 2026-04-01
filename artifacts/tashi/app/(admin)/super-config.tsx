@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -811,6 +811,9 @@ export default function SuperConfigScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={22} color={Colors.adminText} />
+        </TouchableOpacity>
         <View style={styles.headerIconWrap}>
           <Feather name="shield" size={22} color={SUPER_ACCENT} />
         </View>
@@ -863,6 +866,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     gap: 14,
   },
+  backBtn: { padding: 8, borderRadius: 12, backgroundColor: "#F0F0F0", flexShrink: 0 },
   headerIconWrap: {
     width: 44,
     height: 44,
