@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { db, usersTable, ordersTable, orderItemsTable, commissionsTable } from "@workspace/db";
-import { eq, and, gt, ne, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lt, ne, sql, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
 const router = Router();
 
 // ─── GET /commission/salesman-sales/:salesmanId ───────────────────────────────
-// Returns sales data since the last commission for this salesman (admin only)
+// Returns sales for the requested calendar month (defaults to current month).
+// If a commission was already approved for that month, returns alreadyApproved=true.
 router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req, res) => {
   try {
     const salesmanId = parseInt(req.params.salesmanId, 10);
@@ -28,26 +29,45 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
       return;
     }
 
-    // Find last commission date for this salesman
-    const [lastCommission] = await db
-      .select({ periodTo: commissionsTable.periodTo, createdAt: commissionsTable.createdAt })
+    // Resolve target month (optional ?month=4&year=2026, defaults to current)
+    const now = new Date();
+    const targetYear  = parseInt((req.query as any).year  as string, 10) || now.getFullYear();
+    const targetMonth = parseInt((req.query as any).month as string, 10) || (now.getMonth() + 1);
+
+    const periodFrom = new Date(targetYear, targetMonth - 1, 1);          // 1st of month 00:00
+    const periodTo   = new Date(targetYear, targetMonth, 1);               // 1st of next month (exclusive)
+    const periodToInclusive = new Date(periodTo.getTime() - 1);            // last ms of month
+
+    // Check if commission already approved for this month
+    const [existing] = await db
+      .select({ id: commissionsTable.id, createdAt: commissionsTable.createdAt })
       .from(commissionsTable)
-      .where(eq(commissionsTable.salesmanId, salesmanId))
-      .orderBy(desc(commissionsTable.createdAt))
+      .where(
+        and(
+          eq(commissionsTable.salesmanId, salesmanId),
+          gte(commissionsTable.periodFrom as any, periodFrom),
+          lt(commissionsTable.periodFrom as any, periodTo),
+        )
+      )
       .limit(1);
 
-    const periodFrom = lastCommission ? lastCommission.periodTo : null;
-    const periodTo = new Date();
-
-    // Build query for all active (non-cancelled) orders in this period
-    const conditions = [
-      eq(ordersTable.salesmanId, salesmanId),
-      ne(ordersTable.status, "cancelled"),
-    ];
-    if (periodFrom) {
-      conditions.push(gt(ordersTable.createdAt, periodFrom));
+    if (existing) {
+      res.json({
+        salesmanId,
+        salesmanName: salesman.name,
+        salesmanPhone: salesman.phone,
+        periodFrom: periodFrom.toISOString(),
+        periodTo: periodToInclusive.toISOString(),
+        salesAmount: 0,
+        orderCount: 0,
+        orders: [],
+        alreadyApproved: true,
+        approvedAt: existing.createdAt,
+      });
+      return;
     }
 
+    // Fetch all non-cancelled orders in this calendar month
     const orders = await db
       .select({
         id: ordersTable.id,
@@ -58,24 +78,31 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
       })
       .from(ordersTable)
       .leftJoin(usersTable, eq(ordersTable.retailerId, usersTable.id))
-      .where(and(...conditions));
+      .where(
+        and(
+          eq(ordersTable.salesmanId, salesmanId),
+          ne(ordersTable.status, "cancelled"),
+          gte(ordersTable.createdAt, periodFrom),
+          lt(ordersTable.createdAt, periodTo),
+        )
+      );
 
     if (orders.length === 0) {
       res.json({
         salesmanId,
         salesmanName: salesman.name,
         salesmanPhone: salesman.phone,
-        lastCommissionAt: lastCommission?.createdAt ?? null,
-        periodFrom,
-        periodTo,
+        periodFrom: periodFrom.toISOString(),
+        periodTo: periodToInclusive.toISOString(),
         salesAmount: 0,
         orderCount: 0,
         orders: [],
+        alreadyApproved: false,
       });
       return;
     }
 
-    // Fetch order items to calculate actual Rs value
+    // Fetch order items for value calculation
     const orderIds = orders.map((o) => o.id);
     const items = await db
       .select({
@@ -90,7 +117,6 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
           : sql`${orderItemsTable.orderId} = ANY(ARRAY[${sql.join(orderIds.map(id => sql`${id}`), sql`, `)}])`
       );
 
-    // Build per-order totals
     const orderValueMap: Record<number, number> = {};
     for (const item of items) {
       orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
@@ -113,12 +139,12 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
       salesmanId,
       salesmanName: salesman.name,
       salesmanPhone: salesman.phone,
-      lastCommissionAt: lastCommission?.createdAt ?? null,
-      periodFrom,
-      periodTo,
+      periodFrom: periodFrom.toISOString(),
+      periodTo: periodToInclusive.toISOString(),
       salesAmount,
       orderCount: orders.length,
       orders: orderList,
+      alreadyApproved: false,
     });
   } catch (err) {
     req.log.error(err);
@@ -127,14 +153,14 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
 });
 
 // ─── POST /commission ──────────────────────────────────────────────────────────
-// Admin approves commission for a salesman
+// Admin approves commission for a salesman (one per calendar month)
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
     const admin = (req as any).user as JwtPayload;
     const { salesmanId, percentage, salesAmount, periodFrom, periodTo } = req.body;
 
-    if (!salesmanId || percentage === undefined || salesAmount === undefined) {
-      res.status(400).json({ error: "salesmanId, percentage, and salesAmount are required" });
+    if (!salesmanId || percentage === undefined || salesAmount === undefined || !periodFrom) {
+      res.status(400).json({ error: "salesmanId, percentage, salesAmount, and periodFrom are required" });
       return;
     }
 
@@ -142,6 +168,31 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const sales = Number(salesAmount);
     if (isNaN(pct) || pct <= 0 || pct > 100) {
       res.status(400).json({ error: "percentage must be between 1 and 100" });
+      return;
+    }
+    if (sales <= 0) {
+      res.status(400).json({ error: "No sales available for this period" });
+      return;
+    }
+
+    const monthStart = new Date(periodFrom);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+
+    // Guard: prevent duplicate commission for the same month
+    const [duplicate] = await db
+      .select({ id: commissionsTable.id })
+      .from(commissionsTable)
+      .where(
+        and(
+          eq(commissionsTable.salesmanId, Number(salesmanId)),
+          gte(commissionsTable.periodFrom as any, monthStart),
+          lt(commissionsTable.periodFrom as any, monthEnd),
+        )
+      )
+      .limit(1);
+
+    if (duplicate) {
+      res.status(409).json({ error: "Commission for this month has already been approved" });
       return;
     }
 
@@ -152,8 +203,8 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       .values({
         salesmanId: Number(salesmanId),
         adminId: admin.userId,
-        periodFrom: periodFrom ? new Date(periodFrom) : null,
-        periodTo: periodTo ? new Date(periodTo) : new Date(),
+        periodFrom: monthStart,
+        periodTo: periodTo ? new Date(periodTo) : new Date(monthEnd.getTime() - 1),
         salesAmount: Math.round(sales),
         percentage: Math.round(pct),
         commissionAmount,

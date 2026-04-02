@@ -42,8 +42,7 @@ interface SalesData {
   salesmanId: number;
   salesmanName: string | null;
   salesmanPhone: string;
-  lastCommissionAt: string | null;
-  periodFrom: string | null;
+  periodFrom: string;
   periodTo: string;
   salesAmount: number;
   orderCount: number;
@@ -54,6 +53,8 @@ interface SalesData {
     retailerPhone: string | null;
     totalValue: number;
   }>;
+  alreadyApproved: boolean;
+  approvedAt?: string;
 }
 
 function fmt(n: number) { return n.toLocaleString(); }
@@ -124,9 +125,17 @@ function CommissionModal({
   const salesAmt = salesData?.salesAmount ?? 0;
   const commission = !isNaN(pct) && pct > 0 ? Math.round((salesAmt * pct) / 100) : null;
 
+  const monthLabel = salesData?.periodFrom
+    ? new Date(salesData.periodFrom).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+    : new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
   function handleApprove() {
+    if (salesData?.alreadyApproved) {
+      Alert.alert("Already Done", `Commission for ${monthLabel} has already been approved.`);
+      return;
+    }
     if (!salesData || salesAmt === 0) {
-      Alert.alert("No Sales", "There are no confirmed sales since the last commission for this salesman.");
+      Alert.alert("No Sales", `No active sales found for ${monthLabel}.`);
       return;
     }
     if (!pct || isNaN(pct) || pct <= 0 || pct > 100) {
@@ -135,7 +144,7 @@ function CommissionModal({
     }
     Alert.alert(
       "Approve Commission",
-      `Approve Rs. ${fmt(commission!)} commission (${pct}% of Rs. ${fmt(salesAmt)}) for ${salesman?.name || salesman?.phone}?`,
+      `Approve Rs. ${fmt(commission!)} commission (${pct}% of Rs. ${fmt(salesAmt)}) for ${salesman?.name || salesman?.phone} — ${monthLabel}?`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Approve", onPress: () => approveCommission() },
@@ -177,39 +186,41 @@ function CommissionModal({
                 </View>
               ) : (
                 <>
-                  {/* Period info */}
-                  <View style={modal.periodRow}>
-                    <View style={modal.periodItem}>
-                      <Text style={modal.periodLabel}>Last Commission</Text>
-                      <Text style={modal.periodValue}>
-                        {salesData?.lastCommissionAt ? fmtDate(salesData.lastCommissionAt) : "Never"}
-                      </Text>
-                    </View>
-                    <View style={modal.divider} />
-                    <View style={modal.periodItem}>
-                      <Text style={modal.periodLabel}>Current Period</Text>
-                      <Text style={modal.periodValue}>
-                        {salesData?.periodFrom ? fmtDate(salesData.periodFrom) : "All Time"} → Now
-                      </Text>
-                    </View>
+                  {/* Month label */}
+                  <View style={modal.monthRow}>
+                    <Feather name="calendar" size={14} color={Colors.adminAccent} />
+                    <Text style={modal.monthLabel}>Month: <Text style={modal.monthValue}>{monthLabel}</Text></Text>
                   </View>
+
+                  {/* Already approved banner */}
+                  {salesData?.alreadyApproved && (
+                    <View style={modal.approvedBanner}>
+                      <Feather name="check-circle" size={16} color="#065F46" />
+                      <Text style={modal.approvedBannerText}>
+                        Commission already approved for {monthLabel}
+                        {salesData.approvedAt ? ` on ${fmtDate(salesData.approvedAt)}` : ""}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Sales summary */}
-                  <View style={modal.salesBox}>
-                    <View style={modal.salesRow}>
-                      <View style={modal.salesItem}>
-                        <Text style={modal.salesLabel}>Active Orders</Text>
-                        <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
-                      </View>
-                      <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
-                        <Text style={modal.salesLabel}>Total Sales Value</Text>
-                        <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData?.salesAmount ?? 0)}</Text>
+                  {!salesData?.alreadyApproved && (
+                    <View style={modal.salesBox}>
+                      <View style={modal.salesRow}>
+                        <View style={modal.salesItem}>
+                          <Text style={modal.salesLabel}>Active Orders</Text>
+                          <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
+                        </View>
+                        <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
+                          <Text style={modal.salesLabel}>Total Sales Value</Text>
+                          <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData?.salesAmount ?? 0)}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
+                  )}
 
                   {/* Order list */}
-                  {salesData && salesData.orders.length > 0 && (
+                  {!salesData?.alreadyApproved && salesData && salesData.orders.length > 0 && (
                     <View style={modal.orderList}>
                       <Text style={modal.sectionLabel}>Order Breakdown</Text>
                       {salesData.orders.map((o) => (
@@ -226,60 +237,66 @@ function CommissionModal({
                     </View>
                   )}
 
-                  {salesData?.salesAmount === 0 && (
+                  {!salesData?.alreadyApproved && salesData?.salesAmount === 0 && (
                     <View style={modal.noSales}>
                       <Feather name="info" size={20} color={Colors.textLight} />
-                      <Text style={modal.noSalesText}>No confirmed sales since last commission</Text>
+                      <Text style={modal.noSalesText}>No active sales for {monthLabel}</Text>
                     </View>
                   )}
 
-                  {/* Percentage input */}
-                  <View style={modal.inputSection}>
-                    <Text style={modal.inputLabel}>Commission Percentage</Text>
-                    <View style={modal.inputRow}>
-                      <TextInput
-                        style={modal.percentInput}
-                        placeholder="e.g. 5"
-                        placeholderTextColor={Colors.textLight}
-                        value={percentage}
-                        onChangeText={setPercentage}
-                        keyboardType="decimal-pad"
-                        maxLength={5}
-                      />
-                      <View style={modal.percentSymbol}>
-                        <Text style={modal.percentText}>%</Text>
+                  {/* Percentage input — only when not already approved */}
+                  {!salesData?.alreadyApproved && salesAmt > 0 && (
+                    <>
+                      <View style={modal.inputSection}>
+                        <Text style={modal.inputLabel}>Commission Percentage</Text>
+                        <View style={modal.inputRow}>
+                          <TextInput
+                            style={modal.percentInput}
+                            placeholder="e.g. 5"
+                            placeholderTextColor={Colors.textLight}
+                            value={percentage}
+                            onChangeText={setPercentage}
+                            keyboardType="decimal-pad"
+                            maxLength={5}
+                          />
+                          <View style={modal.percentSymbol}>
+                            <Text style={modal.percentText}>%</Text>
+                          </View>
+                        </View>
                       </View>
-                    </View>
-                  </View>
 
-                  {/* Commission preview */}
-                  {commission !== null && (
-                    <View style={modal.preview}>
-                      <Text style={modal.previewLabel}>Total Commission</Text>
-                      <Text style={modal.previewValue}>Rs. {fmt(commission)}</Text>
-                      <Text style={modal.previewSub}>{pct}% of Rs. {fmt(salesAmt)}</Text>
-                    </View>
+                      {/* Commission preview */}
+                      {commission !== null && (
+                        <View style={modal.preview}>
+                          <Text style={modal.previewLabel}>Total Commission</Text>
+                          <Text style={modal.previewValue}>Rs. {fmt(commission)}</Text>
+                          <Text style={modal.previewSub}>{pct}% of Rs. {fmt(salesAmt)}</Text>
+                        </View>
+                      )}
+                    </>
                   )}
                 </>
               )}
             </ScrollView>
 
-            {/* Approve button */}
-            <TouchableOpacity
-              style={[modal.approveBtn, (isPending || salesLoading) && { opacity: 0.6 }]}
-              onPress={handleApprove}
-              activeOpacity={0.8}
-              disabled={isPending || salesLoading}
-            >
-              {isPending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Feather name="check-circle" size={18} color="#fff" />
-                  <Text style={modal.approveBtnText}>Approve Commission</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Approve button — hide if already approved or no sales */}
+            {!salesData?.alreadyApproved && salesAmt > 0 && (
+              <TouchableOpacity
+                style={[modal.approveBtn, (isPending || salesLoading) && { opacity: 0.6 }]}
+                onPress={handleApprove}
+                activeOpacity={0.8}
+                disabled={isPending || salesLoading}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Feather name="check-circle" size={18} color="#fff" />
+                    <Text style={modal.approveBtnText}>Approve Commission</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -572,6 +589,15 @@ const modal = StyleSheet.create({
   orderDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
   orderValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#059669" },
 
+  monthRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
+  monthLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  monthValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.adminText },
+  approvedBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "#D1FAE5", borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: "#6EE7B7",
+  },
+  approvedBannerText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#065F46", flex: 1 },
   noSales: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: "#FEF9C3", borderRadius: 10 },
   noSalesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#92400E", flex: 1 },
 
