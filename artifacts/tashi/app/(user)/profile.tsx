@@ -102,10 +102,12 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <Text style={styles.heroEmail}>{user?.name || user?.phone}</Text>
-          <View style={[styles.rolePill, { backgroundColor: `${roleColor}18` }]}>
-            <View style={[styles.roleDot, { backgroundColor: roleColor }]} />
-            <Text style={[styles.rolePillText, { color: roleColor }]}>{roleLabel}</Text>
-          </View>
+          {!isRetailer && (
+            <View style={[styles.rolePill, { backgroundColor: `${roleColor}18` }]}>
+              <View style={[styles.roleDot, { backgroundColor: roleColor }]} />
+              <Text style={[styles.rolePillText, { color: roleColor }]}>{roleLabel}</Text>
+            </View>
+          )}
 
           <View style={styles.heroStats}>
             {isRetailer ? (
@@ -140,7 +142,7 @@ export default function ProfileScreen() {
         <View style={styles.infoCard}>
           <InfoRow label="Name" value={user?.name || "-"} />
           <InfoRow label="Phone" value={user?.phone || "-"} />
-          {!isSalesman && !isMechanic && (
+          {!isRetailer && !isSalesman && !isMechanic && (
             <InfoRow label="Role" value={roleLabel} valueColor={roleColor} />
           )}
           {!isRetailer && !isSalesman && !isMechanic && (
