@@ -349,23 +349,33 @@ export default function UserHomeScreen() {
 
         {/* ── Sales Financial Hero Card — salesman only ─────────────── */}
         {isSalesman && (
-          <LinearGradient
-            colors={["#0F4C75", "#1B6CA8", "#187CC2"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            <View style={styles.decCircle1} />
-            <View style={styles.decCircle2} />
-            <View style={styles.decCircle3} />
-            <Text style={styles.heroLabel}>Total Sales Value</Text>
-            <Text style={[styles.heroValue, { fontSize: 34 }]}>
-              {salesSummary ? `Rs. ${salesSummary.totalSalesValue.toLocaleString()}` : "—"}
-            </Text>
-            <Text style={styles.heroUnit}>
-              {salesSummary ? `${salesSummary.totalOrders} order${salesSummary.totalOrders !== 1 ? "s" : ""} placed` : "loading..."}
-            </Text>
-          </LinearGradient>
+          <TouchableOpacity onPress={() => router.push("/(user)/orders" as any)} activeOpacity={0.88}>
+            <LinearGradient
+              colors={["#0F4C75", "#1B6CA8", "#187CC2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.decCircle1} />
+              <View style={styles.decCircle2} />
+              <View style={styles.decCircle3} />
+              <Text style={styles.heroLabel}>
+                {`Total Sales Value — ${new Date().toLocaleString("en-US", { month: "long" })}`}
+              </Text>
+              <Text style={[styles.heroValue, { fontSize: 34 }]}>
+                {salesSummary ? `Rs. ${salesSummary.totalSalesValue.toLocaleString()}` : "—"}
+              </Text>
+              <Text style={styles.heroUnit}>
+                {salesSummary
+                  ? `${salesSummary.totalOrders} dispatched order${salesSummary.totalOrders !== 1 ? "s" : ""} this month`
+                  : "loading..."}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, opacity: 0.7 }}>
+                <Feather name="arrow-right-circle" size={12} color="#fff" />
+                <Text style={{ fontSize: 11, color: "#fff", fontFamily: "Inter_500Medium" }}>Tap to view orders</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         )}
 
         {/* Banner carousel */}

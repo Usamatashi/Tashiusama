@@ -557,11 +557,21 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
       };
     });
 
+    // Current-month window: from the 1st of this month (midnight) to now
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const thisMonthDispatched = ordersWithItems.filter(r => {
+      if (r.status !== "dispatched") return false;
+      const d = new Date(r.createdAt);
+      return d >= monthStart && d <= now;
+    });
+
     const totalBonus = ordersWithItems.reduce((s, r) => s + (r.status !== "cancelled" ? r.bonusPoints : 0), 0);
     const confirmedBonus = ordersWithItems.reduce((s, r) => s + (r.status === "confirmed" ? r.bonusPoints : 0), 0);
-    const totalSalesValue = ordersWithItems.reduce((s, r) => s + (r.status !== "cancelled" ? r.totalValue : 0), 0);
+    const totalSalesValue = thisMonthDispatched.reduce((s, r) => s + r.totalValue, 0);
     const confirmedSalesValue = ordersWithItems.reduce((s, r) => s + (r.status === "confirmed" ? r.totalValue : 0), 0);
-    const totalOrders = ordersWithItems.filter(r => r.status !== "cancelled").length;
+    const totalOrders = thisMonthDispatched.length;
 
     res.json({
       totalBonus,
