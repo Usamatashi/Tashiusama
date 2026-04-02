@@ -105,6 +105,7 @@ export default function UserHomeScreen() {
   const [tickers, setTickers] = useState<TickerItem[]>([]);
   const [salesSummary, setSalesSummary] = useState<{ totalSalesValue: number; confirmedSalesValue: number; confirmedBonus: number; totalOrders: number } | null>(null);
   const [retailStats, setRetailStats] = useState<{ confirmedCount: number; confirmedValue: number }>({ confirmedCount: 0, confirmedValue: 0 });
+  const [pendingOrderCount, setPendingOrderCount] = useState<number>(0);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -129,12 +130,21 @@ export default function UserHomeScreen() {
     try {
       const token = await getToken();
       if (user.role === "salesman") {
-        const bonusRes = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const [bonusRes, ordersRes] = await Promise.all([
+          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
         if (bonusRes.ok) {
           const data = await bonusRes.json();
           setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, confirmedBonus: data.confirmedBonus ?? 0, totalOrders: data.totalOrders });
+        }
+        if (ordersRes.ok) {
+          const orders: Array<{ status: string }> = await ordersRes.json();
+          setPendingOrderCount(orders.filter(o => o.status === "pending").length);
         }
       } else if (user.role === "retailer") {
         const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
@@ -411,28 +421,47 @@ export default function UserHomeScreen() {
 
         {/* ── Salesman stat cards ─────────────────────────────────────── */}
         {isSalesman && (
-          <>
-            <View style={styles.statRow}>
-              <View style={[styles.statCard, { backgroundColor: "#0F4C75" }]}>
-                <Text style={styles.statCardLabel}>Confirmed Sales</Text>
-                <Text style={styles.statCardValue}>
-                  {salesSummary ? `Rs. ${salesSummary.confirmedSalesValue.toLocaleString()}` : "—"}
-                </Text>
-                <Text style={styles.statCardSub}>orders confirmed</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.statCard, { backgroundColor: "#065F46" }]}
-                onPress={() => router.push("/(user)/commission" as any)}
-                activeOpacity={0.82}
-              >
-                <Text style={styles.statCardLabel}>Commission</Text>
-                <Text style={styles.statCardValue}>
-                  {salesSummary ? `${salesSummary.confirmedBonus.toLocaleString()} pts` : "—"}
-                </Text>
-                <Text style={styles.statCardSub}>tap to view details</Text>
-              </TouchableOpacity>
-            </View>
-          </>
+          <View style={styles.statRow}>
+            {/* Orders card with red notification badge */}
+            <TouchableOpacity
+              style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#0F4C75" }]}
+              onPress={() => router.push("/(user)/orders" as any)}
+              activeOpacity={0.82}
+            >
+              {pendingOrderCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{pendingOrderCount}</Text>
+                </View>
+              )}
+              <Feather name="file-text" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
+              <Text style={styles.statCardLabel}>Orders</Text>
+              <Text style={styles.statCardSub}>tap to view</Text>
+            </TouchableOpacity>
+
+            {/* Commission card */}
+            <TouchableOpacity
+              style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#065F46" }]}
+              onPress={() => router.push("/(user)/commission" as any)}
+              activeOpacity={0.82}
+            >
+              <Feather name="award" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
+              <Text style={styles.statCardLabel}>Commission</Text>
+              <Text style={styles.statCardSub}>
+                {salesSummary ? `${salesSummary.confirmedBonus.toLocaleString()} pts` : "tap to view"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Accounts card */}
+            <TouchableOpacity
+              style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#7B2FBE" }]}
+              onPress={() => router.replace("/(user)/payments")}
+              activeOpacity={0.82}
+            >
+              <Feather name="credit-card" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
+              <Text style={styles.statCardLabel}>Accounts</Text>
+              <Text style={styles.statCardSub}>payments</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* ── Retailer stat cards ──────────────────────────────────────── */}
@@ -698,6 +727,30 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
+  },
+  statCardSmall: {
+    padding: 12,
+    minHeight: 90,
+    borderRadius: 14,
+    justifyContent: "flex-end",
+    position: "relative",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notifBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
   statCardLabel: {
     fontSize: 9,
