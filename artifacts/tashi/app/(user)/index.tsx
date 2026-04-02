@@ -360,20 +360,11 @@ export default function UserHomeScreen() {
               <View style={styles.decCircle2} />
               <View style={styles.decCircle3} />
               <Text style={styles.heroLabel}>
-                {`Total Sales Value — ${new Date().toLocaleString("en-US", { month: "long" })}`}
+                {`${new Date().toLocaleString("en-US", { month: "long" })} Sales`}
               </Text>
               <Text style={[styles.heroValue, { fontSize: 34 }]}>
                 {salesSummary ? `Rs. ${salesSummary.totalSalesValue.toLocaleString()}` : "—"}
               </Text>
-              <Text style={styles.heroUnit}>
-                {salesSummary
-                  ? `${salesSummary.totalOrders} dispatched order${salesSummary.totalOrders !== 1 ? "s" : ""} this month`
-                  : "loading..."}
-              </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, opacity: 0.7 }}>
-                <Feather name="arrow-right-circle" size={12} color="#fff" />
-                <Text style={{ fontSize: 11, color: "#fff", fontFamily: "Inter_500Medium" }}>Tap to view orders</Text>
-              </View>
             </LinearGradient>
           </TouchableOpacity>
         )}
