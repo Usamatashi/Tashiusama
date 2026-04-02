@@ -99,8 +99,10 @@ function BalanceCard({ item, onCollect }: { item: RetailerBalance; onCollect: (r
           <Text style={[styles.balanceCellValue, { color: "#10B981" }]}>Rs. {fmt(item.totalPaid)}</Text>
         </View>
         <View style={styles.balanceDivider} />
-        <View style={styles.balanceCell}>
-          <Text style={styles.balanceCellLabel}>{isCredit ? "Credit" : "Balance Due"}</Text>
+        <View style={[styles.balanceCell, !isCredit && item.outstanding > 0 && styles.dueCellBox]}>
+          <Text style={[styles.balanceCellLabel, !isCredit && item.outstanding > 0 && { color: "#EF4444" }]}>
+            {isCredit ? "Credit" : "Balance Due"}
+          </Text>
           <Text style={[styles.balanceCellValue, { color: outstandingColor, fontFamily: "Inter_700Bold" }]}>
             Rs. {fmt(Math.abs(item.outstanding))}
           </Text>
@@ -430,6 +432,15 @@ const styles = StyleSheet.create({
   balanceCell: { flex: 1, alignItems: "center", gap: 4 },
   balanceCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
   balanceCellValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  dueCellBox: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
+  },
   balanceDivider: { width: 1, backgroundColor: "#EEEEEE" },
   historyCard: {
     flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
