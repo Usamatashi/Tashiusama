@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -80,12 +81,15 @@ const SUPER_ADMIN_ROLE_FILTERS = [
   { value: "retailer" as Role, label: "Retailer", icon: "shopping-bag" as const, color: "#2563EB", bg: "#EFF6FF" },
 ];
 
+interface Region { id: number; name: string; }
+
 interface User {
   id: number;
   phone: string;
   role: Role;
   name: string | null;
   city: string | null;
+  regionId: number | null;
   points: number;
   createdAt: string;
 }
@@ -139,6 +143,9 @@ export default function CreateAccountScreen() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("retailer");
   const [access, setAccess] = useState({ ...DEFAULT_ACCESS });
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [regionsLoading, setRegionsLoading] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -152,6 +159,16 @@ export default function CreateAccountScreen() {
     }
   }, [token]);
 
+  const fetchRegions = useCallback(async () => {
+    setRegionsLoading(true);
+    try {
+      const res = await fetch(`${BASE}/regions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setRegions(await res.json());
+    } catch {} finally { setRegionsLoading(false); }
+  }, [token]);
+
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const openAdd = () => {
@@ -160,6 +177,8 @@ export default function CreateAccountScreen() {
     setName(""); setPhone(""); setCity(""); setPassword("");
     setRole(activeFilter !== "all" ? activeFilter : "retailer");
     setAccess({ ...DEFAULT_ACCESS });
+    setRegionId(null);
+    fetchRegions();
     setModalVisible(true);
   };
 
@@ -172,6 +191,8 @@ export default function CreateAccountScreen() {
     setPassword("");
     setRole(user.role);
     setAccess({ ...DEFAULT_ACCESS });
+    setRegionId(user.regionId ?? null);
+    fetchRegions();
     if (user.role === "admin" && currentUser?.role === "super_admin") {
       try {
         const res = await fetch(`${BASE}/admin-user-settings/${user.id}`, {
@@ -196,6 +217,7 @@ export default function CreateAccountScreen() {
     try {
       const body: Record<string, any> = {
         name: name.trim(), phone: phone.trim(), city: city.trim(), role,
+        regionId: regionId ?? null,
       };
       if (password.trim()) body.password = password;
 
@@ -462,6 +484,46 @@ export default function CreateAccountScreen() {
                   onChangeText={setCity}
                   autoCorrect={false}
                 />
+
+                {(role === "retailer" || role === "salesman") && (
+                  <>
+                    <Text style={styles.fieldLabel}>Region</Text>
+                    {regionsLoading ? (
+                      <View style={caStyles.regionLoadWrap}>
+                        <ActivityIndicator size="small" color={Colors.adminAccent} />
+                        <Text style={caStyles.regionLoadText}>Loading regions…</Text>
+                      </View>
+                    ) : regions.length === 0 ? (
+                      <View style={caStyles.regionLoadWrap}>
+                        <Text style={caStyles.regionLoadText}>No regions defined yet (create in Config tab)</Text>
+                      </View>
+                    ) : (
+                      <View style={caStyles.regionList}>
+                        <TouchableOpacity
+                          style={[caStyles.regionChip, regionId === null && caStyles.regionChipActive]}
+                          onPress={() => setRegionId(null)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[caStyles.regionChipText, regionId === null && caStyles.regionChipTextActive]}>
+                            None
+                          </Text>
+                        </TouchableOpacity>
+                        {regions.map((r) => (
+                          <TouchableOpacity
+                            key={r.id}
+                            style={[caStyles.regionChip, regionId === r.id && caStyles.regionChipActive]}
+                            onPress={() => setRegionId(r.id)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={[caStyles.regionChipText, regionId === r.id && caStyles.regionChipTextActive]}>
+                              {r.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
 
                 {(!editingUser || editingUser.role !== "super_admin" || isSuperAdmin) && (
                   <>
@@ -787,4 +849,46 @@ const styles = StyleSheet.create({
   accessChipOn: { borderColor: Colors.adminAccent, backgroundColor: `${Colors.adminAccent}12` },
   accessChipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textLight },
   accessChipTextOn: { color: Colors.adminAccent, fontFamily: "Inter_600SemiBold" },
+});
+
+const caStyles = StyleSheet.create({
+  regionLoadWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  regionLoadText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textLight,
+  },
+  regionList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  regionChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: "#F7F8FA",
+  },
+  regionChipActive: {
+    borderColor: Colors.adminAccent,
+    backgroundColor: `${Colors.adminAccent}14`,
+  },
+  regionChipText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textLight,
+  },
+  regionChipTextActive: {
+    color: Colors.adminAccent,
+    fontFamily: "Inter_600SemiBold",
+  },
 });

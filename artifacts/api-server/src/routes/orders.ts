@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, productsTable, ordersTable, orderItemsTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
@@ -433,13 +433,28 @@ router.put("/:id/items", requireAuth, async (req, res) => {
 // ─── GET /orders/retailers ────────────────────────────────────────────────────
 router.get("/retailers", requireAuth, requireSalesman, async (req, res) => {
   try {
+    const caller = (req as any).user as JwtPayload;
     const search = (req.query.search as string || "").toLowerCase();
+
+    // If salesman has a region, fetch only their region's retailers
+    let salesmanRegionId: number | null = null;
+    if (caller.role === "salesman") {
+      const sm = await db.select({ regionId: usersTable.regionId })
+        .from(usersTable).where(eq(usersTable.id, caller.userId));
+      salesmanRegionId = sm[0]?.regionId ?? null;
+    }
+
+    const whereClause = salesmanRegionId !== null
+      ? and(eq(usersTable.role, "retailer"), eq(usersTable.regionId, salesmanRegionId))
+      : eq(usersTable.role, "retailer");
+
     const rows = await db.select({
       id: usersTable.id,
       name: usersTable.name,
       phone: usersTable.phone,
       city: usersTable.city,
-    }).from(usersTable).where(eq(usersTable.role, "retailer"));
+      regionId: usersTable.regionId,
+    }).from(usersTable).where(whereClause);
 
     const filtered = search
       ? rows.filter(r =>

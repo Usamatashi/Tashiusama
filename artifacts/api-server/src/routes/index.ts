@@ -13,6 +13,7 @@ import paymentsRouter from "./payments";
 import adminSettingsRouter from "./admin-settings";
 import adminUserSettingsRouter from "./admin-user-settings";
 import commissionRouter from "./commission";
+import regionsRouter from "./regions";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use("/payments", paymentsRouter);
 router.use("/admin-settings", adminSettingsRouter);
 router.use("/admin-user-settings", adminUserSettingsRouter);
 router.use("/commission", commissionRouter);
+router.use("/regions", regionsRouter);
 
 export default router;

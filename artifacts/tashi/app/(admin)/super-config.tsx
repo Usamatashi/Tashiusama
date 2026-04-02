@@ -508,6 +508,214 @@ const perAdminStyles = StyleSheet.create({
   spinner: { width: 51, height: 31 },
 });
 
+// ─── Manage Regions ───────────────────────────────────────────────────────────
+
+interface Region { id: number; name: string; }
+
+function ManageRegionsPanel() {
+  const { token } = useAuth();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [newName, setNewName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  const fetchRegions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/regions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setRegions(await res.json());
+    } catch {} finally { setLoading(false); }
+  }, [token]);
+
+  const openModal = () => {
+    setNewName(""); setError("");
+    setModalVisible(true);
+    fetchRegions();
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setNewName(""); setError("");
+  };
+
+  const handleAdd = async () => {
+    if (!newName.trim()) { setError("Region name is required"); return; }
+    setError(""); setAdding(true);
+    try {
+      const res = await fetch(`${BASE}/regions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Failed to add region"); return; }
+      setNewName("");
+      fetchRegions();
+    } catch { setError("Network error. Please try again."); }
+    finally { setAdding(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await fetch(`${BASE}/regions/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchRegions();
+    } catch {} finally { setDeletingId(null); }
+  };
+
+  return (
+    <>
+      <TouchableOpacity style={pwStyles.triggerBtn} onPress={openModal} activeOpacity={0.85}>
+        <View style={pwStyles.triggerIconWrap}>
+          <Feather name="map-pin" size={18} color={SUPER_ACCENT} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={pwStyles.triggerLabel}>Manage Regions</Text>
+          <Text style={pwStyles.triggerDesc}>Create and delete salesman/retailer regions</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={Colors.textLight} />
+      </TouchableOpacity>
+
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={pwStyles.overlay}>
+          <TouchableOpacity style={{ ...StyleSheet.absoluteFillObject }} activeOpacity={1} onPress={closeModal} />
+          <View style={[pwStyles.sheet, { paddingBottom: 32 }]}>
+            <View style={pwStyles.handle} />
+            <View style={pwStyles.sheetHeader}>
+              <View style={pwStyles.sheetIconWrap}>
+                <Feather name="map-pin" size={20} color={SUPER_ACCENT} />
+              </View>
+              <Text style={pwStyles.sheetTitle}>Manage Regions</Text>
+              <TouchableOpacity onPress={closeModal} style={pwStyles.sheetClose}>
+                <Feather name="x" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Add new region */}
+            <Text style={pwStyles.label}>New Region Name</Text>
+            <View style={[pwStyles.inputRow, { paddingRight: 6 }]}>
+              <TextInput
+                style={[pwStyles.input, { flex: 1 }]}
+                placeholder="e.g. Lahore North"
+                placeholderTextColor={Colors.textLight}
+                value={newName}
+                onChangeText={setNewName}
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleAdd}
+              />
+              <TouchableOpacity
+                style={[rgStyles.addBtn, adding && { opacity: 0.5 }]}
+                onPress={handleAdd}
+                disabled={adding}
+              >
+                {adding
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Feather name="plus" size={18} color="#fff" />
+                }
+              </TouchableOpacity>
+            </View>
+
+            {error ? (
+              <View style={pwStyles.errorBox}>
+                <Feather name="alert-circle" size={13} color="#EF4444" />
+                <Text style={pwStyles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {/* Existing regions list */}
+            <Text style={[pwStyles.label, { marginTop: 20 }]}>Existing Regions</Text>
+            {loading ? (
+              <ActivityIndicator color={SUPER_ACCENT} style={{ marginTop: 12 }} />
+            ) : regions.length === 0 ? (
+              <View style={rgStyles.emptyWrap}>
+                <Feather name="inbox" size={20} color={Colors.textLight} />
+                <Text style={rgStyles.emptyText}>No regions yet</Text>
+              </View>
+            ) : (
+              <ScrollView style={rgStyles.listWrap} showsVerticalScrollIndicator={false}>
+                {regions.map((r, idx) => (
+                  <View key={r.id} style={[rgStyles.regionRow, idx > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
+                    <View style={rgStyles.regionDot} />
+                    <Text style={rgStyles.regionName} numberOfLines={1}>{r.name}</Text>
+                    <TouchableOpacity
+                      style={[rgStyles.deleteBtn, deletingId === r.id && { opacity: 0.4 }]}
+                      onPress={() => handleDelete(r.id)}
+                      disabled={deletingId === r.id}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      {deletingId === r.id
+                        ? <ActivityIndicator size="small" color="#EF4444" />
+                        : <Feather name="trash-2" size={16} color="#EF4444" />
+                      }
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
+  );
+}
+
+const rgStyles = StyleSheet.create({
+  addBtn: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: SUPER_ACCENT,
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  listWrap: {
+    maxHeight: 220,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 4,
+  },
+  regionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  regionDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: SUPER_ACCENT,
+    flexShrink: 0,
+  },
+  regionName: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.adminText,
+  },
+  deleteBtn: { padding: 4, flexShrink: 0 },
+  emptyWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
+  emptyText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textLight,
+  },
+});
+
 // ─── Change Password ──────────────────────────────────────────────────────────
 
 function ChangePasswordPanel() {
@@ -827,12 +1035,21 @@ export default function SuperConfigScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Change Password Section */}
+        {/* Security Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Security</Text>
           </View>
           <ChangePasswordPanel />
+        </View>
+
+        {/* Regions Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Regions</Text>
+            <Text style={styles.sectionSubtitle}>Define regions to organize salesmen and retailers</Text>
+          </View>
+          <ManageRegionsPanel />
         </View>
 
         {/* Per-Admin Section */}

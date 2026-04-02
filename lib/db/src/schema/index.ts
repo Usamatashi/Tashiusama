@@ -5,6 +5,16 @@ import { z } from "zod/v4";
 export const roleEnum = pgEnum("role", ["admin", "super_admin", "salesman", "mechanic", "retailer"]);
 export const qrStatusEnum = pgEnum("qr_status", ["unused", "used"]);
 
+export const regionsTable = pgTable("regions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertRegionSchema = createInsertSchema(regionsTable).omit({ id: true, createdAt: true });
+export type InsertRegion = z.infer<typeof insertRegionSchema>;
+export type Region = typeof regionsTable.$inferSelect;
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   phone: text("phone").notNull().unique(),
@@ -13,6 +23,7 @@ export const usersTable = pgTable("users", {
   name: text("name"),
   email: text("email"),
   city: text("city"),
+  regionId: integer("region_id").references(() => regionsTable.id, { onDelete: "set null" }),
   points: integer("points").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
