@@ -146,6 +146,8 @@ export default function CreateAccountScreen() {
   const [regionId, setRegionId] = useState<number | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionsLoading, setRegionsLoading] = useState(false);
+  const [regionSearch, setRegionSearch] = useState("");
+  const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -178,6 +180,8 @@ export default function CreateAccountScreen() {
     setRole(activeFilter !== "all" ? activeFilter : "retailer");
     setAccess({ ...DEFAULT_ACCESS });
     setRegionId(null);
+    setRegionSearch("");
+    setRegionDropdownOpen(false);
     fetchRegions();
     setModalVisible(true);
   };
@@ -192,6 +196,8 @@ export default function CreateAccountScreen() {
     setRole(user.role);
     setAccess({ ...DEFAULT_ACCESS });
     setRegionId(user.regionId ?? null);
+    setRegionSearch(regions.find(r => r.id === user.regionId)?.name ?? "");
+    setRegionDropdownOpen(false);
     fetchRegions();
     if (user.role === "admin" && currentUser?.role === "super_admin") {
       try {
@@ -493,33 +499,73 @@ export default function CreateAccountScreen() {
                         <ActivityIndicator size="small" color={Colors.adminAccent} />
                         <Text style={caStyles.regionLoadText}>Loading regions…</Text>
                       </View>
-                    ) : regions.length === 0 ? (
-                      <View style={caStyles.regionLoadWrap}>
-                        <Text style={caStyles.regionLoadText}>No regions defined yet (create in Config tab)</Text>
-                      </View>
                     ) : (
-                      <View style={caStyles.regionList}>
-                        <TouchableOpacity
-                          style={[caStyles.regionChip, regionId === null && caStyles.regionChipActive]}
-                          onPress={() => setRegionId(null)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={[caStyles.regionChipText, regionId === null && caStyles.regionChipTextActive]}>
-                            None
-                          </Text>
-                        </TouchableOpacity>
-                        {regions.map((r) => (
-                          <TouchableOpacity
-                            key={r.id}
-                            style={[caStyles.regionChip, regionId === r.id && caStyles.regionChipActive]}
-                            onPress={() => setRegionId(r.id)}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={[caStyles.regionChipText, regionId === r.id && caStyles.regionChipTextActive]}>
-                              {r.name}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                      <View>
+                        <View style={caStyles.regionSearchWrap}>
+                          <Feather name="map-pin" size={15} color={Colors.textSecondary} />
+                          <TextInput
+                            style={caStyles.regionSearchInput}
+                            placeholder={regions.length === 0 ? "No regions defined yet" : "Search or select region…"}
+                            placeholderTextColor={Colors.textLight}
+                            value={regionSearch}
+                            onChangeText={(t) => {
+                              setRegionSearch(t);
+                              setRegionDropdownOpen(true);
+                              if (!t) setRegionId(null);
+                            }}
+                            onFocus={() => setRegionDropdownOpen(true)}
+                            editable={regions.length > 0}
+                            returnKeyType="done"
+                            onSubmitEditing={() => setRegionDropdownOpen(false)}
+                          />
+                          {regionSearch.length > 0 && (
+                            <TouchableOpacity
+                              onPress={() => { setRegionSearch(""); setRegionId(null); setRegionDropdownOpen(false); }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Feather name="x" size={14} color={Colors.textSecondary} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        {regionDropdownOpen && regions.length > 0 && (() => {
+                          const q = regionSearch.toLowerCase();
+                          const filtered = q
+                            ? regions.filter(r => r.name.toLowerCase().includes(q))
+                            : regions;
+                          return filtered.length > 0 ? (
+                            <View style={caStyles.regionDropdown}>
+                              <TouchableOpacity
+                                style={[caStyles.regionDropdownItem, regionId === null && caStyles.regionDropdownItemActive]}
+                                onPress={() => { setRegionId(null); setRegionSearch(""); setRegionDropdownOpen(false); }}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[caStyles.regionDropdownText, regionId === null && caStyles.regionDropdownTextActive]}>
+                                  None (no region)
+                                </Text>
+                                {regionId === null && <Feather name="check" size={13} color={Colors.adminAccent} />}
+                              </TouchableOpacity>
+                              {filtered.map((r) => (
+                                <TouchableOpacity
+                                  key={r.id}
+                                  style={[
+                                    caStyles.regionDropdownItem,
+                                    caStyles.regionDropdownSep,
+                                    regionId === r.id && caStyles.regionDropdownItemActive,
+                                  ]}
+                                  onPress={() => { setRegionId(r.id); setRegionSearch(r.name); setRegionDropdownOpen(false); }}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={caStyles.regionDot} />
+                                  <Text style={[caStyles.regionDropdownText, regionId === r.id && caStyles.regionDropdownTextActive]}>
+                                    {r.name}
+                                  </Text>
+                                  {regionId === r.id && <Feather name="check" size={13} color={Colors.adminAccent} />}
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          ) : null;
+                        })()}
                       </View>
                     )}
                   </>
@@ -864,31 +910,61 @@ const caStyles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textLight,
   },
-  regionList: {
+  regionSearchWrap: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 4,
-  },
-  regionChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: "#F7F8FA",
+    paddingHorizontal: 12,
+    height: 45,
+    gap: 8,
   },
-  regionChipActive: {
-    borderColor: Colors.adminAccent,
-    backgroundColor: `${Colors.adminAccent}14`,
+  regionSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminText,
   },
-  regionChipText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.textLight,
+  regionDropdown: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    marginTop: 4,
+    maxHeight: 200,
   },
-  regionChipTextActive: {
-    color: Colors.adminAccent,
+  regionDropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 10,
+  },
+  regionDropdownSep: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  regionDropdownItemActive: {
+    backgroundColor: `${Colors.adminAccent}0A`,
+  },
+  regionDropdownText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminText,
+  },
+  regionDropdownTextActive: {
     fontFamily: "Inter_600SemiBold",
+    color: Colors.adminAccent,
+  },
+  regionDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: Colors.adminAccent,
+    flexShrink: 0,
   },
 });
