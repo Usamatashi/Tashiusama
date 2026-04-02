@@ -410,6 +410,30 @@ export default function UserHomeScreen() {
               centerRoute="/(user)/orders"
               centerLabel="ORDER"
             />
+            {isRetailer && (
+              <View style={[styles.statRow, { marginTop: 4 }]}>
+                <TouchableOpacity
+                  style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#065F46" }]}
+                  onPress={() => router.push("/(user)/orders" as any)}
+                  activeOpacity={0.82}
+                >
+                  <Feather name="package" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
+                  <Text style={styles.statCardLabel}>Confirmed Orders</Text>
+                  <Text style={styles.statCardSub}>
+                    {retailStats.confirmedValue > 0 ? `Rs. ${retailStats.confirmedValue.toLocaleString()}` : "tap to view"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#7B2FBE" }]}
+                  onPress={() => router.push("/(user)/rewards" as any)}
+                  activeOpacity={0.82}
+                >
+                  <Text style={{ fontSize: 22, marginBottom: 6 }}>🎁</Text>
+                  <Text style={styles.statCardLabel}>Offers</Text>
+                  <Text style={styles.statCardSub}>view rewards & offers</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.dots}>
@@ -460,32 +484,6 @@ export default function UserHomeScreen() {
               <Feather name="credit-card" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
               <Text style={styles.statCardLabel}>Accounts</Text>
               <Text style={styles.statCardSub}>payments</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ── Retailer stat cards ──────────────────────────────────────── */}
-        {isRetailer && (
-          <View style={styles.statRow}>
-            <TouchableOpacity
-              style={[styles.statCard, { backgroundColor: "#065F46" }]}
-              onPress={() => router.push("/(user)/orders" as any)}
-              activeOpacity={0.82}
-            >
-              <Text style={styles.statCardLabel}>Confirmed Orders</Text>
-              <Text style={styles.statCardValue}>{retailStats.confirmedCount}</Text>
-              <Text style={styles.statCardSub}>
-                {retailStats.confirmedValue > 0 ? `Rs. ${retailStats.confirmedValue.toLocaleString()}` : "tap to view"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.statCard, { backgroundColor: "#7B2FBE" }]}
-              onPress={() => router.push("/(user)/rewards" as any)}
-              activeOpacity={0.82}
-            >
-              <Text style={styles.statCardLabel}>Offers</Text>
-              <Text style={styles.statCardValue}>🎁</Text>
-              <Text style={styles.statCardSub}>view rewards & offers</Text>
             </TouchableOpacity>
           </View>
         )}
