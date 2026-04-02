@@ -198,7 +198,7 @@ function CommissionModal({
                   <View style={modal.salesBox}>
                     <View style={modal.salesRow}>
                       <View style={modal.salesItem}>
-                        <Text style={modal.salesLabel}>Confirmed Orders</Text>
+                        <Text style={modal.salesLabel}>Active Orders</Text>
                         <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
                       </View>
                       <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>

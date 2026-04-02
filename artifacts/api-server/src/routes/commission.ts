@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, ordersTable, orderItemsTable, commissionsTable } from "@workspace/db";
-import { eq, and, gt, sql, desc } from "drizzle-orm";
+import { eq, and, gt, ne, sql, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
@@ -39,10 +39,10 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
     const periodFrom = lastCommission ? lastCommission.periodTo : null;
     const periodTo = new Date();
 
-    // Build query for confirmed orders in this period
+    // Build query for all active (non-cancelled) orders in this period
     const conditions = [
       eq(ordersTable.salesmanId, salesmanId),
-      eq(ordersTable.status, "confirmed"),
+      ne(ordersTable.status, "cancelled"),
     ];
     if (periodFrom) {
       conditions.push(gt(ordersTable.createdAt, periodFrom));
