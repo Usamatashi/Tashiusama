@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
+  Animated,
   ActivityIndicator,
   Alert,
   FlatList,
@@ -411,6 +412,7 @@ function InvoiceCard({
   items = [],
   expanded,
   onToggle,
+  style,
 }: {
   headerIcon: "user" | "truck";
   headerTitle: string;
@@ -420,10 +422,11 @@ function InvoiceCard({
   items: OrderItemResponse[];
   expanded: boolean;
   onToggle: () => void;
+  style?: object;
 }) {
   const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, style]}>
       {/* Tappable summary row — always visible */}
       <TouchableOpacity style={styles.cardHeader} onPress={onToggle} activeOpacity={0.7}>
         <View style={styles.avatarCircle}>
@@ -559,6 +562,35 @@ function RetailerOrderCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pendingTap, setPendingTap] = useState(false);
+  const isPending = order.status === "pending";
+
+  // ── Pulse animation for pending orders ────────────────────────────────────
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isPending) {
+      pulseAnim.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 900, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isPending]);
+
+  const animatedBorderColor = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(245,158,11,0.18)", "rgba(245,158,11,0.95)"],
+  });
+  const animatedShadowOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.45],
+  });
+
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
@@ -581,7 +613,21 @@ function RetailerOrderCard({
   };
 
   return (
-    <View>
+    <Animated.View
+      style={[
+        styles.pendingCardWrapper,
+        isPending && {
+          borderColor: animatedBorderColor,
+          shadowOpacity: animatedShadowOpacity,
+        },
+      ]}
+    >
+      {isPending && (
+        <View style={styles.pendingBadgeStrip}>
+          <Animated.View style={[styles.pendingBadgeDot, { opacity: pulseAnim }]} />
+          <Text style={styles.pendingBadgeText}>Needs your confirmation</Text>
+        </View>
+      )}
       <InvoiceCard
         headerIcon="truck"
         headerTitle={safeItems.length > 1 ? `${safeItems.length} products` : firstProduct}
@@ -590,8 +636,9 @@ function RetailerOrderCard({
         items={safeItems}
         expanded={expanded}
         onToggle={handleToggle}
+        style={{ marginBottom: 0 }}
       />
-      {expanded && order.status === "pending" && (
+      {expanded && isPending && (
         pendingTap ? (
           <View style={styles.confirmRowInline}>
             <TouchableOpacity
@@ -630,7 +677,7 @@ function RetailerOrderCard({
           </TouchableOpacity>
         )
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -1513,6 +1560,41 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: "600", color: Colors.text, textAlign: "center" },
   emptyText: { fontSize: 13, color: Colors.textLight, textAlign: "center" },
 
+  pendingCardWrapper: {
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "transparent",
+    marginBottom: 12,
+    shadowColor: "#F59E0B",
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  pendingBadgeStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFBEB",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    borderTopLeftRadius: 13,
+    borderTopRightRadius: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FDE68A",
+  },
+  pendingBadgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#F59E0B",
+  },
+  pendingBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#92400E",
+    letterSpacing: 0.3,
+  },
   card: {
     backgroundColor: "#FFF", borderRadius: 14, marginBottom: 12,
     borderWidth: 1, borderColor: "#E5E0DB", overflow: "hidden",
