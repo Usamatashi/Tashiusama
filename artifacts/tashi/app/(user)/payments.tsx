@@ -93,7 +93,7 @@ function SalesmanPayments() {
 
   // Collections filters
   type DateFilter = "all" | "today" | "week" | "month";
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [collectionSearch, setCollectionSearch] = useState("");
 
   const { data: summary, refetch: refetchSummary } = useQuery<{ totalOutstanding: number; todayCollections: number; totalCommission: number }>({
