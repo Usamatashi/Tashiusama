@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, ordersTable, orderItemsTable, paymentsTable } from "@workspace/db";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { db, usersTable, ordersTable, orderItemsTable, paymentsTable, commissionsTable } from "@workspace/db";
+import { eq, and, inArray, sql, gte, lt, sum } from "drizzle-orm";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
@@ -69,6 +69,69 @@ async function getBalances(retailerIds: number[]) {
   }
   return result;
 }
+
+// ─── GET /payments/salesman-summary ──────────────────────────────────────────
+// Returns 3 figures for the salesman accounts summary bar:
+//   totalOutstanding  – sum of outstanding balances for all retailers in the salesman's region
+//   todayCollections  – sum of payments collected by this salesman today
+//   totalCommission   – total commission amount recorded for this salesman
+router.get("/salesman-summary", requireAuth, requireSalesman, async (req, res) => {
+  try {
+    const caller = (req as any).user as JwtPayload;
+
+    // ── 1. Total outstanding for retailers in the salesman's region ────────
+    const salesman = await db
+      .select({ regionId: usersTable.regionId })
+      .from(usersTable)
+      .where(eq(usersTable.id, caller.userId));
+
+    const regionId = salesman[0]?.regionId ?? null;
+
+    let totalOutstanding = 0;
+    if (regionId !== null) {
+      const regionRetailers = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(and(eq(usersTable.role, "retailer"), eq(usersTable.regionId, regionId)));
+
+      const retailerIds = regionRetailers.map(r => r.id);
+      if (retailerIds.length) {
+        const balances = await getBalances(retailerIds);
+        totalOutstanding = Object.values(balances).reduce((s, b) => s + Math.max(0, b.outstanding), 0);
+      }
+    }
+
+    // ── 2. Today's collections by this salesman ────────────────────────────
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const todayRows = await db
+      .select({ amount: paymentsTable.amount })
+      .from(paymentsTable)
+      .where(
+        and(
+          eq(paymentsTable.receivedBy, caller.userId),
+          gte(paymentsTable.createdAt, todayStart),
+          lt(paymentsTable.createdAt, tomorrowStart),
+        ),
+      );
+    const todayCollections = todayRows.reduce((s, r) => s + r.amount, 0);
+
+    // ── 3. Total commission for this salesman ──────────────────────────────
+    const commissionRows = await db
+      .select({ commissionAmount: commissionsTable.commissionAmount })
+      .from(commissionsTable)
+      .where(eq(commissionsTable.salesmanId, caller.userId));
+    const totalCommission = commissionRows.reduce((s, r) => s + r.commissionAmount, 0);
+
+    res.json({ totalOutstanding, todayCollections, totalCommission });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // ─── GET /payments/retailer-balances ─────────────────────────────────────────
 router.get("/retailer-balances", requireAuth, requireSalesman, async (req, res) => {

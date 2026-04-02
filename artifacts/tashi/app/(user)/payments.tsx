@@ -88,6 +88,11 @@ function SalesmanPayments() {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
 
+  const { data: summary, refetch: refetchSummary } = useQuery<{ totalOutstanding: number; todayCollections: number; totalCommission: number }>({
+    queryKey: ["salesman-summary"],
+    queryFn: () => apiFetch("/payments/salesman-summary"),
+  });
+
   const { data: balances = [], isLoading: loadingBalances, refetch: refetchBalances, isRefetching: refetchingBalances } = useQuery<RetailerBalance[]>({
     queryKey: ["salesman-retailer-balances"],
     queryFn: () => apiFetch("/payments/retailer-balances"),
@@ -102,6 +107,7 @@ function SalesmanPayments() {
     mutationFn: ({ retailerId, amount, notes }: { retailerId: number; amount: number; notes: string }) =>
       apiFetch("/payments", { method: "POST", body: JSON.stringify({ retailerId, amount, notes }) }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salesman-summary"] });
       qc.invalidateQueries({ queryKey: ["salesman-retailer-balances"] });
       qc.invalidateQueries({ queryKey: ["salesman-payments"] });
       setCollectTarget(null); setAmount(""); setNotes("");
@@ -114,9 +120,9 @@ function SalesmanPayments() {
     recordPayment.mutate({ retailerId: collectTarget.id, amount: Number(amount), notes });
   }, [collectTarget, amount, notes, recordPayment]);
 
-  const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
-  const totalOutstanding = balances.reduce((s, b) => s + Math.max(0, b.outstanding), 0);
-  const pendingVerification = payments.filter(p => p.status === "pending").length;
+  const totalOutstanding = summary?.totalOutstanding ?? 0;
+  const todayCollections = summary?.todayCollections ?? 0;
+  const totalCommission = summary?.totalCommission ?? 0;
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -127,17 +133,17 @@ function SalesmanPayments() {
       <View style={styles.summaryBar}>
         <View style={styles.summaryCell}>
           <Text style={styles.summaryCellLabel}>Outstanding</Text>
-          <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalCollected)}</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Collections</Text>
           <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>Rs. {fmt(totalOutstanding)}</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryCell}>
+          <Text style={styles.summaryCellLabel}>Collections</Text>
+          <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(todayCollections)}</Text>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryCell}>
           <Text style={styles.summaryCellLabel}>Commission</Text>
-          <Text style={[styles.summaryCellValue, { color: pendingVerification > 0 ? "#D97706" : "#10B981" }]}>{pendingVerification}</Text>
+          <Text style={[styles.summaryCellValue, { color: totalCommission > 0 ? "#10B981" : Colors.text }]}>Rs. {fmt(totalCommission)}</Text>
         </View>
       </View>
 
