@@ -309,7 +309,7 @@ function SalesmanPayments() {
                     <Text style={styles.cardName} numberOfLines={1}>{item.name || item.phone}</Text>
                     <Text style={styles.cardSub}>{item.phone}{item.city ? ` · ${item.city}` : ""}</Text>
                   </View>
-                  <View style={styles.dueBox}>
+                  <View style={[styles.dueBox, { borderColor: item.outstanding <= 0 ? "#10B981" : "#EF4444", backgroundColor: item.outstanding <= 0 ? "#F0FDF4" : "#FEF2F2" }]}>
                     <Text style={styles.dueBoxLabel}>{item.outstanding < 0 ? "Credit" : "Due"}</Text>
                     <Text style={[styles.dueBoxAmount, { color: item.outstanding <= 0 ? "#10B981" : "#EF4444" }]}>
                       Rs. {fmt(Math.abs(item.outstanding))}
@@ -571,9 +571,9 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
   cardSelected: { borderColor: Colors.primary, borderWidth: 1.5 },
-  dueBox: { alignItems: "flex-end" },
-  dueBoxLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  dueBoxAmount: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  dueBox: { alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minWidth: 80 },
+  dueBoxLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" },
+  dueBoxAmount: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
   headerCollectBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#10B981", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
   headerCollectBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.primary}18`, alignItems: "center", justifyContent: "center" },
