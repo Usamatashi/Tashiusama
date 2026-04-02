@@ -307,7 +307,7 @@ function SalesmanPayments() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardName} numberOfLines={1}>{item.name || item.phone}</Text>
-                    <Text style={styles.cardSub}>{[item.phone, item.city].filter(Boolean).join(" · ")}</Text>
+                    <Text style={styles.cardSub}>{item.phone} · {item.city || "—"}</Text>
                   </View>
                   <View style={[styles.dueBox, { borderColor: item.outstanding <= 0 ? "#10B981" : "#EF4444", backgroundColor: item.outstanding <= 0 ? "#F0FDF4" : "#FEF2F2" }]}>
                     <Text style={styles.dueBoxLabel}>{item.outstanding < 0 ? "Credit" : "Due"}</Text>
