@@ -33,14 +33,18 @@ async function computeOrderValues(orderRows: {
 async function getBalances(retailerIds: number[]) {
   if (!retailerIds.length) return {} as Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }>;
 
+  // Outstanding balance accrues when an order is dispatched (goods delivered)
   const orders = await db
-    .select({ id: ordersTable.id, retailerId: ordersTable.retailerId, vehicleId: ordersTable.vehicleId, quantity: ordersTable.quantity })
+    .select({ id: ordersTable.id, retailerId: ordersTable.retailerId, productId: ordersTable.productId, quantity: ordersTable.quantity })
     .from(ordersTable)
-    .where(and(eq(ordersTable.status, "confirmed"), inArray(ordersTable.retailerId, retailerIds)));
+    .where(and(eq(ordersTable.status, "dispatched"), inArray(ordersTable.retailerId, retailerIds)));
 
-  const salesPriceMap: Record<number, number> = {};
-  const ordersWithPrice = orders.map(o => ({ ...o, salesPrice: salesPriceMap[o.vehicleId ?? 0] ?? 0 }));
-  const valueMap = await computeOrderValues(ordersWithPrice);
+  const valueMap = await computeOrderValues(orders.map(o => ({
+    id: o.id,
+    vehicleId: o.productId,
+    quantity: o.quantity,
+    salesPrice: null,
+  })));
 
   const debtByRetailer: Record<number, number> = {};
   for (const o of orders) {

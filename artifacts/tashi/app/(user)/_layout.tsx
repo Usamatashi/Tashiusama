@@ -59,7 +59,7 @@ function SalesmanTabBar() {
   return (
     <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
       <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
-      <TabItem icon="credit-card" label="Payments" active={isPayments} onPress={() => router.replace("/(user)/payments")} />
+      <TabItem icon="credit-card" label="Accounts" active={isPayments} onPress={() => router.replace("/(user)/payments")} />
       <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
     </View>
   );
