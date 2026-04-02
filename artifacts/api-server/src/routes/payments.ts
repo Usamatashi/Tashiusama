@@ -72,33 +72,25 @@ async function getBalances(retailerIds: number[]) {
 
 // ─── GET /payments/salesman-summary ──────────────────────────────────────────
 // Returns 3 figures for the salesman accounts summary bar:
-//   totalOutstanding  – sum of outstanding balances for all retailers in the salesman's region
+//   totalOutstanding  – sum of outstanding balances for retailers this salesman has orders with
 //   todayCollections  – sum of payments collected by this salesman today
 //   totalCommission   – total commission amount recorded for this salesman
 router.get("/salesman-summary", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
 
-    // ── 1. Total outstanding for retailers in the salesman's region ────────
-    const salesman = await db
-      .select({ regionId: usersTable.regionId })
-      .from(usersTable)
-      .where(eq(usersTable.id, caller.userId));
+    // ── 1. Total outstanding for retailers this salesman has orders with ───
+    const orderRows = await db
+      .select({ retailerId: ordersTable.retailerId })
+      .from(ordersTable)
+      .where(eq(ordersTable.salesmanId, caller.userId));
 
-    const regionId = salesman[0]?.regionId ?? null;
+    const retailerIds = [...new Set(orderRows.map(r => r.retailerId))];
 
     let totalOutstanding = 0;
-    if (regionId !== null) {
-      const regionRetailers = await db
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(and(eq(usersTable.role, "retailer"), eq(usersTable.regionId, regionId)));
-
-      const retailerIds = regionRetailers.map(r => r.id);
-      if (retailerIds.length) {
-        const balances = await getBalances(retailerIds);
-        totalOutstanding = Object.values(balances).reduce((s, b) => s + Math.max(0, b.outstanding), 0);
-      }
+    if (retailerIds.length) {
+      const balances = await getBalances(retailerIds);
+      totalOutstanding = Object.values(balances).reduce((s, b) => s + Math.max(0, b.outstanding), 0);
     }
 
     // ── 2. Today's collections by this salesman ────────────────────────────
