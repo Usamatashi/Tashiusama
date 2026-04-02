@@ -444,50 +444,6 @@ export default function UserHomeScreen() {
           </View>
         )}
 
-        {/* ── Salesman stat cards ─────────────────────────────────────── */}
-        {isSalesman && (
-          <View style={styles.statRow}>
-            {/* Orders card with red notification badge */}
-            <TouchableOpacity
-              style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#0F4C75" }]}
-              onPress={() => router.push("/(user)/orders" as any)}
-              activeOpacity={0.82}
-            >
-              {pendingOrderCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{pendingOrderCount}</Text>
-                </View>
-              )}
-              <Feather name="file-text" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
-              <Text style={styles.statCardLabel}>Orders</Text>
-              <Text style={styles.statCardSub}>tap to view</Text>
-            </TouchableOpacity>
-
-            {/* Commission card */}
-            <TouchableOpacity
-              style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#065F46" }]}
-              onPress={() => router.push("/(user)/commission" as any)}
-              activeOpacity={0.82}
-            >
-              <Feather name="award" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
-              <Text style={styles.statCardLabel}>Commission</Text>
-              <Text style={styles.statCardSub}>
-                {salesSummary ? `${salesSummary.confirmedBonus.toLocaleString()} pts` : "tap to view"}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Accounts card */}
-            <TouchableOpacity
-              style={[styles.statCard, styles.statCardSmall, { backgroundColor: "#7B2FBE" }]}
-              onPress={() => router.replace("/(user)/payments")}
-              activeOpacity={0.82}
-            >
-              <Feather name="credit-card" size={20} color="rgba(255,255,255,0.85)" style={{ marginBottom: 6 }} />
-              <Text style={styles.statCardLabel}>Accounts</Text>
-              <Text style={styles.statCardSub}>payments</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Quick actions — mechanics only */}
         {!isRetailer && !isSalesman && (
