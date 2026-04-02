@@ -57,7 +57,7 @@ interface MyBalance {
   }[];
 }
 
-type Tab = "balances" | "history";
+type Tab = "outstanding" | "collections" | "commission";
 
 function fmt(n: number) { return n.toLocaleString(); }
 function fmtDate(iso: string) {
@@ -83,7 +83,7 @@ function SalesmanPayments() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const [tab, setTab] = useState<Tab>("balances");
+  const [tab, setTab] = useState<Tab>("outstanding");
   const [collectTarget, setCollectTarget] = useState<RetailerBalance | null>(null);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
@@ -101,6 +101,14 @@ function SalesmanPayments() {
   const { data: payments = [], isLoading: loadingHistory, refetch: refetchHistory, isRefetching: refetchingHistory } = useQuery<Payment[]>({
     queryKey: ["salesman-payments"],
     queryFn: () => apiFetch("/payments"),
+  });
+
+  const { data: commissions = [], isLoading: loadingCommissions, refetch: refetchCommissions, isRefetching: refetchingCommissions } = useQuery<{
+    id: number; salesAmount: number; percentage: number; commissionAmount: number;
+    periodFrom: string | null; periodTo: string; adminName: string | null; createdAt: string;
+  }[]>({
+    queryKey: ["my-commissions"],
+    queryFn: () => apiFetch("/commission/my-commissions"),
   });
 
   const recordPayment = useMutation({
@@ -131,33 +139,26 @@ function SalesmanPayments() {
       </View>
 
       <View style={styles.summaryBar}>
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Outstanding</Text>
+        <Pressable style={[styles.summaryCell, tab === "outstanding" && styles.summaryCellActive]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTab("outstanding"); }}>
+          <Text style={[styles.summaryCellLabel, tab === "outstanding" && styles.summaryCellLabelActive]}>Outstanding</Text>
           <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>Rs. {fmt(totalOutstanding)}</Text>
-        </View>
+          {tab === "outstanding" && <View style={styles.summaryActiveBar} />}
+        </Pressable>
         <View style={styles.summaryDivider} />
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Collections</Text>
+        <Pressable style={[styles.summaryCell, tab === "collections" && styles.summaryCellActive]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTab("collections"); }}>
+          <Text style={[styles.summaryCellLabel, tab === "collections" && styles.summaryCellLabelActive]}>Collections</Text>
           <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(todayCollections)}</Text>
-        </View>
+          {tab === "collections" && <View style={styles.summaryActiveBar} />}
+        </Pressable>
         <View style={styles.summaryDivider} />
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Commission</Text>
+        <Pressable style={[styles.summaryCell, tab === "commission" && styles.summaryCellActive]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTab("commission"); }}>
+          <Text style={[styles.summaryCellLabel, tab === "commission" && styles.summaryCellLabelActive]}>Commission</Text>
           <Text style={[styles.summaryCellValue, { color: totalCommission > 0 ? "#10B981" : Colors.text }]}>Rs. {fmt(totalCommission)}</Text>
-        </View>
+          {tab === "commission" && <View style={styles.summaryActiveBar} />}
+        </Pressable>
       </View>
 
-      <View style={styles.tabRow}>
-        {(["balances", "history"] as Tab[]).map(t => (
-          <Pressable key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
-              {t === "balances" ? "Retailer Balances" : "My Collections"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {tab === "balances" ? (
+      {tab === "outstanding" ? (
         loadingBalances ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
         ) : balances.length === 0 ? (
@@ -212,7 +213,7 @@ function SalesmanPayments() {
             refreshControl={<RefreshControl refreshing={refetchingBalances} onRefresh={refetchBalances} tintColor={Colors.primary} />}
           />
         )
-      ) : (
+      ) : tab === "collections" ? (
         loadingHistory ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
         ) : payments.length === 0 ? (
@@ -244,6 +245,40 @@ function SalesmanPayments() {
             contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refetchingHistory} onRefresh={refetchHistory} tintColor={Colors.primary} />}
+          />
+        )
+      ) : (
+        loadingCommissions ? (
+          <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
+        ) : commissions.length === 0 ? (
+          <View style={styles.center}>
+            <Feather name="percent" size={48} color={Colors.border} />
+            <Text style={styles.emptyTitle}>No commission records</Text>
+            <Text style={styles.emptyText}>Commission entries will appear here once added by admin</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={commissions}
+            keyExtractor={i => String(i.id)}
+            renderItem={({ item }) => (
+              <View style={styles.historyCard}>
+                <View style={styles.historyLeft}>
+                  <View style={[styles.cashIcon, styles.cashIconVerified]}>
+                    <Feather name="percent" size={18} color="#10B981" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.historyRetailer}>Commission — {item.percentage}%</Text>
+                    <Text style={styles.historySub}>Sales: Rs. {fmt(item.salesAmount)}</Text>
+                    {item.adminName ? <Text style={styles.historyNotes}>By {item.adminName}</Text> : null}
+                    <Text style={styles.historySub}>{fmtDate(item.createdAt)}</Text>
+                  </View>
+                </View>
+                <Text style={styles.historyAmount}>Rs. {fmt(item.commissionAmount)}</Text>
+              </View>
+            )}
+            contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refetchingCommissions} onRefresh={refetchCommissions} tintColor={Colors.primary} />}
           />
         )
       )}
@@ -396,18 +431,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     paddingHorizontal: 16, paddingVertical: 14,
   },
-  summaryCell: { flex: 1, alignItems: "center", gap: 4 },
+  summaryCell: { flex: 1, alignItems: "center", gap: 4, paddingVertical: 4, position: "relative" },
+  summaryCellActive: { backgroundColor: `${Colors.primary}10` },
   summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  summaryCellLabelActive: { color: Colors.primary, fontFamily: "Inter_700Bold" },
   summaryCellValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-  tabRow: {
-    flexDirection: "row", backgroundColor: "#fff", gap: 8, padding: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  tabBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: "#F0F0F0", alignItems: "center" },
-  tabBtnActive: { backgroundColor: Colors.primary },
-  tabBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
-  tabBtnTextActive: { color: "#fff" },
+  summaryActiveBar: { position: "absolute", bottom: -14, left: 8, right: 8, height: 3, backgroundColor: Colors.primary, borderRadius: 2 },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginBottom: 12,
     borderWidth: 1, borderColor: "#F0F0F0",
