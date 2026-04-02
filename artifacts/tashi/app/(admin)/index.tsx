@@ -282,7 +282,29 @@ export default function AdminDashboard() {
 
                     <View style={styles.textWrap}>
                       <Text style={styles.cardTitle}>{action.label}</Text>
-                      <Text style={styles.cardDesc}>{action.desc}</Text>
+                      {action.label === "Payments" ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                          {loadingCounts ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <>
+                              <View style={styles.outstandingBadge}>
+                                <Text style={styles.outstandingLabel}>Due</Text>
+                                <Text style={styles.outstandingAmount}>
+                                  Rs.{totalOutstanding !== null ? totalOutstanding.toLocaleString() : "—"}
+                                </Text>
+                              </View>
+                              {pendingPayments > 0 && (
+                                <View style={styles.pendingPayBadge}>
+                                  <Text style={styles.pendingPayText}>{pendingPayments} to verify</Text>
+                                </View>
+                              )}
+                            </>
+                          )}
+                        </View>
+                      ) : (
+                        <Text style={styles.cardDesc}>{action.desc}</Text>
+                      )}
                     </View>
 
                     {hasCount ? (
@@ -291,26 +313,6 @@ export default function AdminDashboard() {
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <Text style={styles.countNumber}>{count}</Text>
-                        )}
-                      </View>
-                    ) : action.label === "Payments" ? (
-                      <View style={{ alignItems: "flex-end", gap: 6 }}>
-                        <View style={styles.outstandingBadge}>
-                          {loadingCounts ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                          ) : (
-                            <>
-                              <Text style={styles.outstandingLabel}>Due</Text>
-                              <Text style={styles.outstandingAmount}>
-                                Rs.{totalOutstanding !== null ? totalOutstanding.toLocaleString() : "—"}
-                              </Text>
-                            </>
-                          )}
-                        </View>
-                        {!loadingCounts && pendingPayments > 0 && (
-                          <View style={styles.pendingPayBadge}>
-                            <Text style={styles.pendingPayText}>{pendingPayments} to verify</Text>
-                          </View>
                         )}
                       </View>
                     ) : (
