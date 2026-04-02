@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -86,8 +86,22 @@ function SalesmanPayments() {
 
   const [tab, setTab] = useState<Tab>("outstanding");
   const [collectTarget, setCollectTarget] = useState<RetailerBalance | null>(null);
+  const [selectedRetailer, setSelectedRetailer] = useState<RetailerBalance | null>(null);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const lastTapRef = useRef<{ id: number; time: number } | null>(null);
+
+  const handleCardTap = useCallback((item: RetailerBalance) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.id === item.id && now - last.time < 350) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setSelectedRetailer(prev => prev?.id === item.id ? null : item);
+      lastTapRef.current = null;
+    } else {
+      lastTapRef.current = { id: item.id, time: now };
+    }
+  }, []);
 
   // Outstanding search
   const [retailerSearch, setRetailerSearch] = useState("");
@@ -180,7 +194,18 @@ function SalesmanPayments() {
       <View style={styles.header}>
         <BackButton />
         <Text style={styles.headerTitle}>Accounts</Text>
-        <View style={{ width: 40 }} />
+        {selectedRetailer && tab === "outstanding" ? (
+          <TouchableOpacity
+            style={styles.headerCollectBtn}
+            onPress={() => { setCollectTarget(selectedRetailer); setSelectedRetailer(null); }}
+            activeOpacity={0.8}
+          >
+            <Feather name="dollar-sign" size={13} color="#fff" />
+            <Text style={styles.headerCollectBtnText}>Collect</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 70 }} />
+        )}
       </View>
 
       <View style={styles.summaryBar}>
@@ -272,7 +297,10 @@ function SalesmanPayments() {
             data={filteredBalances}
             keyExtractor={i => String(i.id)}
             renderItem={({ item }) => (
-              <View style={styles.card}>
+              <Pressable
+                style={[styles.card, selectedRetailer?.id === item.id && styles.cardSelected]}
+                onPress={() => handleCardTap(item)}
+              >
                 <View style={styles.cardTop}>
                   <View style={styles.avatarCircle}>
                     <Feather name="user" size={16} color={Colors.primary} />
@@ -281,32 +309,14 @@ function SalesmanPayments() {
                     <Text style={styles.cardName} numberOfLines={1}>{item.name || item.phone}</Text>
                     <Text style={styles.cardSub}>{item.phone}{item.city ? ` · ${item.city}` : ""}</Text>
                   </View>
-                  {item.outstanding > 0 && (
-                    <TouchableOpacity style={styles.collectBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCollectTarget(item); }} activeOpacity={0.8}>
-                      <Feather name="dollar-sign" size={13} color="#fff" />
-                      <Text style={styles.collectBtnText}>Collect</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <View style={styles.balanceRow}>
-                  <View style={styles.balanceCell}>
-                    <Text style={styles.balanceCellLabel}>Ordered</Text>
-                    <Text style={styles.balanceCellValue}>Rs. {fmt(item.totalOrdered)}</Text>
-                  </View>
-                  <View style={styles.balanceDivider} />
-                  <View style={styles.balanceCell}>
-                    <Text style={styles.balanceCellLabel}>Paid</Text>
-                    <Text style={[styles.balanceCellValue, { color: "#10B981" }]}>Rs. {fmt(item.totalPaid)}</Text>
-                  </View>
-                  <View style={styles.balanceDivider} />
-                  <View style={styles.balanceCell}>
-                    <Text style={styles.balanceCellLabel}>{item.outstanding < 0 ? "Credit" : "Due"}</Text>
-                    <Text style={[styles.balanceCellValue, { color: item.outstanding <= 0 ? "#10B981" : "#EF4444", fontFamily: "Inter_700Bold" }]}>
+                  <View style={styles.dueBox}>
+                    <Text style={styles.dueBoxLabel}>{item.outstanding < 0 ? "Credit" : "Due"}</Text>
+                    <Text style={[styles.dueBoxAmount, { color: item.outstanding <= 0 ? "#10B981" : "#EF4444" }]}>
                       Rs. {fmt(Math.abs(item.outstanding))}
                     </Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
             )}
             contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
             showsVerticalScrollIndicator={false}
@@ -559,7 +569,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "#F0F0F0",
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  cardTop: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: "#F5F5F5" },
+  cardTop: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
+  cardSelected: { borderColor: Colors.primary, borderWidth: 1.5 },
+  dueBox: { alignItems: "flex-end" },
+  dueBoxLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  dueBoxAmount: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  headerCollectBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#10B981", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
+  headerCollectBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.primary}18`, alignItems: "center", justifyContent: "center" },
   cardName: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
   cardSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
