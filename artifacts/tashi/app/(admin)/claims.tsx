@@ -137,7 +137,7 @@ export default function AdminClaimsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Claimed Rewards</Text>
         <TouchableOpacity onPress={fetchClaims} style={styles.refreshBtn}>
           <Feather name="refresh-cw" size={20} color={Colors.adminAccent} />

@@ -8,12 +8,28 @@ interface BackButtonProps {
   color?: string;
   onPress?: () => void;
   dark?: boolean;
+  fallback?: string;
 }
 
-export function BackButton({ color = Colors.primary, onPress, dark = false }: BackButtonProps) {
+export function BackButton({
+  color = Colors.primary,
+  onPress,
+  dark = false,
+  fallback = "/(user)/",
+}: BackButtonProps) {
+  function handlePress() {
+    if (onPress) {
+      onPress();
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(fallback as any);
+    }
+  }
+
   return (
     <TouchableOpacity
-      onPress={onPress ?? (() => router.back())}
+      onPress={handlePress}
       style={[
         styles.btn,
         dark

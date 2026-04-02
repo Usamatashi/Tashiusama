@@ -418,7 +418,7 @@ export default function CommissionScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Commission</Text>
         <View style={{ width: 36 }} />
       </View>

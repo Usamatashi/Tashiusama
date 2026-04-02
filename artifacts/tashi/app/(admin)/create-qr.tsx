@@ -134,7 +134,7 @@ export default function CreateQRScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Create QR Code</Text>
         <View style={{ width: 38 }} />
       </View>

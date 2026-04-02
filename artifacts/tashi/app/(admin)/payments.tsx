@@ -217,7 +217,7 @@ export default function AdminPaymentsScreen() {
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Payments</Text>
         <View style={{ width: 36 }} />
       </View>

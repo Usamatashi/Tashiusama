@@ -104,7 +104,7 @@ export default function CreateTextScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Ticker Text</Text>
         <View style={{ width: 38 }} />
       </View>

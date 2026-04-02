@@ -1020,7 +1020,7 @@ export default function SuperConfigScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <View style={styles.headerIconWrap}>
           <Feather name="shield" size={22} color={SUPER_ACCENT} />
         </View>

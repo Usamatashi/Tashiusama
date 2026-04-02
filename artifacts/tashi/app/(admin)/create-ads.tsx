@@ -135,7 +135,7 @@ export default function CreateAdsScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       {/* Header */}
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Manage Banners</Text>
         <View style={{ width: 38 }} />
       </View>

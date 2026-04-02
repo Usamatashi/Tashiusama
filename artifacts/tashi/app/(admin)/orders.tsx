@@ -636,7 +636,7 @@ export default function AdminOrdersScreen() {
     <View style={[styles.root, { paddingTop: topPad }]}>
       {/* Header */}
       <View style={styles.header}>
-        <BackButton color={Colors.adminAccent} />
+        <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Orders</Text>
         {pendingCount > 0 ? (
           <View style={styles.pendingBadge}>
