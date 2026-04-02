@@ -88,6 +88,14 @@ function SalesmanPayments() {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Outstanding search
+  const [retailerSearch, setRetailerSearch] = useState("");
+
+  // Collections filters
+  type DateFilter = "all" | "today" | "week" | "month";
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [collectionSearch, setCollectionSearch] = useState("");
+
   const { data: summary, refetch: refetchSummary } = useQuery<{ totalOutstanding: number; todayCollections: number; totalCommission: number }>({
     queryKey: ["salesman-summary"],
     queryFn: () => apiFetch("/payments/salesman-summary"),
@@ -132,6 +140,40 @@ function SalesmanPayments() {
   const todayCollections = summary?.todayCollections ?? 0;
   const totalCommission = summary?.totalCommission ?? 0;
 
+  // Filtered outstanding balances
+  const q = retailerSearch.trim().toLowerCase();
+  const filteredBalances = q
+    ? balances.filter(b =>
+        (b.name ?? "").toLowerCase().includes(q) ||
+        b.phone.toLowerCase().includes(q) ||
+        (b.city ?? "").toLowerCase().includes(q),
+      )
+    : balances;
+
+  // Filtered collections
+  const now = new Date();
+  const filteredPayments = payments.filter(p => {
+    const d = new Date(p.createdAt);
+    if (dateFilter === "today") {
+      const s = new Date(now); s.setHours(0, 0, 0, 0);
+      if (d < s) return false;
+    } else if (dateFilter === "week") {
+      const s = new Date(now); s.setDate(s.getDate() - 6); s.setHours(0, 0, 0, 0);
+      if (d < s) return false;
+    } else if (dateFilter === "month") {
+      const s = new Date(now); s.setDate(s.getDate() - 29); s.setHours(0, 0, 0, 0);
+      if (d < s) return false;
+    }
+    if (collectionSearch.trim()) {
+      const cs = collectionSearch.trim().toLowerCase();
+      if (
+        !(p.retailerName ?? "").toLowerCase().includes(cs) &&
+        !(p.retailerPhone ?? "").toLowerCase().includes(cs)
+      ) return false;
+    }
+    return true;
+  });
+
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
@@ -158,18 +200,73 @@ function SalesmanPayments() {
         </Pressable>
       </View>
 
+      {tab === "outstanding" && (
+        <View style={styles.searchBar}>
+          <Feather name="search" size={15} color={Colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            value={retailerSearch}
+            onChangeText={setRetailerSearch}
+            placeholder="Search by name, phone or city…"
+            placeholderTextColor={Colors.textLight}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {retailerSearch.length > 0 && (
+            <Pressable onPress={() => setRetailerSearch("")}>
+              <Feather name="x-circle" size={15} color={Colors.textSecondary} />
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {tab === "collections" && (
+        <View style={styles.filterBlock}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={15} color={Colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              value={collectionSearch}
+              onChangeText={setCollectionSearch}
+              placeholder="Search by retailer name or phone…"
+              placeholderTextColor={Colors.textLight}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {collectionSearch.length > 0 && (
+              <Pressable onPress={() => setCollectionSearch("")}>
+                <Feather name="x-circle" size={15} color={Colors.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+          <View style={styles.filterChips}>
+            {(["all", "today", "week", "month"] as DateFilter[]).map(f => (
+              <Pressable
+                key={f}
+                style={[styles.chip, dateFilter === f && styles.chipActive]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDateFilter(f); }}
+              >
+                <Text style={[styles.chipText, dateFilter === f && styles.chipTextActive]}>
+                  {f === "all" ? "All" : f === "today" ? "Today" : f === "week" ? "Last 7 Days" : "Last 30 Days"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
       {tab === "outstanding" ? (
         loadingBalances ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
-        ) : balances.length === 0 ? (
+        ) : filteredBalances.length === 0 ? (
           <View style={styles.center}>
-            <Feather name="users" size={48} color={Colors.border} />
-            <Text style={styles.emptyTitle}>No retailers yet</Text>
-            <Text style={styles.emptyText}>Create orders to see your retailers here</Text>
+            <Feather name={retailerSearch ? "search" : "users"} size={48} color={Colors.border} />
+            <Text style={styles.emptyTitle}>{retailerSearch ? "No results found" : "No retailers yet"}</Text>
+            <Text style={styles.emptyText}>{retailerSearch ? "Try a different name, phone or city" : "Create orders to see your retailers here"}</Text>
           </View>
         ) : (
           <FlatList
-            data={balances}
+            data={filteredBalances}
             keyExtractor={i => String(i.id)}
             renderItem={({ item }) => (
               <View style={styles.card}>
@@ -216,15 +313,15 @@ function SalesmanPayments() {
       ) : tab === "collections" ? (
         loadingHistory ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
-        ) : payments.length === 0 ? (
+        ) : filteredPayments.length === 0 ? (
           <View style={styles.center}>
             <Feather name="credit-card" size={48} color={Colors.border} />
-            <Text style={styles.emptyTitle}>No collections yet</Text>
-            <Text style={styles.emptyText}>Payments you collect will appear here</Text>
+            <Text style={styles.emptyTitle}>{payments.length === 0 ? "No collections yet" : "No results"}</Text>
+            <Text style={styles.emptyText}>{payments.length === 0 ? "Payments you collect will appear here" : "Try adjusting the date or retailer filter"}</Text>
           </View>
         ) : (
           <FlatList
-            data={payments}
+            data={filteredPayments}
             keyExtractor={i => String(i.id)}
             renderItem={({ item }) => (
               <View style={styles.historyCard}>
@@ -438,6 +535,19 @@ const styles = StyleSheet.create({
   summaryCellValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
   summaryActiveBar: { position: "absolute", bottom: -14, left: 8, right: 8, height: 3, backgroundColor: Colors.primary, borderRadius: 2 },
+  searchBar: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#fff", marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  searchInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.text, padding: 0 },
+  filterBlock: { paddingBottom: 4 },
+  filterChips: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#F0F0F0", borderWidth: 1, borderColor: "#E0E0E0" },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
+  chipTextActive: { color: "#fff" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginBottom: 12,
     borderWidth: 1, borderColor: "#F0F0F0",
