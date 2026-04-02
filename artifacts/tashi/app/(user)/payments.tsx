@@ -121,22 +121,22 @@ function SalesmanPayments() {
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Payments</Text>
+        <Text style={styles.headerTitle}>Accounts</Text>
       </View>
 
       <View style={styles.summaryBar}>
         <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>You Collected</Text>
+          <Text style={styles.summaryCellLabel}>Outstanding</Text>
           <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalCollected)}</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Outstanding</Text>
+          <Text style={styles.summaryCellLabel}>Collections</Text>
           <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>Rs. {fmt(totalOutstanding)}</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Pending</Text>
+          <Text style={styles.summaryCellLabel}>Commission</Text>
           <Text style={[styles.summaryCellValue, { color: pendingVerification > 0 ? "#D97706" : "#10B981" }]}>{pendingVerification}</Text>
         </View>
       </View>
