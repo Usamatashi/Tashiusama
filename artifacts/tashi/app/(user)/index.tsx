@@ -105,7 +105,7 @@ export default function UserHomeScreen() {
   const [tickers, setTickers] = useState<TickerItem[]>([]);
   const [salesSummary, setSalesSummary] = useState<{ totalSalesValue: number; confirmedSalesValue: number; confirmedBonus: number; totalOrders: number } | null>(null);
   const [retailStats, setRetailStats] = useState<{ confirmedCount: number; confirmedValue: number }>({ confirmedCount: 0, confirmedValue: 0 });
-  const [salesOutstanding, setSalesOutstanding] = useState<number | null>(null);
+
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchAdsTickers = useCallback(async () => {
@@ -129,22 +129,12 @@ export default function UserHomeScreen() {
     try {
       const token = await getToken();
       if (user.role === "salesman") {
-        const [bonusRes, balancesRes] = await Promise.all([
-          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/payments/retailer-balances`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const bonusRes = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (bonusRes.ok) {
           const data = await bonusRes.json();
           setSalesSummary({ totalSalesValue: data.totalSalesValue, confirmedSalesValue: data.confirmedSalesValue, confirmedBonus: data.confirmedBonus ?? 0, totalOrders: data.totalOrders });
-        }
-        if (balancesRes.ok) {
-          const balances: Array<{ outstanding: number }> = await balancesRes.json();
-          const total = balances.reduce((s, b) => s + Math.max(0, b.outstanding), 0);
-          setSalesOutstanding(total);
         }
       } else if (user.role === "retailer") {
         const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
@@ -442,25 +432,6 @@ export default function UserHomeScreen() {
                 <Text style={styles.statCardSub}>tap to view details</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.outstandingCard}
-              onPress={() => router.replace("/(user)/payments")}
-              activeOpacity={0.82}
-            >
-              <View style={styles.outstandingCardLeft}>
-                <Feather name="alert-circle" size={20} color="#fff" style={{ marginRight: 10 }} />
-                <View>
-                  <Text style={styles.outstandingCardLabel}>Outstanding Payments</Text>
-                  <Text style={styles.outstandingCardSub}>Tap to collect from retailers</Text>
-                </View>
-              </View>
-              <View style={styles.outstandingCardRight}>
-                <Text style={styles.outstandingCardAmount}>
-                  {salesOutstanding !== null ? `Rs. ${salesOutstanding.toLocaleString()}` : "—"}
-                </Text>
-                <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
-              </View>
-            </TouchableOpacity>
           </>
         )}
 
