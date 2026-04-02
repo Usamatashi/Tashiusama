@@ -721,6 +721,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     justifyContent: "flex-end",
+    alignItems: "center",
     minHeight: 110,
     shadowColor: "#000",
     shadowOpacity: 0.18,
@@ -733,6 +734,7 @@ const styles = StyleSheet.create({
     minHeight: 90,
     borderRadius: 14,
     justifyContent: "flex-end",
+    alignItems: "center",
     position: "relative",
   },
   notifBadge: {
@@ -759,18 +761,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 4,
+    textAlign: "center",
   },
   statCardValue: {
     fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
     includeFontPadding: false,
+    textAlign: "center",
   },
   statCardSub: {
     fontSize: 10,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.6)",
     marginTop: 3,
+    textAlign: "center",
   },
 
   /* Claim tab — protrudes from the right edge of the hero card */
