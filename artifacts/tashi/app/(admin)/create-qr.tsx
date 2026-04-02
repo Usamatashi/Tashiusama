@@ -12,6 +12,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BackButton } from "@/components/BackButton";
 import QRCode from "react-native-qrcode-svg";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
@@ -133,9 +134,7 @@ export default function CreateQRScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
-        </TouchableOpacity>
+        <BackButton color={Colors.adminAccent} />
         <Text style={styles.headerTitle}>Create QR Code</Text>
         <View style={{ width: 38 }} />
       </View>

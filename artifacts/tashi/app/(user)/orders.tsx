@@ -24,6 +24,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { router } from "expo-router";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Retailer { id: number; name: string | null; phone: string; city: string | null; }
@@ -666,7 +668,9 @@ function RetailerOrdersScreen() {
   return (
     <View style={[styles.root, { backgroundColor: "#F7F4F1" }]}>
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <BackButton />
         <Text style={styles.headerTitle}>My Orders</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       {isLoading ? (
@@ -1307,6 +1311,7 @@ export default function OrdersScreen() {
   return (
     <View style={[styles.root, { backgroundColor: "#F7F4F1" }]}>
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <BackButton />
         <Text style={styles.headerTitle}>Orders</Text>
         <TouchableOpacity
           style={styles.newOrderBtn}

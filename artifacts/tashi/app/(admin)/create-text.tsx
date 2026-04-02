@@ -13,6 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
 
 interface TickerItem {
@@ -103,9 +104,7 @@ export default function CreateTextScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
-        </TouchableOpacity>
+        <BackButton color={Colors.adminAccent} />
         <Text style={styles.headerTitle}>Ticker Text</Text>
         <View style={{ width: 38 }} />
       </View>

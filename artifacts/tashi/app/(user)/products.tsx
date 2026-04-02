@@ -17,7 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
+import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -174,8 +175,12 @@ export default function ProductsScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: topPad + 14 }]}>
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
-        <Text style={styles.headerSub}>{filteredProducts.length} available</Text>
+        <BackButton />
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <Text style={styles.headerTitle}>{headerTitle}</Text>
+          <Text style={styles.headerSub}>{filteredProducts.length} available</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
       {isLoading ? (
@@ -222,12 +227,13 @@ export default function ProductsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F7F4F1" },
   header: {
-    paddingHorizontal: 20, paddingBottom: 14,
+    paddingHorizontal: 16, paddingBottom: 14,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1, borderBottomColor: "#EFEFEF",
+    flexDirection: "row", alignItems: "center",
   },
-  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
-  headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular" },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
+  headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular", textAlign: "center" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
   emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", fontFamily: "Inter_400Regular" },

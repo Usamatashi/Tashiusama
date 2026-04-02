@@ -20,6 +20,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { BackButton } from "@/components/BackButton";
 
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -177,7 +178,9 @@ function SalesmanPayments() {
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.headerTitle}>Accounts</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.summaryBar}>
@@ -433,7 +436,9 @@ function RetailerPayments() {
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.headerTitle}>My Account</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       {isLoading ? (
@@ -519,10 +524,11 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F7F8FA" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   header: {
-    paddingHorizontal: 20, paddingVertical: 16, backgroundColor: "#fff",
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerTitle: { flex: 1, fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,

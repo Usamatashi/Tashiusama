@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { BackButton } from "@/components/BackButton";
 
 export default function ScanScreen() {
   const { token, refreshUser } = useAuth();
@@ -61,9 +62,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 67 }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={24} color={Colors.text} />
-          </TouchableOpacity>
+          <BackButton />
           <Text style={styles.headerTitle}>Scan QR Code</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -83,9 +82,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={24} color={Colors.text} />
-          </TouchableOpacity>
+          <BackButton />
           <Text style={styles.headerTitle}>Camera Permission</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -110,9 +107,7 @@ export default function ScanScreen() {
       />
       <View style={[styles.overlay, { paddingTop: insets.top }]}>
         <View style={styles.scanHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtnDark}>
-            <Feather name="arrow-left" size={24} color={Colors.white} />
-          </TouchableOpacity>
+          <BackButton dark />
           <Text style={styles.scanHeaderTitle}>Scan QR Code</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -145,8 +140,6 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  backBtn: { padding: 4 },
-  backBtnDark: { padding: 4 },
   webNotice: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 32 },
   webNoticeText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
   permissionBox: { flex: 1, alignItems: "center", justifyContent: "center", gap: 20, padding: 32 },

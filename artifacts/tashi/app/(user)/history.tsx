@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { BackButton } from "@/components/BackButton";
 
 interface Scan {
   id: number;
@@ -54,9 +55,7 @@ export default function HistoryScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={Colors.primary} />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.headerTitle}>Scan History</Text>
         {scans.length > 0 && (
           <View style={styles.headerBadge}>
@@ -135,7 +134,6 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 10,
   },
   headerTitle: { flex: 1, fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: `${Colors.primary}15`, alignItems: "center", justifyContent: "center", marginRight: 4 },
   headerBadge: {
     backgroundColor: `${Colors.primary}15`, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 4,

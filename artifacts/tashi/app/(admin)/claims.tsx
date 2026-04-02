@@ -13,6 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BackButton } from "@/components/BackButton";
 import * as Haptics from "expo-haptics";
 import * as SMS from "expo-sms";
 import { useAuth } from "@/context/AuthContext";
@@ -136,9 +137,7 @@ export default function AdminClaimsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
-        </TouchableOpacity>
+        <BackButton color={Colors.adminAccent} />
         <Text style={styles.headerTitle}>Claimed Rewards</Text>
         <TouchableOpacity onPress={fetchClaims} style={styles.refreshBtn}>
           <Feather name="refresh-cw" size={20} color={Colors.adminAccent} />

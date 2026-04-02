@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useFocusEffect, router } from "expo-router";
+import { BackButton } from "@/components/BackButton";
 import {
   ActivityIndicator,
   Alert,
@@ -1019,9 +1020,7 @@ export default function SuperConfigScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
-        </TouchableOpacity>
+        <BackButton color={Colors.adminAccent} />
         <View style={styles.headerIconWrap}>
           <Feather name="shield" size={22} color={SUPER_ACCENT} />
         </View>

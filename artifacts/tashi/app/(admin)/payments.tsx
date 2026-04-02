@@ -23,6 +23,7 @@ import { Redirect, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
+import { BackButton } from "@/components/BackButton";
 
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -216,9 +217,7 @@ export default function AdminPaymentsScreen() {
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
-        </TouchableOpacity>
+        <BackButton color={Colors.adminAccent} />
         <Text style={styles.headerTitle}>Payments</Text>
         <View style={{ width: 36 }} />
       </View>

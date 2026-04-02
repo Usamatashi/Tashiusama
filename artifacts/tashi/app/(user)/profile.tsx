@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
+import { BackButton } from "@/components/BackButton";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 
@@ -80,7 +81,9 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.headerTitle}>Profile</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -180,10 +183,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4F1" },
   header: {
     backgroundColor: Colors.white,
-    paddingHorizontal: 20, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerTitle: { flex: 1, fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   scroll: { padding: 16, gap: 14, paddingBottom: 40 },
 
   heroCard: {

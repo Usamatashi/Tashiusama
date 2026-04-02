@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { BackButton } from "@/components/BackButton";
 
 interface ClaimRecord {
   id: number;
@@ -79,7 +80,9 @@ export default function RewardsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
+        <BackButton />
         <Text style={styles.headerTitle}>Rewards</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -213,10 +216,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4F1" },
   header: {
     backgroundColor: Colors.white,
-    paddingHorizontal: 20, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
+  headerTitle: { flex: 1, fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   scroll: { padding: 16, gap: 14, paddingBottom: 40 },
 
   mechStatRow: { flexDirection: "row", gap: 12 },
