@@ -21,13 +21,14 @@ type TabItem = {
   name: string;
   label: string;
   icon: React.ComponentProps<typeof Feather>["name"];
+  customIconText?: string;
 };
 
 const ALL_TAB_ITEMS: TabItem[] = [
   { name: "index", label: "Dashboard", icon: "grid" },
   { name: "products", label: "Products", icon: "truck" },
   { name: "create-account", label: "Users", icon: "users" },
-  { name: "payments", label: "Payments", icon: "dollar-sign" },
+  { name: "payments", label: "Payments", icon: "dollar-sign", customIconText: "Rs" },
 ];
 
 export const SETTINGS_KEY_MAP: Record<string, keyof AdminSettings> = {
@@ -91,11 +92,17 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                   },
                 ]}
               >
-                <Feather
-                  name={tabItem.icon}
-                  size={20}
-                  color={isFocused ? Colors.white : Colors.textLight}
-                />
+                {tabItem.customIconText ? (
+                  <Text style={[styles.customIconText, { color: isFocused ? Colors.white : Colors.textLight }]}>
+                    {tabItem.customIconText}
+                  </Text>
+                ) : (
+                  <Feather
+                    name={tabItem.icon}
+                    size={20}
+                    color={isFocused ? Colors.white : Colors.textLight}
+                  />
+                )}
               </View>
               <Text
                 style={[
@@ -205,5 +212,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: Colors.textLight,
+  },
+  customIconText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
   },
 });
