@@ -69,9 +69,10 @@ function StatusBadge({ status }: { status: "pending" | "verified" }) {
   );
 }
 
-function BalanceCard({ item, onCollect }: { item: RetailerBalance; onCollect: (r: RetailerBalance) => void }) {
+function BalanceCard({ item }: { item: RetailerBalance }) {
   const isCredit = item.outstanding < 0;
-  const outstandingColor = item.outstanding === 0 ? "#10B981" : isCredit ? "#10B981" : "#EF4444";
+  const dueColor = item.outstanding <= 0 ? "#10B981" : "#EF4444";
+  const dueBg = item.outstanding <= 0 ? "#F0FDF4" : "#FEF2F2";
   return (
     <View style={styles.card}>
       <View style={styles.cardTop}>
@@ -80,31 +81,11 @@ function BalanceCard({ item, onCollect }: { item: RetailerBalance; onCollect: (r
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name || item.phone}</Text>
-          <Text style={styles.cardSub}>{item.phone}{item.city ? ` · ${item.city}` : ""}</Text>
+          <Text style={styles.cardSub}>{item.phone} · {item.city || "—"}</Text>
         </View>
-        {item.outstanding > 0 && (
-          <TouchableOpacity style={styles.collectBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCollect(item); }} activeOpacity={0.8}>
-            <Feather name="dollar-sign" size={13} color="#fff" />
-            <Text style={styles.collectBtnText}>Collect</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-      <View style={styles.balanceRow}>
-        <View style={styles.balanceCell}>
-          <Text style={styles.balanceCellLabel}>Ordered</Text>
-          <Text style={styles.balanceCellValue}>Rs. {fmt(item.totalOrdered)}</Text>
-        </View>
-        <View style={styles.balanceDivider} />
-        <View style={styles.balanceCell}>
-          <Text style={styles.balanceCellLabel}>Paid</Text>
-          <Text style={[styles.balanceCellValue, { color: "#10B981" }]}>Rs. {fmt(item.totalPaid)}</Text>
-        </View>
-        <View style={styles.balanceDivider} />
-        <View style={[styles.balanceCell, !isCredit && item.outstanding > 0 && styles.dueCellBox]}>
-          <Text style={[styles.balanceCellLabel, !isCredit && item.outstanding > 0 && { color: "#EF4444" }]}>
-            {isCredit ? "Credit" : "Balance Due"}
-          </Text>
-          <Text style={[styles.balanceCellValue, { color: outstandingColor, fontFamily: "Inter_700Bold" }]}>
+        <View style={[styles.dueBox, { borderColor: dueColor, backgroundColor: dueBg }]}>
+          <Text style={styles.dueBoxLabel}>{isCredit ? "Credit" : "Due"}</Text>
+          <Text style={[styles.dueBoxAmount, { color: dueColor }]}>
             Rs. {fmt(Math.abs(item.outstanding))}
           </Text>
         </View>
@@ -266,7 +247,7 @@ export default function AdminPaymentsScreen() {
           <FlatList
             data={balances}
             keyExtractor={i => String(i.id)}
-            renderItem={({ item }) => <BalanceCard item={item} onCollect={setCollectTarget} />}
+            renderItem={({ item }) => <BalanceCard item={item} />}
             contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refetchingBalances} onRefresh={refetchBalances} tintColor={Colors.primary} />}
@@ -418,29 +399,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "#F0F0F0",
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  cardTop: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: "#F5F5F5" },
+  cardTop: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
   avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.primary}18`, alignItems: "center", justifyContent: "center" },
   cardName: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
   cardSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
-  collectBtn: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "#10B981", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+  dueBox: {
+    borderWidth: 1.5, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10,
+    alignItems: "center", minWidth: 80,
   },
-  collectBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
-  balanceRow: { flexDirection: "row", paddingVertical: 14 },
-  balanceCell: { flex: 1, alignItems: "center", gap: 4 },
-  balanceCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  balanceCellValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  dueCellBox: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    marginHorizontal: 4,
-  },
-  balanceDivider: { width: 1, backgroundColor: "#EEEEEE" },
+  dueBoxLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  dueBoxAmount: { fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 },
   historyCard: {
     flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
     backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10,
