@@ -433,6 +433,8 @@ function OrderCard({
   onDispatch: (id: number) => void;
   isUpdating: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
@@ -442,8 +444,12 @@ function OrderCard({
 
   return (
     <View style={styles.card}>
-      {/* Header */}
-      <View style={styles.cardHeader}>
+      {/* Tappable header — always visible */}
+      <TouchableOpacity
+        style={styles.cardHeader}
+        onPress={() => { Haptics.selectionAsync(); setExpanded(prev => !prev); }}
+        activeOpacity={0.7}
+      >
         <View style={styles.avatarCircle}>
           <Feather name="user" size={16} color={Colors.primary} />
         </View>
@@ -453,104 +459,116 @@ function OrderCard({
           </Text>
           <Text style={styles.cardDate}>{date}</Text>
         </View>
-        <View style={[styles.statusPill, { backgroundColor: STATUS_BG[order.status] }]}>
-          <Text style={[styles.statusText, { color: STATUS_COLOR[order.status] }]}>
-            {order.status.toUpperCase()}
-          </Text>
-        </View>
-      </View>
-
-      {/* Invoice table */}
-      <View style={styles.table}>
-        <View style={styles.tableRow}>
-          <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
-          <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
-          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
-          <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
-        </View>
-        <View style={styles.tableDivider} />
-
-        {items.length === 0 ? (
-          <View style={[styles.tableRow, { paddingVertical: 12 }]}>
-            <Text style={[styles.colVal, { color: Colors.textLight }]}>No items</Text>
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <View style={[styles.statusPill, { backgroundColor: STATUS_BG[order.status] }]}>
+            <Text style={[styles.statusText, { color: STATUS_COLOR[order.status] }]}>
+              {order.status.toUpperCase()}
+            </Text>
           </View>
-        ) : (
-          items.map((item, idx) => (
-            <View key={idx} style={[styles.tableRow, { paddingVertical: 10 }]}>
-              <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
-              <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
-              <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-                {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
-              </Text>
-              <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
-                {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
-              </Text>
+          <Text style={styles.cardTotalInline}>Rs. {grandTotal.toLocaleString()}</Text>
+        </View>
+        <Feather
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={18}
+          color="#B0AAA4"
+          style={{ marginLeft: 8 }}
+        />
+      </TouchableOpacity>
+
+      {/* Expanded: invoice table + actions */}
+      {expanded && (
+        <>
+          <View style={styles.table}>
+            <View style={styles.tableRow}>
+              <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
+              <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
+              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
+              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
             </View>
-          ))
-        )}
+            <View style={styles.tableDivider} />
 
-        <View style={styles.totalFooter}>
-          <Text style={styles.totalFooterLabel}>Order Total</Text>
-          <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
-        </View>
-      </View>
+            {items.length === 0 ? (
+              <View style={[styles.tableRow, { paddingVertical: 12 }]}>
+                <Text style={[styles.colVal, { color: Colors.textLight }]}>No items</Text>
+              </View>
+            ) : (
+              items.map((item, idx) => (
+                <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+                  <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
+                  <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                  <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+                    {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
+                  </Text>
+                  <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
+                    {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
+                  </Text>
+                </View>
+              ))
+            )}
 
-      {/* Actions */}
-      {order.status === "pending" && (
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.cancelBtn]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onCancel(order.id); }}
-            disabled={isUpdating}
-            activeOpacity={0.8}
-          >
-            <Feather name="x" size={15} color="#EF4444" />
-            <Text style={[styles.actionBtnText, { color: "#EF4444" }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.dispatchBtn]}
-            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onDispatch(order.id); }}
-            disabled={isUpdating}
-            activeOpacity={0.8}
-          >
-            {isUpdating
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <>
-                  <Feather name="send" size={15} color="#fff" />
-                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>Dispatch</Text>
-                </>}
-          </TouchableOpacity>
-        </View>
-      )}
+            <View style={styles.totalFooter}>
+              <Text style={styles.totalFooterLabel}>Order Total</Text>
+              <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
+            </View>
+          </View>
 
-      {order.status === "confirmed" && (
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.editBtn]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEdit(order); }}
-            disabled={isUpdating}
-            activeOpacity={0.8}
-          >
-            <Feather name="edit-2" size={15} color={Colors.primary} />
-            <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.dispatchBtn]}
-            onPress={() => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              onDispatch(order.id);
-            }}
-            disabled={isUpdating}
-            activeOpacity={0.8}
-          >
-            {isUpdating
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <>
-                  <Feather name="send" size={15} color="#fff" />
-                  <Text style={[styles.actionBtnText, { color: "#fff" }]}>Dispatch</Text>
-                </>}
-          </TouchableOpacity>
-        </View>
+          {order.status === "pending" && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.cancelBtn]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onCancel(order.id); }}
+                disabled={isUpdating}
+                activeOpacity={0.8}
+              >
+                <Feather name="x" size={15} color="#EF4444" />
+                <Text style={[styles.actionBtnText, { color: "#EF4444" }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.dispatchBtn]}
+                onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onDispatch(order.id); }}
+                disabled={isUpdating}
+                activeOpacity={0.8}
+              >
+                {isUpdating
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <>
+                      <Feather name="send" size={15} color="#fff" />
+                      <Text style={[styles.actionBtnText, { color: "#fff" }]}>Dispatch</Text>
+                    </>}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {order.status === "confirmed" && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.editBtn]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEdit(order); }}
+                disabled={isUpdating}
+                activeOpacity={0.8}
+              >
+                <Feather name="edit-2" size={15} color={Colors.primary} />
+                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.dispatchBtn]}
+                onPress={() => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  onDispatch(order.id);
+                }}
+                disabled={isUpdating}
+                activeOpacity={0.8}
+              >
+                {isUpdating
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <>
+                      <Feather name="send" size={15} color="#fff" />
+                      <Text style={[styles.actionBtnText, { color: "#fff" }]}>Dispatch</Text>
+                    </>}
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -753,6 +771,7 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
   statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   statusText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
+  cardTotalInline: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
 
   table: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 0 },
   tableRow: { flexDirection: "row", alignItems: "center" },
