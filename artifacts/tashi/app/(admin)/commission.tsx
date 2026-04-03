@@ -235,7 +235,7 @@ function SalesmanCard({ item, rank, onPress, contributionPct }: { item: Commissi
       {hasOrders && (
         <View style={styles.salesRow}>
           <View>
-            <Text style={styles.salesLbl}>This Month Sales</Text>
+            <Text style={styles.salesLbl}>{new Date().toLocaleString("en-GB", { month: "long" })} Sales</Text>
             <Text style={[styles.salesVal, { color }]}>Rs. {item.currentMonthSalesValue.toLocaleString()}</Text>
           </View>
           <View style={styles.progressWrap}>
