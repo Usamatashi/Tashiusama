@@ -5,7 +5,6 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -21,7 +20,9 @@ import { Feather } from "@expo/vector-icons";
 import { FontAwesome } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as SMS from "expo-sms";
-import ViewShot from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
+import ViewShot, { captureRef } from "react-native-view-shot";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
@@ -166,27 +167,31 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
 function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const cardRef = useRef<ViewShot | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const handleWhatsApp = useCallback(async () => {
-    const waPhone = toWhatsAppPhone(data.retailerPhone);
-    const dateStr = new Date(data.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-    const message =
-      `Assalam-o-Alaikum ${data.retailerName || data.retailerPhone}!\n\n` +
-      `Aap ki payment receive ho gayi hai.\n\n` +
-      `Amount: Rs. ${data.amount.toLocaleString()}\n` +
-      `Date: ${dateStr}\n` +
-      `Collected By: ${data.salesmanName}\n` +
-      (data.notes ? `Notes: ${data.notes}\n` : "") +
-      `\nShukria! - Tashi Brake Parts`;
+    if (!cardRef.current) return;
+    setSharing(true);
     try {
-      const waUrl = `whatsapp://send?phone=${waPhone}&text=${encodeURIComponent(message)}`;
-      const webUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
-      const canOpenWa = await Linking.canOpenURL(waUrl);
-      await Linking.openURL(canOpenWa ? waUrl : webUrl);
+      const uri = await captureRef(cardRef, { format: "png", quality: 1 });
+      const destUri = `${FileSystem.cacheDirectory}tashi-receipt-${Date.now()}.png`;
+      await FileSystem.copyAsync({ from: uri, to: destUri });
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert("Sharing not available", "Your device does not support image sharing.");
+        return;
+      }
+      await Sharing.shareAsync(destUri, {
+        mimeType: "image/png",
+        dialogTitle: "Send Receipt via WhatsApp",
+        UTI: "public.png",
+      });
     } catch {
-      Alert.alert("WhatsApp Not Found", "Could not open WhatsApp. Please use SMS instead.");
+      Alert.alert("Error", "Could not capture receipt image. Please try SMS instead.");
+    } finally {
+      setSharing(false);
     }
-  }, [data]);
+  }, []);
 
   const handleSMS = useCallback(async () => {
     const isAvailable = await SMS.isAvailableAsync();
@@ -221,12 +226,15 @@ function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose:
 
           <View style={shareStyles.actions}>
             <TouchableOpacity
-              style={[shareStyles.actionBtn, shareStyles.waBtn]}
+              style={[shareStyles.actionBtn, shareStyles.waBtn, sharing && { opacity: 0.7 }]}
               onPress={handleWhatsApp}
               activeOpacity={0.8}
+              disabled={sharing}
             >
-              <FontAwesome name="whatsapp" size={22} color="#fff" />
-              <Text style={shareStyles.actionBtnText}>WhatsApp</Text>
+              {sharing
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <><FontAwesome name="whatsapp" size={22} color="#fff" /><Text style={shareStyles.actionBtnText}>WhatsApp</Text></>
+              }
             </TouchableOpacity>
 
             <TouchableOpacity
