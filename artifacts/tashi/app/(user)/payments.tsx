@@ -22,7 +22,7 @@ import * as Haptics from "expo-haptics";
 import * as SMS from "expo-sms";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
-import ViewShot, { captureRef } from "react-native-view-shot";
+import ViewShot from "react-native-view-shot";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
@@ -183,24 +183,24 @@ function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose:
   const [sharing, setSharing] = useState(false);
 
   const handleWhatsApp = useCallback(async () => {
-    if (!cardRef.current) return;
     setSharing(true);
     try {
-      const uri = await captureRef(cardRef, { format: "png", quality: 1 });
-      const destUri = `${FileSystem.cacheDirectory}tashi-receipt-${Date.now()}.png`;
-      await FileSystem.copyAsync({ from: uri, to: destUri });
+      if (!cardRef.current) throw new Error("ref not ready");
+      // Use ViewShot's own .capture() — more reliable than captureRef
+      const uri: string = await (cardRef.current as any).capture();
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
         Alert.alert("Sharing not available", "Your device does not support image sharing.");
         return;
       }
-      await Sharing.shareAsync(destUri, {
+      await Sharing.shareAsync(uri, {
         mimeType: "image/png",
         dialogTitle: "Send Receipt via WhatsApp",
         UTI: "public.png",
       });
-    } catch {
-      Alert.alert("Error", "Could not capture receipt image. Please try SMS instead.");
+    } catch (e) {
+      console.error("WhatsApp share error:", e);
+      Alert.alert("Error", "Could not share receipt. Please try SMS instead.");
     } finally {
       setSharing(false);
     }
