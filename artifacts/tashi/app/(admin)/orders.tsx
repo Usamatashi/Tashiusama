@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
+import { Asset } from "expo-asset";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -454,6 +456,13 @@ function BillModal({
         Alert.alert("Share", "PDF sharing is only available on mobile devices.");
         return;
       }
+
+      const logoAsset = Asset.fromModule(require("@/assets/images/tashi-logo.png"));
+      await logoAsset.downloadAsync();
+      const logoBase64 = await FileSystem.readAsStringAsync(logoAsset.localUri!, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const logoDataUri = `data:image/png;base64,${logoBase64}`;
 
       const itemRows = items.map(i => `
         <tr>
