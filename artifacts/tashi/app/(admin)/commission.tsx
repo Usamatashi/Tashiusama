@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -75,6 +74,8 @@ function CommissionModal({
   onSuccess: () => void;
 }) {
   const [percentage, setPercentage] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const queryClient = useQueryClient();
 
   const { data: salesData, isLoading: salesLoading } = useQuery<SalesData>({
@@ -114,10 +115,13 @@ function CommissionModal({
       queryClient.invalidateQueries({ queryKey: ["salesman-commissions"] });
       queryClient.invalidateQueries({ queryKey: ["salesman-sales", salesman?.salesmanId] });
       setPercentage("");
+      setConfirming(false);
+      setErrorMsg("");
       onSuccess();
     },
     onError: (err: Error) => {
-      Alert.alert("Error", err.message);
+      setConfirming(false);
+      setErrorMsg(err.message);
     },
   });
 
@@ -130,30 +134,23 @@ function CommissionModal({
     : new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   function handleApprove() {
-    if (salesData?.alreadyApproved) {
-      Alert.alert("Already Done", `Commission for ${monthLabel} has already been approved.`);
-      return;
-    }
-    if (!salesData || salesAmt === 0) {
-      Alert.alert("No Sales", `No active sales found for ${monthLabel}.`);
-      return;
-    }
+    setErrorMsg("");
     if (!pct || isNaN(pct) || pct <= 0 || pct > 100) {
-      Alert.alert("Invalid Percentage", "Please enter a percentage between 1 and 100.");
+      setErrorMsg("Please enter a valid percentage between 1 and 100.");
       return;
     }
-    Alert.alert(
-      "Approve Commission",
-      `Approve Rs. ${fmt(commission!)} commission (${pct}% of Rs. ${fmt(salesAmt)}) for ${salesman?.name || salesman?.phone} — ${monthLabel}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Approve", onPress: () => approveCommission() },
-      ]
-    );
+    setConfirming(true);
+  }
+
+  function handleConfirm() {
+    setConfirming(false);
+    approveCommission();
   }
 
   function handleClose() {
     setPercentage("");
+    setConfirming(false);
+    setErrorMsg("");
     onClose();
   }
 
@@ -279,23 +276,43 @@ function CommissionModal({
               )}
             </ScrollView>
 
-            {/* Approve button — hide if already approved or no sales */}
-            {!salesData?.alreadyApproved && salesAmt > 0 && (
-              <TouchableOpacity
-                style={[modal.approveBtn, (isPending || salesLoading) && { opacity: 0.6 }]}
-                onPress={handleApprove}
-                activeOpacity={0.8}
-                disabled={isPending || salesLoading}
-              >
-                {isPending ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Feather name="check-circle" size={18} color="#fff" />
-                    <Text style={modal.approveBtnText}>Approve Commission</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+            {/* Error message */}
+            {!!errorMsg && (
+              <View style={modal.errorBanner}>
+                <Feather name="alert-circle" size={14} color="#DC2626" />
+                <Text style={modal.errorBannerText}>{errorMsg}</Text>
+              </View>
+            )}
+
+            {/* Inline confirmation panel */}
+            {confirming && commission !== null ? (
+              <View style={modal.confirmBox}>
+                <Text style={modal.confirmTitle}>Confirm Commission</Text>
+                <Text style={modal.confirmDesc}>
+                  Approve <Text style={{ fontFamily: "Inter_700Bold" }}>Rs. {fmt(commission)}</Text> ({pct}% of Rs. {fmt(salesAmt)}) for {salesman?.name || salesman?.phone} — {monthLabel}?
+                </Text>
+                <View style={modal.confirmRow}>
+                  <TouchableOpacity style={modal.cancelBtn} onPress={() => setConfirming(false)} activeOpacity={0.8}>
+                    <Text style={modal.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[modal.confirmBtn, isPending && { opacity: 0.6 }]} onPress={handleConfirm} disabled={isPending} activeOpacity={0.8}>
+                    {isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modal.confirmBtnText}>Yes, Approve</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              /* Approve button — hide if already approved or no sales */
+              !salesData?.alreadyApproved && salesAmt > 0 && (
+                <TouchableOpacity
+                  style={[modal.approveBtn, salesLoading && { opacity: 0.6 }]}
+                  onPress={handleApprove}
+                  activeOpacity={0.8}
+                  disabled={salesLoading}
+                >
+                  <Feather name="check-circle" size={18} color="#fff" />
+                  <Text style={modal.approveBtnText}>Approve Commission</Text>
+                </TouchableOpacity>
+              )
             )}
           </View>
         </KeyboardAvoidingView>
@@ -362,8 +379,15 @@ export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<CommissionEntry | null>(null);
+  const [successMsg, setSuccessMsg] = useState("");
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+
+  React.useEffect(() => {
+    if (!successMsg) return;
+    const t = setTimeout(() => setSuccessMsg(""), 3500);
+    return () => clearTimeout(t);
+  }, [successMsg]);
 
   const { data, isLoading, refetch, isFetching } = useQuery<CommissionEntry[]>({
     queryKey: ["salesman-commissions"],
@@ -458,13 +482,20 @@ export default function CommissionScreen() {
         />
       )}
 
+      {!!successMsg && (
+        <View style={styles.successBanner}>
+          <Feather name="check-circle" size={15} color="#065F46" />
+          <Text style={styles.successBannerText}>{successMsg}</Text>
+        </View>
+      )}
+
       <CommissionModal
         visible={!!selected}
         salesman={selected}
         onClose={() => setSelected(null)}
         onSuccess={() => {
           setSelected(null);
-          Alert.alert("Success", "Commission approved and saved to salesman's account.");
+          setSuccessMsg("Commission approved and saved to salesman's account.");
         }}
       />
     </View>
@@ -530,6 +561,15 @@ const styles = StyleSheet.create({
 
   progressBarBg: { height: 5, borderRadius: 3, backgroundColor: "#F1F5F9", overflow: "hidden" },
   progressBarFill: { height: 5, borderRadius: 3 },
+
+  successBanner: {
+    position: "absolute", bottom: 32, left: 16, right: 16, zIndex: 999,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#D1FAE5", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+    borderWidth: 1, borderColor: "#6EE7B7",
+    shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, elevation: 8,
+  },
+  successBannerText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#065F46", flex: 1 },
 
   empty: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
@@ -630,4 +670,29 @@ const modal = StyleSheet.create({
     backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16,
   },
   approveBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#FEE2E2", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: "#FECACA",
+  },
+  errorBannerText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#DC2626", flex: 1 },
+
+  confirmBox: {
+    backgroundColor: "#F0FDF4", borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: "#86EFAC", gap: 10,
+  },
+  confirmTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#065F46" },
+  confirmDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#065F46", lineHeight: 20 },
+  confirmRow: { flexDirection: "row", gap: 10 },
+  cancelBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 12,
+    backgroundColor: "#E5E7EB", alignItems: "center",
+  },
+  cancelBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  confirmBtn: {
+    flex: 2, paddingVertical: 12, borderRadius: 12,
+    backgroundColor: "#059669", alignItems: "center",
+  },
+  confirmBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
 });
