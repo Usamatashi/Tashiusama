@@ -17,8 +17,7 @@ import {
 } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system";
-import { Asset } from "expo-asset";
+import { TASHI_LOGO_BASE64 } from "@/constants/tashibLogoBase64";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -457,26 +456,7 @@ function BillModal({
         return;
       }
 
-      let logoDataUri = "";
-      try {
-        const logoAsset = Asset.fromModule(require("@/assets/images/tashi-logo.png"));
-        await logoAsset.downloadAsync();
-        const readUri = logoAsset.localUri ?? logoAsset.uri;
-        if (readUri) {
-          let localPath = readUri;
-          // If the URI is not a local file, download it to cache first
-          if (!readUri.startsWith("file://")) {
-            localPath = `${FileSystem.cacheDirectory}tashi-logo-bill.png`;
-            await FileSystem.downloadAsync(readUri, localPath);
-          }
-          const logoBase64 = await FileSystem.readAsStringAsync(localPath, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          logoDataUri = `data:image/png;base64,${logoBase64}`;
-        }
-      } catch {
-        // Logo loading failed, will use text fallback in PDF
-      }
+      const logoDataUri = `data:image/png;base64,${TASHI_LOGO_BASE64}`;
 
       const itemRows = items.map(i => `
         <tr>
@@ -522,10 +502,7 @@ function BillModal({
         <body>
           <div class="accent"></div>
           <div class="header">
-            ${logoDataUri
-              ? `<img src="${logoDataUri}" style="width:180px;height:auto;" alt="Tashi" />`
-              : `<strong style="font-size:28px;color:#E87722;letter-spacing:1px;">TASHI</strong>`
-            }
+            <img src="${logoDataUri}" style="width:180px;height:auto;" alt="Tashi" />
           </div>
           <hr class="divider"/>
           <div class="meta-grid">
