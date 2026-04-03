@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,11 +18,16 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Sharing from "expo-sharing";
+import * as SMS from "expo-sms";
+import * as FileSystem from "expo-file-system";
+import ViewShot, { captureRef } from "react-native-view-shot";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
+import { TASHI_LOGO_BASE64 } from "@/constants/tashibLogoBase64";
 
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -77,10 +84,178 @@ function StatusBadge({ status }: { status: "pending" | "verified" }) {
   );
 }
 
+interface ShareReceiptData {
+  retailerName: string;
+  retailerPhone: string;
+  amount: number;
+  notes: string;
+  date: string;
+  salesmanName: string;
+}
+
+// ─── Receipt card (captured as image for WhatsApp) ─────────────────────────────
+function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React.RefObject<ViewShot | null> }) {
+  const logoUri = `data:image/png;base64,${TASHI_LOGO_BASE64}`;
+  const dateStr = new Date(data.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+  const timeStr = new Date(data.date).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <ViewShot ref={cardRef as any} options={{ format: "png", quality: 1 }}>
+      <View style={rcStyles.card}>
+        <View style={rcStyles.header}>
+          <Image source={{ uri: logoUri }} style={rcStyles.logo} resizeMode="contain" />
+          <View style={rcStyles.badge}>
+            <Feather name="check-circle" size={11} color="#fff" />
+            <Text style={rcStyles.badgeText}>Payment Received</Text>
+          </View>
+        </View>
+        <View style={rcStyles.body}>
+          <Text style={rcStyles.amountLabel}>Amount Collected</Text>
+          <Text style={rcStyles.amount}>Rs. {data.amount.toLocaleString()}</Text>
+          <View style={rcStyles.divider} />
+          <View style={rcStyles.row}>
+            <Feather name="user" size={13} color="#666" />
+            <Text style={rcStyles.rowLabel}>Retailer</Text>
+            <Text style={rcStyles.rowValue}>{data.retailerName || data.retailerPhone}</Text>
+          </View>
+          <View style={rcStyles.row}>
+            <Feather name="phone" size={13} color="#666" />
+            <Text style={rcStyles.rowLabel}>Phone</Text>
+            <Text style={rcStyles.rowValue}>{data.retailerPhone}</Text>
+          </View>
+          <View style={rcStyles.row}>
+            <Feather name="calendar" size={13} color="#666" />
+            <Text style={rcStyles.rowLabel}>Date</Text>
+            <Text style={rcStyles.rowValue}>{dateStr}</Text>
+          </View>
+          <View style={rcStyles.row}>
+            <Feather name="clock" size={13} color="#666" />
+            <Text style={rcStyles.rowLabel}>Time</Text>
+            <Text style={rcStyles.rowValue}>{timeStr}</Text>
+          </View>
+          <View style={rcStyles.row}>
+            <Feather name="briefcase" size={13} color="#666" />
+            <Text style={rcStyles.rowLabel}>Collected By</Text>
+            <Text style={rcStyles.rowValue}>{data.salesmanName}</Text>
+          </View>
+          {data.notes ? (
+            <View style={rcStyles.row}>
+              <Feather name="file-text" size={13} color="#666" />
+              <Text style={rcStyles.rowLabel}>Notes</Text>
+              <Text style={rcStyles.rowValue}>{data.notes}</Text>
+            </View>
+          ) : null}
+          <View style={rcStyles.statusRow}>
+            <Feather name="clock" size={12} color="#D97706" />
+            <Text style={rcStyles.statusText}>Pending admin verification</Text>
+          </View>
+        </View>
+        <View style={rcStyles.footer}>
+          <Text style={rcStyles.footerText}>Powered by TASHI · Brake Parts Loyalty Program</Text>
+        </View>
+      </View>
+    </ViewShot>
+  );
+}
+
+// ─── Share Receipt Modal ────────────────────────────────────────────────────────
+function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const cardRef = useRef<ViewShot | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const handleWhatsApp = useCallback(async () => {
+    if (!cardRef.current) return;
+    setSharing(true);
+    try {
+      const uri = await captureRef(cardRef, { format: "png", quality: 1 });
+      const destUri = `${FileSystem.cacheDirectory}tashi-receipt-${Date.now()}.png`;
+      await FileSystem.copyAsync({ from: uri, to: destUri });
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert("Sharing not available", "Sharing is not supported on this device.");
+        return;
+      }
+      await Sharing.shareAsync(destUri, {
+        mimeType: "image/png",
+        dialogTitle: "Share Receipt via WhatsApp",
+        UTI: "public.png",
+      });
+    } catch (e) {
+      Alert.alert("Error", "Could not capture receipt image. Please try SMS instead.");
+    } finally {
+      setSharing(false);
+    }
+  }, []);
+
+  const handleSMS = useCallback(async () => {
+    const isAvailable = await SMS.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert("SMS not available", "Your device does not support SMS sending.");
+      return;
+    }
+    const dateStr = new Date(data.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    const message =
+      `Assalam-o-Alaikum ${data.retailerName || data.retailerPhone}!\n\n` +
+      `Aap ki payment receive ho gayi hai.\n\n` +
+      `Amount: Rs. ${data.amount.toLocaleString()}\n` +
+      `Date: ${dateStr}\n` +
+      `Collected By: ${data.salesmanName}\n` +
+      (data.notes ? `Notes: ${data.notes}\n` : "") +
+      `\nShukria! - Tashi Brake Parts`;
+    await SMS.sendSMSAsync([data.retailerPhone], message);
+  }, [data]);
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[shareStyles.overlay]}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <View style={[shareStyles.sheet, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={shareStyles.handle} />
+          <Text style={shareStyles.title}>Share Receipt</Text>
+          <Text style={shareStyles.subtitle}>Send payment confirmation to the retailer</Text>
+
+          <View style={shareStyles.cardWrapper}>
+            <ReceiptCard data={data} cardRef={cardRef} />
+          </View>
+
+          <View style={shareStyles.actions}>
+            <TouchableOpacity
+              style={[shareStyles.actionBtn, shareStyles.waBtn]}
+              onPress={handleWhatsApp}
+              activeOpacity={0.8}
+              disabled={sharing}
+            >
+              {sharing
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <><Feather name="image" size={18} color="#fff" /><Text style={shareStyles.actionBtnText}>Share Image (WhatsApp)</Text></>
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[shareStyles.actionBtn, shareStyles.smsBtn]}
+              onPress={handleSMS}
+              activeOpacity={0.8}
+            >
+              <Feather name="message-square" size={18} color="#fff" />
+              <Text style={shareStyles.actionBtnText}>Send SMS</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={shareStyles.skipBtn} onPress={onClose}>
+            <Text style={shareStyles.skipText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Salesman view ─────────────────────────────────────────────────────────────
 function SalesmanPayments() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
@@ -89,6 +264,7 @@ function SalesmanPayments() {
   const [selectedRetailer, setSelectedRetailer] = useState<RetailerBalance | null>(null);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [shareReceipt, setShareReceipt] = useState<ShareReceiptData | null>(null);
   const lastTapRef = useRef<{ id: number; time: number } | null>(null);
 
   const handleCardTap = useCallback((item: RetailerBalance) => {
@@ -137,12 +313,22 @@ function SalesmanPayments() {
   const recordPayment = useMutation({
     mutationFn: ({ retailerId, amount, notes }: { retailerId: number; amount: number; notes: string }) =>
       apiFetch("/payments", { method: "POST", body: JSON.stringify({ retailerId, amount, notes }) }),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["salesman-summary"] });
       qc.invalidateQueries({ queryKey: ["salesman-retailer-balances"] });
       qc.invalidateQueries({ queryKey: ["salesman-payments"] });
-      setCollectTarget(null); setAmount(""); setNotes("");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (collectTarget) {
+        setShareReceipt({
+          retailerName: collectTarget.name || "",
+          retailerPhone: collectTarget.phone,
+          amount: vars.amount,
+          notes: vars.notes,
+          date: new Date().toISOString(),
+          salesmanName: user?.name || "Salesman",
+        });
+      }
+      setCollectTarget(null); setAmount(""); setNotes("");
     },
   });
 
@@ -391,6 +577,10 @@ function SalesmanPayments() {
             refreshControl={<RefreshControl refreshing={refetchingCommissions} onRefresh={refetchCommissions} tintColor={Colors.primary} />}
           />
         )
+      )}
+
+      {shareReceipt && (
+        <ShareReceiptModal data={shareReceipt} onClose={() => setShareReceipt(null)} />
       )}
 
       <Modal visible={!!collectTarget} transparent animationType="slide" onRequestClose={() => setCollectTarget(null)}>
@@ -650,4 +840,99 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 15,
   },
   confirmBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+});
+
+// ─── Receipt card styles ────────────────────────────────────────────────────────
+const rcStyles = StyleSheet.create({
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    overflow: "hidden",
+    width: 320,
+  },
+  header: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  logo: { width: 110, height: 36 },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#10B981",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  badgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, gap: 10 },
+  amountLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#999", textTransform: "uppercase", letterSpacing: 0.7 },
+  amount: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#10B981" },
+  divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 },
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rowLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#999", width: 100 },
+  rowValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#1A1A1A", flex: 1 },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 4,
+  },
+  statusText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#92400E", flex: 1 },
+  footer: {
+    backgroundColor: "#F7F8FA",
+    paddingVertical: 10,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+  },
+  footerText: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#aaa" },
+});
+
+// ─── Share modal styles ─────────────────────────────────────────────────────────
+const shareStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingTop: 12,
+    alignItems: "center",
+    gap: 16,
+  },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", marginBottom: 4 },
+  title: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: -8 },
+  cardWrapper: {
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    borderRadius: 20,
+  },
+  actions: { flexDirection: "row", gap: 10, width: "100%" },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  waBtn: { backgroundColor: "#25D366" },
+  smsBtn: { backgroundColor: "#2563EB" },
+  actionBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  skipBtn: { paddingVertical: 10 },
+  skipText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
 });
