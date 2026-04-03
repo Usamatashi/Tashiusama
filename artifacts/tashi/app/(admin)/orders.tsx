@@ -1053,7 +1053,7 @@ const billStyles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
   },
-  logo: { width: 110, height: 36 },
+  logo: { width: 200, height: 66 },
   billBadge: {
     backgroundColor: `${Colors.primary}15`,
     borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
