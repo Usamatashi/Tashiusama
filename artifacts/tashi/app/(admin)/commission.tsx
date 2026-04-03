@@ -184,11 +184,11 @@ function SummaryBanner({ entries, onPressSales }: { entries: CommissionEntry[]; 
         <View style={[banner.iconWrap, { backgroundColor: "#FEF3C7" }]}>
           <Feather name="trending-up" size={14} color={Colors.adminAccent} />
         </View>
-        <Text style={[banner.val, { color: Colors.adminAccent, fontSize: 13 }]}>
-          Rs. {fmtK(curMonthSales)}
+        <Text style={[banner.val, { color: Colors.adminAccent, fontSize: 15 }]}>
+          Rs. {curMonthSales.toLocaleString()}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <Text style={[banner.lbl, { color: Colors.adminAccent }]}>Total Sales</Text>
+          <Text style={[banner.lbl, { color: Colors.adminAccent }]}>{curMonthLabel} Sales</Text>
           <Feather name="chevron-right" size={10} color={Colors.adminAccent} />
         </View>
       </TouchableOpacity>
