@@ -325,9 +325,6 @@ function CommissionModal({
 function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () => void }) {
   const displayName = item.name || item.phone;
   const initials = displayName.slice(0, 2).toUpperCase();
-  const conversionRate = item.totalOrders > 0
-    ? Math.round((item.confirmedOrders / item.totalOrders) * 100)
-    : 0;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
@@ -345,31 +342,6 @@ function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () =>
         </View>
       </View>
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Orders</Text>
-          <Text style={styles.statValue}>{item.totalOrders}</Text>
-          <Text style={styles.statSub}>{item.confirmedOrders} confirmed</Text>
-        </View>
-        <View style={[styles.statBox, styles.statBoxMid]}>
-          <Text style={styles.statLabel}>Sales Value</Text>
-          <Text style={[styles.statValue, { color: "#1D4ED8" }]}>Rs. {fmt(item.confirmedSalesValue)}</Text>
-          <Text style={styles.statSub}>of Rs. {fmt(item.totalSalesValue)}</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Conv. Rate</Text>
-          <Text style={[styles.statValue, { color: conversionRate >= 60 ? "#059669" : conversionRate >= 30 ? "#D97706" : "#DC2626" }]}>
-            {conversionRate}%
-          </Text>
-          <Text style={styles.statSub}>of orders</Text>
-        </View>
-      </View>
-
-      {item.totalOrders > 0 && (
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${conversionRate}%` as any, backgroundColor: conversionRate >= 60 ? "#059669" : conversionRate >= 30 ? "#D97706" : "#DC2626" }]} />
-        </View>
-      )}
     </TouchableOpacity>
   );
 }
