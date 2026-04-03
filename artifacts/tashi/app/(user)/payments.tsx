@@ -110,6 +110,10 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
   return (
     <ViewShot ref={cardRef as any} options={{ format: "png", quality: 1 }}>
       <View style={rcStyles.card}>
+        {/* Orange top accent bar */}
+        <View style={rcStyles.accentBar} />
+
+        {/* Header */}
         <View style={rcStyles.header}>
           <View style={rcStyles.logoContainer}>
             <Image source={{ uri: logoUri }} style={rcStyles.logo} resizeMode="contain" />
@@ -119,45 +123,54 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
             <Text style={rcStyles.badgeText}>Payment Received</Text>
           </View>
         </View>
+
+        {/* Amount section */}
+        <View style={rcStyles.amountSection}>
+          <Text style={rcStyles.amountLabel}>Amount Collected</Text>
+          <Text style={rcStyles.amount}>Rs. {data.amount.toLocaleString()}</Text>
+        </View>
+
+        {/* Orange divider */}
+        <View style={rcStyles.orangeDivider} />
+
+        {/* Details */}
         <View style={rcStyles.body}>
-          <View style={rcStyles.amountSection}>
-            <Text style={rcStyles.amountLabel}>Amount Collected</Text>
-            <Text style={rcStyles.amount}>Rs. {data.amount.toLocaleString()}</Text>
-          </View>
-          <View style={[rcStyles.divider, { width: "100%" }]} />
           <View style={rcStyles.row}>
-            <Feather name="user" size={13} color="#666" />
+            <Feather name="user" size={13} color={Colors.primary} />
             <Text style={rcStyles.rowLabel}>Retailer</Text>
             <Text style={rcStyles.rowValue}>{data.retailerName || data.retailerPhone}</Text>
           </View>
           <View style={rcStyles.row}>
-            <Feather name="phone" size={13} color="#666" />
+            <Feather name="phone" size={13} color={Colors.primary} />
             <Text style={rcStyles.rowLabel}>Phone</Text>
             <Text style={rcStyles.rowValue}>{data.retailerPhone}</Text>
           </View>
           <View style={rcStyles.row}>
-            <Feather name="calendar" size={13} color="#666" />
+            <Feather name="calendar" size={13} color={Colors.primary} />
             <Text style={rcStyles.rowLabel}>Date</Text>
             <Text style={rcStyles.rowValue}>{dateStr}</Text>
           </View>
           <View style={rcStyles.row}>
-            <Feather name="clock" size={13} color="#666" />
+            <Feather name="clock" size={13} color={Colors.primary} />
             <Text style={rcStyles.rowLabel}>Time</Text>
             <Text style={rcStyles.rowValue}>{timeStr}</Text>
           </View>
           <View style={rcStyles.row}>
-            <Feather name="briefcase" size={13} color="#666" />
+            <Feather name="briefcase" size={13} color={Colors.primary} />
             <Text style={rcStyles.rowLabel}>Collected By</Text>
             <Text style={rcStyles.rowValue}>{data.salesmanName}</Text>
           </View>
           {data.notes ? (
             <View style={rcStyles.row}>
-              <Feather name="file-text" size={13} color="#666" />
+              <Feather name="file-text" size={13} color={Colors.primary} />
               <Text style={rcStyles.rowLabel}>Notes</Text>
               <Text style={rcStyles.rowValue}>{data.notes}</Text>
             </View>
           ) : null}
         </View>
+
+        {/* Orange bottom bar */}
+        <View style={rcStyles.bottomBar} />
       </View>
     </ViewShot>
   );
@@ -854,17 +867,26 @@ const rcStyles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     width: 320,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  accentBar: {
+    height: 6,
+    backgroundColor: Colors.primary,
   },
   header: {
     backgroundColor: "#fff",
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   logoContainer: {
     backgroundColor: "#fff",
@@ -883,33 +905,21 @@ const rcStyles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
-  body: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, gap: 10 },
-  amountSection: { alignItems: "center", width: "100%" },
-  amountLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#999", textTransform: "uppercase", letterSpacing: 0.7, textAlign: "center" },
-  amount: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#10B981", textAlign: "center" },
-  dividerFull: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 4, width: "100%" },
-  divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  rowLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#999", width: 100 },
+  amountSection: {
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: `${Colors.primary}10`,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+  },
+  amountLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.primary, textTransform: "uppercase", letterSpacing: 1, textAlign: "center" },
+  amount: { fontSize: 36, fontFamily: "Inter_700Bold", color: Colors.primary, textAlign: "center", marginTop: 4 },
+  orangeDivider: { height: 2, backgroundColor: Colors.primary, marginHorizontal: 0 },
+  body: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 18, gap: 12 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  rowLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#999", width: 95 },
   rowValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#1A1A1A", flex: 1 },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FEF3C7",
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 4,
-  },
-  statusText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#92400E", flex: 1 },
-  footer: {
-    backgroundColor: "#F7F8FA",
-    paddingVertical: 10,
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-  },
-  footerText: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#aaa" },
+  bottomBar: { height: 5, backgroundColor: Colors.primary },
 });
 
 // ─── Share modal styles ─────────────────────────────────────────────────────────
