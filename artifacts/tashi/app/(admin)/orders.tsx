@@ -461,8 +461,15 @@ function BillModal({
       try {
         const logoAsset = Asset.fromModule(require("@/assets/images/tashi-logo.png"));
         await logoAsset.downloadAsync();
-        if (logoAsset.localUri) {
-          const logoBase64 = await FileSystem.readAsStringAsync(logoAsset.localUri, {
+        const readUri = logoAsset.localUri ?? logoAsset.uri;
+        if (readUri) {
+          let localPath = readUri;
+          // If the URI is not a local file, download it to cache first
+          if (!readUri.startsWith("file://")) {
+            localPath = `${FileSystem.cacheDirectory}tashi-logo-bill.png`;
+            await FileSystem.downloadAsync(readUri, localPath);
+          }
+          const logoBase64 = await FileSystem.readAsStringAsync(localPath, {
             encoding: FileSystem.EncodingType.Base64,
           });
           logoDataUri = `data:image/png;base64,${logoBase64}`;
