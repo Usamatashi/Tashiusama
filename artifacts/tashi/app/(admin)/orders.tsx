@@ -3,11 +3,13 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -420,18 +422,199 @@ function EditOrderModal({
   );
 }
 
+// ─── Bill Modal ───────────────────────────────────────────────────────────────
+function BillModal({
+  order,
+  visible,
+  onClose,
+}: {
+  order: Order | null;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  if (!order) return null;
+
+  const items = order.items ?? [];
+  const grandTotal = order.totalValue ?? items.reduce((s, i) => s + i.totalValue, 0);
+  const date = new Date(order.createdAt).toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+  const time = new Date(order.createdAt).toLocaleTimeString("en-US", {
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  });
+
+  const handleShare = async () => {
+    Haptics.selectionAsync();
+    const itemLines = items
+      .map(i => `  • ${i.productName || "Product"} × ${i.quantity}  –  Rs. ${i.totalValue.toLocaleString()}`)
+      .join("\n");
+
+    const billText = [
+      "━━━━━━━━━━━━━━━━━━━━━━━━",
+      "🧾  *TASHI — DISPATCH BILL*",
+      "━━━━━━━━━━━━━━━━━━━━━━━━",
+      `📦  Order #${order.id}`,
+      `👤  Customer: ${order.retailerName || order.retailerPhone || "—"}`,
+      `📞  Phone: ${order.retailerPhone || "—"}`,
+      `📅  Date: ${date}  ${time}`,
+      "",
+      "🛒  *ITEMS*",
+      "────────────────────────",
+      itemLines,
+      "────────────────────────",
+      `💰  *Total: Rs. ${grandTotal.toLocaleString()}*`,
+      "",
+      "✅  Status: DISPATCHED",
+      "━━━━━━━━━━━━━━━━━━━━━━━━",
+      "Powered by *Tashi*",
+    ].join("\n");
+
+    try {
+      await Share.share({ message: billText, title: `Tashi Bill – Order #${order.id}` });
+    } catch (e) {
+      Alert.alert("Error", "Could not open share sheet.");
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={billStyles.root}>
+        {/* Header bar */}
+        <View style={billStyles.modalHeader}>
+          <TouchableOpacity onPress={onClose} style={billStyles.closeBtn}>
+            <Feather name="x" size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={billStyles.modalTitle}>Dispatch Bill</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+
+          {/* Bill card */}
+          <View style={billStyles.billCard}>
+            {/* Top accent stripe */}
+            <View style={billStyles.accentStripe} />
+
+            {/* Logo + brand */}
+            <View style={billStyles.logoRow}>
+              <Image
+                source={require("@/assets/images/tashi-logo.png")}
+                style={billStyles.logo}
+                resizeMode="contain"
+              />
+              <View style={billStyles.billBadge}>
+                <Text style={billStyles.billBadgeText}>DISPATCH BILL</Text>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View style={billStyles.divider} />
+
+            {/* Order meta */}
+            <View style={billStyles.metaGrid}>
+              <View style={billStyles.metaItem}>
+                <Text style={billStyles.metaLabel}>ORDER NO.</Text>
+                <Text style={billStyles.metaValue}>#{order.id}</Text>
+              </View>
+              <View style={billStyles.metaItem}>
+                <Text style={billStyles.metaLabel}>DATE</Text>
+                <Text style={billStyles.metaValue}>{date}</Text>
+              </View>
+              <View style={billStyles.metaItem}>
+                <Text style={billStyles.metaLabel}>TIME</Text>
+                <Text style={billStyles.metaValue}>{time}</Text>
+              </View>
+              <View style={billStyles.metaItem}>
+                <Text style={billStyles.metaLabel}>STATUS</Text>
+                <View style={billStyles.dispatchedChip}>
+                  <Text style={billStyles.dispatchedChipText}>DISPATCHED</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Customer info */}
+            <View style={billStyles.customerBox}>
+              <View style={billStyles.customerIcon}>
+                <Feather name="user" size={18} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={billStyles.customerName}>{order.retailerName || "Customer"}</Text>
+                {order.retailerPhone ? (
+                  <Text style={billStyles.customerPhone}>{order.retailerPhone}</Text>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Items table */}
+            <View style={billStyles.tableHeader}>
+              <Text style={[billStyles.th, { flex: 3 }]}>PRODUCT</Text>
+              <Text style={[billStyles.th, billStyles.thCenter, { flex: 1 }]}>QTY</Text>
+              <Text style={[billStyles.th, billStyles.thRight, { flex: 2 }]}>TOTAL</Text>
+            </View>
+            <View style={billStyles.tableDivider} />
+
+            {items.length === 0 ? (
+              <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                <Text style={{ color: Colors.textLight, fontFamily: "Inter_400Regular" }}>No items</Text>
+              </View>
+            ) : (
+              items.map((item, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    billStyles.tableRow,
+                    idx % 2 === 0 ? billStyles.tableRowEven : null,
+                  ]}
+                >
+                  <Text style={[billStyles.td, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
+                  <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1 }]}>{item.quantity}</Text>
+                  <Text style={[billStyles.td, billStyles.tdRight, billStyles.tdTotal, { flex: 2 }]}>
+                    Rs. {item.totalValue.toLocaleString()}
+                  </Text>
+                </View>
+              ))
+            )}
+
+            <View style={billStyles.tableDivider} />
+
+            {/* Grand total */}
+            <View style={billStyles.grandTotalRow}>
+              <Text style={billStyles.grandTotalLabel}>GRAND TOTAL</Text>
+              <Text style={billStyles.grandTotalValue}>Rs. {grandTotal.toLocaleString()}</Text>
+            </View>
+
+            {/* Footer */}
+            <View style={billStyles.billFooter}>
+              <Text style={billStyles.footerText}>Thank you for your business!</Text>
+              <Text style={billStyles.footerBrand}>Tashi</Text>
+            </View>
+          </View>
+
+          {/* Share button */}
+          <TouchableOpacity style={billStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+            <Feather name="share-2" size={18} color="#fff" />
+            <Text style={billStyles.shareBtnText}>Send to Customer</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({
   order,
   onCancel,
   onEdit,
   onDispatch,
+  onSendBill,
   isUpdating,
 }: {
   order: Order;
   onCancel: (id: number) => void;
   onEdit: (order: Order) => void;
   onDispatch: (id: number) => void;
+  onSendBill: (order: Order) => void;
   isUpdating: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -569,6 +752,19 @@ function OrderCard({
               </TouchableOpacity>
             </View>
           )}
+
+          {order.status === "dispatched" && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.sendBillBtn]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSendBill(order); }}
+                activeOpacity={0.8}
+              >
+                <Feather name="file-text" size={15} color="#fff" />
+                <Text style={[styles.actionBtnText, { color: "#fff" }]}>Send Bill</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </>
       )}
     </View>
@@ -583,6 +779,7 @@ export default function AdminOrdersScreen() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [dispatchingId, setDispatchingId] = useState<number | null>(null);
+  const [billOrder, setBillOrder] = useState<Order | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -682,6 +879,7 @@ export default function AdminOrdersScreen() {
               onCancel={handleCancel}
               onEdit={setEditingOrder}
               onDispatch={(id) => dispatchMutation.mutate(id)}
+              onSendBill={setBillOrder}
               isUpdating={updatingId === item.id || dispatchingId === item.id}
             />
           )}
@@ -702,6 +900,12 @@ export default function AdminOrdersScreen() {
         visible={editingOrder !== null}
         onClose={() => setEditingOrder(null)}
         onSaved={() => qc.invalidateQueries({ queryKey: ["admin-orders"] })}
+      />
+
+      <BillModal
+        order={billOrder}
+        visible={billOrder !== null}
+        onClose={() => setBillOrder(null)}
       />
     </View>
   );
@@ -804,10 +1008,132 @@ const styles = StyleSheet.create({
   cancelBtn: { backgroundColor: "#FEE2E2" },
   editBtn: { backgroundColor: `${Colors.primary}12`, borderWidth: 1, borderColor: `${Colors.primary}30` },
   dispatchBtn: { backgroundColor: "#3B82F6" },
+  sendBillBtn: { backgroundColor: Colors.primary },
   actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+});
+
+// ─── Bill Styles ──────────────────────────────────────────────────────────────
+const billStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#F4F6FA" },
+
+  modalHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  closeBtn: { width: 36, height: 36, justifyContent: "center" },
+  modalTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },
+
+  billCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+
+  accentStripe: {
+    height: 6,
+    backgroundColor: Colors.primary,
+  },
+
+  logoRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
+  },
+  logo: { width: 110, height: 36 },
+  billBadge: {
+    backgroundColor: `${Colors.primary}15`,
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: `${Colors.primary}30`,
+  },
+  billBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.primary, letterSpacing: 0.8 },
+
+  divider: { height: 1, backgroundColor: "#F0EDE8", marginHorizontal: 20 },
+
+  metaGrid: {
+    flexDirection: "row", flexWrap: "wrap",
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, gap: 12,
+  },
+  metaItem: { width: "45%", gap: 4 },
+  metaLabel: {
+    fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.textLight,
+    letterSpacing: 0.8, textTransform: "uppercase",
+  },
+  metaValue: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text },
+  dispatchedChip: {
+    backgroundColor: "#DBEAFE", borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start",
+  },
+  dispatchedChipText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#3B82F6", letterSpacing: 0.6 },
+
+  customerBox: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    marginHorizontal: 20, marginTop: 8, marginBottom: 16,
+    backgroundColor: "#FFF8F4", borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: `${Colors.primary}20`,
+  },
+  customerIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: `${Colors.primary}18`, alignItems: "center", justifyContent: "center",
+  },
+  customerName: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
+  customerPhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+
+  tableHeader: {
+    flexDirection: "row", paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: "#F7F8FA",
+  },
+  th: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.textLight, letterSpacing: 0.8, textTransform: "uppercase" },
+  thCenter: { textAlign: "center" },
+  thRight: { textAlign: "right" },
+  tableDivider: { height: 1, backgroundColor: "#EEEEEE", marginHorizontal: 20 },
+  tableRow: { flexDirection: "row", paddingHorizontal: 20, paddingVertical: 12 },
+  tableRowEven: { backgroundColor: "#FAFAFA" },
+  td: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  tdCenter: { textAlign: "center" },
+  tdRight: { textAlign: "right" },
+  tdTotal: { fontFamily: "Inter_700Bold", color: Colors.primary },
+
+  grandTotalRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20, paddingVertical: 18,
+    backgroundColor: `${Colors.primary}08`,
+    marginTop: 4,
+  },
+  grandTotalLabel: {
+    fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.textSecondary,
+    textTransform: "uppercase", letterSpacing: 0.8,
+  },
+  grandTotalValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.primary },
+
+  billFooter: {
+    alignItems: "center", paddingVertical: 16,
+    borderTopWidth: 1, borderTopColor: "#F0EDE8",
+    gap: 4,
+  },
+  footerText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  footerBrand: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.primary, letterSpacing: 1 },
+
+  shareBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16, borderRadius: 16,
+    marginTop: 20,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  shareBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });
 
 const editStyles = StyleSheet.create({
