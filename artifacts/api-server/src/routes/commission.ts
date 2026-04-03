@@ -218,6 +218,89 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// ─── GET /commission/salesman-months/:salesmanId ─────────────────────────────
+// Returns a month-by-month breakdown of a salesman's sales and commission status
+router.get("/salesman-months/:salesmanId", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const salesmanId = parseInt(req.params.salesmanId, 10);
+    if (isNaN(salesmanId)) { res.status(400).json({ error: "Invalid salesman ID" }); return; }
+
+    const [salesman] = await db
+      .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
+      .from(usersTable)
+      .where(eq(usersTable.id, salesmanId))
+      .limit(1);
+
+    if (!salesman) { res.status(404).json({ error: "Salesman not found" }); return; }
+
+    // All non-cancelled orders for this salesman
+    const orders = await db
+      .select({ id: ordersTable.id, createdAt: ordersTable.createdAt })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.salesmanId, salesmanId), ne(ordersTable.status, "cancelled")));
+
+    // All approved commissions for this salesman
+    const commissions = await db
+      .select({ periodFrom: commissionsTable.periodFrom, commissionAmount: commissionsTable.commissionAmount, createdAt: commissionsTable.createdAt })
+      .from(commissionsTable)
+      .where(eq(commissionsTable.salesmanId, salesmanId));
+
+    // Compute order values via items
+    type MonthKey = string; // "YYYY-MM"
+    const monthData: Record<MonthKey, { year: number; month: number; orderCount: number; salesAmount: number; alreadyApproved: boolean; approvedAt?: string; commissionAmount?: number }> = {};
+
+    if (orders.length > 0) {
+      const orderIds = orders.map((o) => o.id);
+      const items = await db
+        .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
+        .from(orderItemsTable)
+        .where(
+          orderIds.length === 1
+            ? eq(orderItemsTable.orderId, orderIds[0])
+            : sql`${orderItemsTable.orderId} = ANY(ARRAY[${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)}])`
+        );
+
+      const orderValueMap: Record<number, number> = {};
+      for (const item of items) {
+        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
+      }
+
+      for (const order of orders) {
+        const d = new Date(order.createdAt);
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+        const key: MonthKey = `${year}-${String(month).padStart(2, "0")}`;
+        if (!monthData[key]) monthData[key] = { year, month, orderCount: 0, salesAmount: 0, alreadyApproved: false };
+        monthData[key].orderCount += 1;
+        monthData[key].salesAmount += orderValueMap[order.id] ?? 0;
+      }
+    }
+
+    // Overlay commission approval data
+    for (const comm of commissions) {
+      if (!comm.periodFrom) continue;
+      const d = new Date(comm.periodFrom);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const key: MonthKey = `${year}-${String(month).padStart(2, "0")}`;
+      if (!monthData[key]) monthData[key] = { year, month, orderCount: 0, salesAmount: 0, alreadyApproved: false };
+      monthData[key].alreadyApproved = true;
+      monthData[key].approvedAt = new Date(comm.createdAt).toISOString();
+      monthData[key].commissionAmount = comm.commissionAmount;
+    }
+
+    // Sort newest first
+    const months = Object.values(monthData).sort((a, b) =>
+      b.year !== a.year ? b.year - a.year : b.month - a.month
+    );
+
+    res.json({ salesmanId, salesmanName: salesman.name, salesmanPhone: salesman.phone, months });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ─── GET /commission/my-commissions ───────────────────────────────────────────
 // Salesman's own commission history
 router.get("/my-commissions", requireAuth, async (req, res) => {

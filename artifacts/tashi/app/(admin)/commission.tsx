@@ -1,21 +1,17 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { BackButton } from "@/components/BackButton";
@@ -35,290 +31,6 @@ interface CommissionEntry {
   confirmedSalesValue: number;
   totalBonus: number;
   confirmedBonus: number;
-}
-
-interface SalesData {
-  salesmanId: number;
-  salesmanName: string | null;
-  salesmanPhone: string;
-  periodFrom: string;
-  periodTo: string;
-  salesAmount: number;
-  orderCount: number;
-  orders: Array<{
-    id: number;
-    createdAt: string;
-    retailerName: string | null;
-    retailerPhone: string | null;
-    totalValue: number;
-  }>;
-  alreadyApproved: boolean;
-  approvedAt?: string;
-}
-
-function fmt(n: number) { return n.toLocaleString(); }
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-// ─── Commission Modal ─────────────────────────────────────────────────────────
-function CommissionModal({
-  visible,
-  salesman,
-  onClose,
-  onSuccess,
-}: {
-  visible: boolean;
-  salesman: CommissionEntry | null;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [percentage, setPercentage] = useState("");
-  const [confirming, setConfirming] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const queryClient = useQueryClient();
-
-  const { data: salesData, isLoading: salesLoading } = useQuery<SalesData>({
-    queryKey: ["salesman-sales", salesman?.salesmanId],
-    queryFn: async () => {
-      const token = await getToken();
-      const res = await fetch(`${BASE}/commission/salesman-sales/${salesman!.salesmanId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch sales");
-      return res.json();
-    },
-    enabled: visible && !!salesman,
-  });
-
-  const { mutate: approveCommission, isPending } = useMutation({
-    mutationFn: async () => {
-      const token = await getToken();
-      const res = await fetch(`${BASE}/commission`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          salesmanId: salesman!.salesmanId,
-          percentage: Number(percentage),
-          salesAmount: salesData!.salesAmount,
-          periodFrom: salesData!.periodFrom,
-          periodTo: salesData!.periodTo,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).error || "Failed to save commission");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["salesman-commissions"] });
-      queryClient.invalidateQueries({ queryKey: ["salesman-sales", salesman?.salesmanId] });
-      setPercentage("");
-      setConfirming(false);
-      setErrorMsg("");
-      onSuccess();
-    },
-    onError: (err: Error) => {
-      setConfirming(false);
-      setErrorMsg(err.message);
-    },
-  });
-
-  const pct = parseFloat(percentage);
-  const salesAmt = salesData?.salesAmount ?? 0;
-  const commission = !isNaN(pct) && pct > 0 ? Math.round((salesAmt * pct) / 100) : null;
-
-  const monthLabel = salesData?.periodFrom
-    ? new Date(salesData.periodFrom).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
-    : new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-
-  function handleApprove() {
-    setErrorMsg("");
-    if (!pct || isNaN(pct) || pct <= 0 || pct > 100) {
-      setErrorMsg("Please enter a valid percentage between 1 and 100.");
-      return;
-    }
-    setConfirming(true);
-  }
-
-  function handleConfirm() {
-    setConfirming(false);
-    approveCommission();
-  }
-
-  function handleClose() {
-    setPercentage("");
-    setConfirming(false);
-    setErrorMsg("");
-    onClose();
-  }
-
-  const displayName = salesman ? (salesman.name || salesman.phone) : "";
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={modal.overlay}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
-          <View style={modal.sheet}>
-            {/* Header */}
-            <View style={modal.sheetHeader}>
-              <View style={modal.sheetAvatar}>
-                <Text style={modal.sheetAvatarText}>{displayName.slice(0, 2).toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={modal.sheetName}>{displayName}</Text>
-                <Text style={modal.sheetSub}>Commission Calculation</Text>
-              </View>
-              <TouchableOpacity onPress={handleClose} style={modal.closeBtn}>
-                <Feather name="x" size={18} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
-              {salesLoading ? (
-                <View style={modal.loading}>
-                  <ActivityIndicator size="large" color={Colors.adminAccent} />
-                  <Text style={modal.loadingText}>Loading sales data…</Text>
-                </View>
-              ) : (
-                <>
-                  {/* Month label */}
-                  <View style={modal.monthRow}>
-                    <Feather name="calendar" size={14} color={Colors.adminAccent} />
-                    <Text style={modal.monthLabel}>Month: <Text style={modal.monthValue}>{monthLabel}</Text></Text>
-                  </View>
-
-                  {/* Already approved banner */}
-                  {salesData?.alreadyApproved && (
-                    <View style={modal.approvedBanner}>
-                      <Feather name="check-circle" size={16} color="#065F46" />
-                      <Text style={modal.approvedBannerText}>
-                        Commission already approved for {monthLabel}
-                        {salesData.approvedAt ? ` on ${fmtDate(salesData.approvedAt)}` : ""}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Sales summary */}
-                  {!salesData?.alreadyApproved && (
-                    <View style={modal.salesBox}>
-                      <View style={modal.salesRow}>
-                        <View style={modal.salesItem}>
-                          <Text style={modal.salesLabel}>Active Orders</Text>
-                          <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
-                        </View>
-                        <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
-                          <Text style={modal.salesLabel}>Total Sales Value</Text>
-                          <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData?.salesAmount ?? 0)}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Order list */}
-                  {!salesData?.alreadyApproved && salesData && salesData.orders.length > 0 && (
-                    <View style={modal.orderList}>
-                      <Text style={modal.sectionLabel}>Order Breakdown</Text>
-                      {salesData.orders.map((o) => (
-                        <View key={o.id} style={modal.orderRow}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={modal.orderRetailer} numberOfLines={1}>
-                              {o.retailerName || o.retailerPhone || "Unknown"}
-                            </Text>
-                            <Text style={modal.orderDate}>{fmtDate(o.createdAt)}</Text>
-                          </View>
-                          <Text style={modal.orderValue}>Rs. {fmt(o.totalValue)}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {!salesData?.alreadyApproved && salesData?.salesAmount === 0 && (
-                    <View style={modal.noSales}>
-                      <Feather name="info" size={20} color={Colors.textLight} />
-                      <Text style={modal.noSalesText}>No active sales for {monthLabel}</Text>
-                    </View>
-                  )}
-
-                  {/* Percentage input — only when not already approved */}
-                  {!salesData?.alreadyApproved && salesAmt > 0 && (
-                    <>
-                      <View style={modal.inputSection}>
-                        <Text style={modal.inputLabel}>Commission Percentage</Text>
-                        <View style={modal.inputRow}>
-                          <TextInput
-                            style={modal.percentInput}
-                            placeholder="e.g. 5"
-                            placeholderTextColor={Colors.textLight}
-                            value={percentage}
-                            onChangeText={setPercentage}
-                            keyboardType="decimal-pad"
-                            maxLength={5}
-                          />
-                          <View style={modal.percentSymbol}>
-                            <Text style={modal.percentText}>%</Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* Commission preview */}
-                      {commission !== null && (
-                        <View style={modal.preview}>
-                          <Text style={modal.previewLabel}>Total Commission</Text>
-                          <Text style={modal.previewValue}>Rs. {fmt(commission)}</Text>
-                          <Text style={modal.previewSub}>{pct}% of Rs. {fmt(salesAmt)}</Text>
-                        </View>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-            </ScrollView>
-
-            {/* Error message */}
-            {!!errorMsg && (
-              <View style={modal.errorBanner}>
-                <Feather name="alert-circle" size={14} color="#DC2626" />
-                <Text style={modal.errorBannerText}>{errorMsg}</Text>
-              </View>
-            )}
-
-            {/* Inline confirmation panel */}
-            {confirming && commission !== null ? (
-              <View style={modal.confirmBox}>
-                <Text style={modal.confirmTitle}>Confirm Commission</Text>
-                <Text style={modal.confirmDesc}>
-                  Approve <Text style={{ fontFamily: "Inter_700Bold" }}>Rs. {fmt(commission)}</Text> ({pct}% of Rs. {fmt(salesAmt)}) for {salesman?.name || salesman?.phone} — {monthLabel}?
-                </Text>
-                <View style={modal.confirmRow}>
-                  <TouchableOpacity style={modal.cancelBtn} onPress={() => setConfirming(false)} activeOpacity={0.8}>
-                    <Text style={modal.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[modal.confirmBtn, isPending && { opacity: 0.6 }]} onPress={handleConfirm} disabled={isPending} activeOpacity={0.8}>
-                    {isPending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modal.confirmBtnText}>Yes, Approve</Text>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              /* Approve button — hide if already approved or no sales */
-              !salesData?.alreadyApproved && salesAmt > 0 && (
-                <TouchableOpacity
-                  style={[modal.approveBtn, salesLoading && { opacity: 0.6 }]}
-                  onPress={handleApprove}
-                  activeOpacity={0.8}
-                  disabled={salesLoading}
-                >
-                  <Feather name="check-circle" size={18} color="#fff" />
-                  <Text style={modal.approveBtnText}>Approve Commission</Text>
-                </TouchableOpacity>
-              )
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
-  );
 }
 
 // ─── Salesman Card ─────────────────────────────────────────────────────────────
@@ -378,6 +90,12 @@ function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () =>
           <Text style={styles.noOrderNotice}>No orders placed yet</Text>
         </View>
       )}
+
+      {/* Tap hint */}
+      <View style={styles.tapHint}>
+        <Text style={styles.tapHintText}>Tap to view monthly breakdown</Text>
+        <Feather name="chevron-right" size={13} color={Colors.textLight} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -385,16 +103,8 @@ function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () =>
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState<CommissionEntry | null>(null);
-  const [successMsg, setSuccessMsg] = useState("");
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-
-  React.useEffect(() => {
-    if (!successMsg) return;
-    const t = setTimeout(() => setSuccessMsg(""), 3500);
-    return () => clearTimeout(t);
-  }, [successMsg]);
 
   const { data, isLoading, refetch, isFetching } = useQuery<CommissionEntry[]>({
     queryKey: ["salesman-commissions"],
@@ -416,11 +126,22 @@ export default function CommissionScreen() {
         <View style={styles.empty}>
           <Feather name="percent" size={44} color={Colors.textLight} />
           <Text style={styles.emptyTitle}>No salesmen yet</Text>
-          <Text style={styles.emptySub}>Commission data will appear once orders are placed</Text>
+          <Text style={styles.emptySub}>Commission data will appear once salesmen are added</Text>
         </View>
       )}
     </>
   ), [entries.length, isLoading]);
+
+  function handleCardPress(item: CommissionEntry) {
+    router.push({
+      pathname: "/(admin)/salesman-detail",
+      params: {
+        id: String(item.salesmanId),
+        name: item.name ?? "",
+        phone: item.phone,
+      },
+    });
+  }
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -439,7 +160,7 @@ export default function CommissionScreen() {
           data={entries}
           keyExtractor={(item) => String(item.salesmanId)}
           renderItem={({ item }) => (
-            <SalesmanCard item={item} onPress={() => setSelected(item)} />
+            <SalesmanCard item={item} onPress={() => handleCardPress(item)} />
           )}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={[styles.list, { paddingBottom: bottomPad + 24 }]}
@@ -447,23 +168,6 @@ export default function CommissionScreen() {
           refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={Colors.adminAccent} />}
         />
       )}
-
-      {!!successMsg && (
-        <View style={styles.successBanner}>
-          <Feather name="check-circle" size={15} color="#065F46" />
-          <Text style={styles.successBannerText}>{successMsg}</Text>
-        </View>
-      )}
-
-      <CommissionModal
-        visible={!!selected}
-        salesman={selected}
-        onClose={() => setSelected(null)}
-        onSuccess={() => {
-          setSelected(null);
-          setSuccessMsg("Commission approved and saved to salesman's account.");
-        }}
-      />
     </View>
   );
 }
@@ -475,25 +179,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.adminText },
   loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   list: { padding: 16, gap: 12 },
-
-  summaryRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-  summaryCard: {
-    flex: 1, borderRadius: 14, padding: 12,
-    alignItems: "center", gap: 4,
-  },
-  summaryVal: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  summarySub: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
-
-  searchBar: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 12,
-  },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.adminText },
 
   card: {
     backgroundColor: "#fff", borderRadius: 18, padding: 16,
@@ -508,22 +196,22 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
   cardName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   cardPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+
   calcBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
     backgroundColor: "#FEF3C7",
   },
   calcText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.adminAccent },
+
   noOrderBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
     backgroundColor: "#F1F5F9",
   },
   noOrderText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#94A3B8" },
-  noOrderRow: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingTop: 4,
-  },
+
+  noOrderRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   noOrderNotice: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#94A3B8" },
 
   statsGrid: { flexDirection: "row" },
@@ -534,142 +222,11 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   statValue: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.adminText },
-  statSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.textLight },
 
-  progressBarBg: { height: 5, borderRadius: 3, backgroundColor: "#F1F5F9", overflow: "hidden" },
-  progressBarFill: { height: 5, borderRadius: 3 },
-
-  successBanner: {
-    position: "absolute", bottom: 32, left: 16, right: 16, zIndex: 999,
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#D1FAE5", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-    borderWidth: 1, borderColor: "#6EE7B7",
-    shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, elevation: 8,
-  },
-  successBannerText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#065F46", flex: 1 },
+  tapHint: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4 },
+  tapHintText: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textLight },
 
   empty: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
   emptySub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", paddingHorizontal: 24 },
-});
-
-const modal = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end", alignItems: "center",
-  },
-  sheet: {
-    backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 20, paddingBottom: 32, width: "100%", gap: 16,
-  },
-  sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  sheetAvatar: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: "#E87722", justifyContent: "center", alignItems: "center",
-  },
-  sheetAvatarText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-  sheetName: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.adminText },
-  sheetSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
-  closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: Colors.border, justifyContent: "center", alignItems: "center",
-  },
-
-  loading: { alignItems: "center", paddingVertical: 32, gap: 10 },
-  loadingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-
-  periodRow: {
-    flexDirection: "row", backgroundColor: "#F7F8FA",
-    borderRadius: 14, padding: 14, gap: 0,
-  },
-  periodItem: { flex: 1, alignItems: "center", gap: 4 },
-  periodLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  periodValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.adminText, textAlign: "center" },
-  divider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-
-  salesBox: {
-    borderWidth: 1, borderColor: Colors.border,
-    borderRadius: 14, overflow: "hidden",
-  },
-  salesRow: { flexDirection: "row" },
-  salesItem: { flex: 1, alignItems: "center", padding: 14, gap: 4 },
-  salesLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  salesValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
-
-  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 6 },
-  orderList: { gap: 8 },
-  orderRow: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#F7F8FA", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, gap: 8,
-  },
-  orderRetailer: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.adminText },
-  orderDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
-  orderValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#059669" },
-
-  monthRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
-  monthLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  monthValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.adminText },
-  approvedBanner: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: "#D1FAE5", borderRadius: 12, padding: 12,
-    borderWidth: 1, borderColor: "#6EE7B7",
-  },
-  approvedBannerText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#065F46", flex: 1 },
-  noSales: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: "#FEF9C3", borderRadius: 10 },
-  noSalesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#92400E", flex: 1 },
-
-  inputSection: { gap: 8 },
-  inputLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
-  inputRow: {
-    flexDirection: "row", borderWidth: 1.5, borderColor: Colors.adminAccent,
-    borderRadius: 14, overflow: "hidden",
-  },
-  percentInput: {
-    flex: 1, paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText,
-  },
-  percentSymbol: {
-    paddingHorizontal: 16, justifyContent: "center", alignItems: "center",
-    backgroundColor: "#FEF3C7",
-  },
-  percentText: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminAccent },
-
-  preview: {
-    backgroundColor: "#DCFCE7", borderRadius: 14, padding: 16,
-    alignItems: "center", gap: 4,
-  },
-  previewLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#059669" },
-  previewValue: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#065F46" },
-  previewSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#059669" },
-
-  approveBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: "#059669", borderRadius: 16, paddingVertical: 16,
-  },
-  approveBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
-
-  errorBanner: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#FEE2E2", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
-    borderWidth: 1, borderColor: "#FECACA",
-  },
-  errorBannerText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#DC2626", flex: 1 },
-
-  confirmBox: {
-    backgroundColor: "#F0FDF4", borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: "#86EFAC", gap: 10,
-  },
-  confirmTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#065F46" },
-  confirmDesc: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#065F46", lineHeight: 20 },
-  confirmRow: { flexDirection: "row", gap: 10 },
-  cancelBtn: {
-    flex: 1, paddingVertical: 12, borderRadius: 12,
-    backgroundColor: "#E5E7EB", alignItems: "center",
-  },
-  cancelBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.text },
-  confirmBtn: {
-    flex: 2, paddingVertical: 12, borderRadius: 12,
-    backgroundColor: "#059669", alignItems: "center",
-  },
-  confirmBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
 });
