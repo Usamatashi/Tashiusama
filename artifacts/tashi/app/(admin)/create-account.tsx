@@ -89,6 +89,7 @@ interface User {
   role: Role;
   name: string | null;
   city: string | null;
+  directoryPhone: string | null;
   regionId: number | null;
   points: number;
   createdAt: string;
@@ -140,6 +141,7 @@ export default function CreateAccountScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+  const [directoryPhone, setDirectoryPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("retailer");
   const [access, setAccess] = useState({ ...DEFAULT_ACCESS });
@@ -176,7 +178,7 @@ export default function CreateAccountScreen() {
   const openAdd = () => {
     setEditingUser(null);
     setErrorMsg("");
-    setName(""); setPhone(""); setCity(""); setPassword("");
+    setName(""); setPhone(""); setCity(""); setDirectoryPhone(""); setPassword("");
     setRole(activeFilter !== "all" ? activeFilter : "retailer");
     setAccess({ ...DEFAULT_ACCESS });
     setRegionId(null);
@@ -192,6 +194,7 @@ export default function CreateAccountScreen() {
     setName(user.name || "");
     setPhone(user.phone);
     setCity(user.city || "");
+    setDirectoryPhone(user.directoryPhone || "");
     setPassword("");
     setRole(user.role);
     setAccess({ ...DEFAULT_ACCESS });
@@ -223,6 +226,7 @@ export default function CreateAccountScreen() {
     try {
       const body: Record<string, any> = {
         name: name.trim(), phone: phone.trim(), city: city.trim(), role,
+        directoryPhone: directoryPhone.trim() || null,
         regionId: regionId ?? null,
       };
       if (password.trim()) body.password = password;
@@ -489,6 +493,16 @@ export default function CreateAccountScreen() {
                   value={city}
                   onChangeText={setCity}
                   autoCorrect={false}
+                />
+
+                <Text style={styles.fieldLabel}>Directory Phone</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="e.g. 03001234567"
+                  placeholderTextColor={Colors.textLight}
+                  value={directoryPhone}
+                  onChangeText={setDirectoryPhone}
+                  keyboardType="phone-pad"
                 />
 
                 {(role === "retailer" || role === "salesman") && (

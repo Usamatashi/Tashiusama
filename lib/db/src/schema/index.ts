@@ -23,6 +23,7 @@ export const usersTable = pgTable("users", {
   name: text("name"),
   email: text("email"),
   city: text("city"),
+  directoryPhone: text("directory_phone"),
   regionId: integer("region_id").references(() => regionsTable.id, { onDelete: "set null" }),
   points: integer("points").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
