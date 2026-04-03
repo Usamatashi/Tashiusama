@@ -54,6 +54,8 @@ interface SalesData {
   orders: Array<{ id: number; createdAt: string; retailerName: string | null; retailerPhone: string | null; totalValue: number }>;
   alreadyApproved: boolean;
   approvedAt?: string;
+  commissionAmount?: number;
+  commissionPercentage?: number;
 }
 
 // ─── Commission Modal ─────────────────────────────────────────────────────────
@@ -170,13 +172,44 @@ function CommissionModal({
               ) : (
                 <>
                   {salesData?.alreadyApproved && (
-                    <View style={modal.approvedBanner}>
-                      <Feather name="check-circle" size={16} color="#065F46" />
-                      <Text style={modal.approvedBannerText}>
-                        Commission already approved for {monthLabel}
-                        {salesData.approvedAt ? ` on ${fmtDate(salesData.approvedAt)}` : ""}
-                      </Text>
-                    </View>
+                    <>
+                      <View style={modal.approvedBanner}>
+                        <Feather name="check-circle" size={16} color="#065F46" />
+                        <Text style={modal.approvedBannerText}>
+                          Commission approved{salesData.approvedAt ? ` on ${fmtDate(salesData.approvedAt)}` : ""}
+                          {salesData.commissionPercentage !== undefined ? ` · ${salesData.commissionPercentage}%` : ""}
+                          {salesData.commissionAmount !== undefined ? ` = Rs. ${fmt(salesData.commissionAmount)}` : ""}
+                        </Text>
+                      </View>
+                      <View style={modal.salesBox}>
+                        <View style={modal.salesRow}>
+                          <View style={modal.salesItem}>
+                            <Text style={modal.salesLabel}>Orders</Text>
+                            <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData.orderCount}</Text>
+                          </View>
+                          <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
+                            <Text style={modal.salesLabel}>Total Sales</Text>
+                            <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData.salesAmount)}</Text>
+                          </View>
+                        </View>
+                      </View>
+                      {salesData.orders.length > 0 && (
+                        <View style={modal.orderList}>
+                          <Text style={modal.sectionLabel}>Order Breakdown</Text>
+                          {salesData.orders.map((o) => (
+                            <View key={o.id} style={modal.orderRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={modal.orderRetailer} numberOfLines={1}>
+                                  {o.retailerName || o.retailerPhone || "Unknown"}
+                                </Text>
+                                <Text style={modal.orderDate}>{fmtDate(o.createdAt)}</Text>
+                              </View>
+                              <Text style={modal.orderValue}>Rs. {fmt(o.totalValue)}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </>
                   )}
 
                   {!salesData?.alreadyApproved && (

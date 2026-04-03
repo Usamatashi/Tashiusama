@@ -40,7 +40,13 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
 
     // Check if commission already approved for this month
     const [existing] = await db
-      .select({ id: commissionsTable.id, createdAt: commissionsTable.createdAt })
+      .select({
+        id: commissionsTable.id,
+        createdAt: commissionsTable.createdAt,
+        salesAmount: commissionsTable.salesAmount,
+        commissionAmount: commissionsTable.commissionAmount,
+        percentage: commissionsTable.percentage,
+      })
       .from(commissionsTable)
       .where(
         and(
@@ -51,23 +57,7 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
       )
       .limit(1);
 
-    if (existing) {
-      res.json({
-        salesmanId,
-        salesmanName: salesman.name,
-        salesmanPhone: salesman.phone,
-        periodFrom: periodFrom.toISOString(),
-        periodTo: periodToInclusive.toISOString(),
-        salesAmount: 0,
-        orderCount: 0,
-        orders: [],
-        alreadyApproved: true,
-        approvedAt: existing.createdAt,
-      });
-      return;
-    }
-
-    // Fetch all non-cancelled orders in this calendar month
+    // Fetch all non-cancelled orders in this calendar month (always, approved or not)
     const orders = await db
       .select({
         id: ordersTable.id,
@@ -87,6 +77,47 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
         )
       );
 
+    // Compute order values
+    let salesAmount = 0;
+    let orderList: Array<{ id: number; createdAt: Date; retailerName: string | null; retailerPhone: string | null; totalValue: number }> = [];
+
+    if (orders.length > 0) {
+      const orderIds = orders.map((o) => o.id);
+      const items = await db
+        .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
+        .from(orderItemsTable)
+        .where(inArray(orderItemsTable.orderId, orderIds));
+
+      const orderValueMap: Record<number, number> = {};
+      for (const item of items) {
+        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
+      }
+
+      for (const o of orders) {
+        const value = orderValueMap[o.id] ?? 0;
+        salesAmount += value;
+        orderList.push({ id: o.id, createdAt: o.createdAt, retailerName: o.retailerName, retailerPhone: o.retailerPhone, totalValue: value });
+      }
+    }
+
+    if (existing) {
+      res.json({
+        salesmanId,
+        salesmanName: salesman.name,
+        salesmanPhone: salesman.phone,
+        periodFrom: periodFrom.toISOString(),
+        periodTo: periodToInclusive.toISOString(),
+        salesAmount: existing.salesAmount ?? salesAmount,
+        orderCount: orders.length,
+        orders: orderList,
+        alreadyApproved: true,
+        approvedAt: existing.createdAt,
+        commissionAmount: existing.commissionAmount,
+        commissionPercentage: existing.percentage,
+      });
+      return;
+    }
+
     if (orders.length === 0) {
       res.json({
         salesmanId,
@@ -101,39 +132,6 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
       });
       return;
     }
-
-    // Fetch order items for value calculation
-    const orderIds = orders.map((o) => o.id);
-    const items = await db
-      .select({
-        orderId: orderItemsTable.orderId,
-        quantity: orderItemsTable.quantity,
-        unitPrice: orderItemsTable.unitPrice,
-      })
-      .from(orderItemsTable)
-      .where(
-        orderIds.length === 1
-          ? eq(orderItemsTable.orderId, orderIds[0])
-          : sql`${orderItemsTable.orderId} = ANY(ARRAY[${sql.join(orderIds.map(id => sql`${id}`), sql`, `)}])`
-      );
-
-    const orderValueMap: Record<number, number> = {};
-    for (const item of items) {
-      orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
-    }
-
-    let salesAmount = 0;
-    const orderList = orders.map((o) => {
-      const value = orderValueMap[o.id] ?? 0;
-      salesAmount += value;
-      return {
-        id: o.id,
-        createdAt: o.createdAt,
-        retailerName: o.retailerName,
-        retailerPhone: o.retailerPhone,
-        totalValue: value,
-      };
-    });
 
     res.json({
       salesmanId,
