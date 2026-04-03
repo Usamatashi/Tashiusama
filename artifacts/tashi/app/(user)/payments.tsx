@@ -225,8 +225,8 @@ function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose:
               onPress={handleWhatsApp}
               activeOpacity={0.8}
             >
-              <FontAwesome name="whatsapp" size={20} color="#fff" />
-              <Text style={shareStyles.actionBtnText}>Send WhatsApp Message</Text>
+              <FontAwesome name="whatsapp" size={22} color="#fff" />
+              <Text style={shareStyles.actionBtnText}>WhatsApp</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -859,10 +859,10 @@ const rcStyles = StyleSheet.create({
   logoContainer: {
     backgroundColor: "#fff",
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  logo: { width: 100, height: 34 },
+  logo: { width: 120, height: 42 },
   badge: {
     flexDirection: "row",
     alignItems: "center",
