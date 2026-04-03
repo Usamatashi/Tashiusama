@@ -531,12 +531,10 @@ function BillModal({
               <View style={billStyles.customerIcon}>
                 <Feather name="user" size={18} color={Colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={billStyles.customerName}>{order.retailerName || "Customer"}</Text>
-                {order.retailerPhone ? (
-                  <Text style={billStyles.customerPhone}>{order.retailerPhone}</Text>
-                ) : null}
-              </View>
+              <Text style={billStyles.customerName}>{order.retailerName || "Customer"}</Text>
+              {order.retailerPhone ? (
+                <Text style={billStyles.customerPhone}>{order.retailerPhone}</Text>
+              ) : null}
             </View>
 
             {/* Items table */}
@@ -1077,7 +1075,7 @@ const billStyles = StyleSheet.create({
   dispatchedChipText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#3B82F6", letterSpacing: 0.6 },
 
   customerBox: {
-    flexDirection: "row", alignItems: "center", gap: 12,
+    flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
     marginHorizontal: 20, marginTop: 8, marginBottom: 16,
     backgroundColor: "#FFF8F4", borderRadius: 14, padding: 14,
     borderWidth: 1, borderColor: `${Colors.primary}20`,
@@ -1086,8 +1084,8 @@ const billStyles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: `${Colors.primary}18`, alignItems: "center", justifyContent: "center",
   },
-  customerName: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
-  customerPhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  customerName: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
+  customerPhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
 
   tableHeader: {
     flexDirection: "row", paddingHorizontal: 20, paddingVertical: 10,
