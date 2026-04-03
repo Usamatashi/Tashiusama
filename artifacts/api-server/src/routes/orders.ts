@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, productsTable, ordersTable, orderItemsTable } from "@workspace/db";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray, and, gte, lt, ne } from "drizzle-orm";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
@@ -590,6 +590,10 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
 // ─── GET /orders/salesman-commissions — admin only ────────────────────────────
 router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) => {
   try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
     // Fetch ALL salesmen regardless of whether they have orders
     const allSalesmen = await db
       .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
@@ -612,7 +616,8 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
       })
       .from(ordersTable)
       .leftJoin(productsTable, eq(ordersTable.productId, productsTable.id))
-      .leftJoin(usersTable, eq(ordersTable.salesmanId, usersTable.id));
+      .leftJoin(usersTable, eq(ordersTable.salesmanId, usersTable.id))
+      .where(ne(ordersTable.status, "cancelled"));
 
     const itemsMap = await getItemsForOrders(rows.map((r) => r.id));
 
@@ -620,7 +625,7 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
       salesmanId: number;
       name: string | null;
       phone: string;
-      orders: Array<{ id: number; status: string; bonusPoints: number; totalValue: number; createdAt: string }>;
+      orders: Array<{ id: number; status: string; bonusPoints: number; totalValue: number; createdAt: Date }>;
     };
 
     // Seed map with all salesmen (ensures those with no orders are included)
@@ -635,12 +640,13 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
       }
       const items = buildOrderItems(r, itemsMap, r.id);
       const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
-      byId[r.salesmanId].orders.push({ id: r.id, status: r.status, bonusPoints: r.bonusPoints, totalValue, createdAt: r.createdAt.toISOString() });
+      byId[r.salesmanId].orders.push({ id: r.id, status: r.status, bonusPoints: r.bonusPoints, totalValue, createdAt: r.createdAt });
     }
 
     const result = Object.values(byId).map((sm) => {
-      const active = sm.orders.filter((o) => o.status !== "cancelled");
+      const active    = sm.orders;
       const confirmed = sm.orders.filter((o) => o.status === "confirmed");
+      const curMonth  = sm.orders.filter((o) => o.createdAt >= monthStart && o.createdAt < monthEnd);
       return {
         salesmanId: sm.salesmanId,
         name: sm.name,
@@ -651,6 +657,8 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
         confirmedSalesValue: confirmed.reduce((s, o) => s + o.totalValue, 0),
         totalBonus: active.reduce((s, o) => s + o.bonusPoints, 0),
         confirmedBonus: confirmed.reduce((s, o) => s + o.bonusPoints, 0),
+        currentMonthOrders: curMonth.length,
+        currentMonthSalesValue: curMonth.reduce((s, o) => s + o.totalValue, 0),
       };
     });
 

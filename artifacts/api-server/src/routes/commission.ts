@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, ordersTable, orderItemsTable, commissionsTable } from "@workspace/db";
-import { eq, and, gte, lt, ne, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lt, ne, sql, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
@@ -212,6 +212,88 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       .returning();
 
     res.json(record);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── GET /commission/monthly-totals ──────────────────────────────────────────
+// Returns month-by-month totals across ALL salesmen with per-salesman % contribution
+router.get("/monthly-totals", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    // All non-cancelled orders
+    const orders = await db
+      .select({ id: ordersTable.id, salesmanId: ordersTable.salesmanId, createdAt: ordersTable.createdAt })
+      .from(ordersTable)
+      .where(ne(ordersTable.status, "cancelled"));
+
+    if (orders.length === 0) { res.json({ months: [] }); return; }
+
+    // All salesmen for name lookup
+    const salesmen = await db
+      .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
+      .from(usersTable)
+      .where(eq(usersTable.role, "salesman"));
+    const smMap: Record<number, { name: string | null; phone: string }> = {};
+    for (const sm of salesmen) smMap[sm.id] = { name: sm.name, phone: sm.phone! };
+
+    // Items for all orders
+    const orderIds = orders.map((o) => o.id);
+    const items = await db
+      .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
+      .from(orderItemsTable)
+      .where(
+        orderIds.length === 1
+          ? eq(orderItemsTable.orderId, orderIds[0])
+          : sql`${orderItemsTable.orderId} = ANY(ARRAY[${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)}])`
+      );
+
+    const valueMap: Record<number, number> = {};
+    for (const item of items) {
+      valueMap[item.orderId] = (valueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
+    }
+
+    type MonthKey = string;
+    type SmSales = { salesmanId: number; name: string | null; phone: string; salesAmount: number; orderCount: number };
+    const monthData: Record<MonthKey, { year: number; month: number; totalSales: number; orderCount: number; salesmen: Record<number, SmSales> }> = {};
+
+    for (const order of orders) {
+      const d = new Date(order.createdAt);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const key: MonthKey = `${year}-${String(month).padStart(2, "0")}`;
+      const value = valueMap[order.id] ?? 0;
+
+      if (!monthData[key]) monthData[key] = { year, month, totalSales: 0, orderCount: 0, salesmen: {} };
+      monthData[key].totalSales += value;
+      monthData[key].orderCount += 1;
+
+      const smInfo = smMap[order.salesmanId] ?? { name: null, phone: String(order.salesmanId) };
+      if (!monthData[key].salesmen[order.salesmanId]) {
+        monthData[key].salesmen[order.salesmanId] = { salesmanId: order.salesmanId, name: smInfo.name, phone: smInfo.phone, salesAmount: 0, orderCount: 0 };
+      }
+      monthData[key].salesmen[order.salesmanId].salesAmount += value;
+      monthData[key].salesmen[order.salesmanId].orderCount += 1;
+    }
+
+    const months = Object.values(monthData)
+      .sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month)
+      .map((m) => ({
+        year: m.year,
+        month: m.month,
+        label: new Date(m.year, m.month - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
+        totalSales: m.totalSales,
+        orderCount: m.orderCount,
+        salesmen: Object.values(m.salesmen)
+          .sort((a, b) => b.salesAmount - a.salesAmount)
+          .map((sm) => ({
+            ...sm,
+            pct: m.totalSales > 0 ? Math.round((sm.salesAmount / m.totalSales) * 100) : 0,
+          })),
+      }));
+
+    res.json({ months });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
