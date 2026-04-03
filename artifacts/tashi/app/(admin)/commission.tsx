@@ -377,7 +377,6 @@ function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () =>
 // ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
-  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<CommissionEntry | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -401,60 +400,19 @@ export default function CommissionScreen() {
     },
   });
 
-  const entries = (data ?? []).filter((e) => {
-    const q = search.toLowerCase();
-    return !q || (e.name?.toLowerCase().includes(q)) || e.phone.includes(q);
-  });
-
-  const totalConfirmedSales = (data ?? []).reduce((s, e) => s + e.confirmedSalesValue, 0);
-  const totalSalesmen = (data ?? []).length;
+  const entries = data ?? [];
 
   const renderHeader = useCallback(() => (
     <>
-      <View style={styles.summaryRow}>
-        <View style={[styles.summaryCard, { backgroundColor: "#EFF6FF" }]}>
-          <Feather name="users" size={16} color="#1D4ED8" />
-          <Text style={[styles.summaryVal, { color: "#1D4ED8" }]}>{totalSalesmen}</Text>
-          <Text style={styles.summarySub}>Salesmen</Text>
-        </View>
-        <View style={[styles.summaryCard, { backgroundColor: "#DCFCE7" }]}>
-          <Feather name="trending-up" size={16} color="#059669" />
-          <Text style={[styles.summaryVal, { color: "#059669" }]}>Rs. {fmt(totalConfirmedSales)}</Text>
-          <Text style={styles.summarySub}>Confirmed Sales</Text>
-        </View>
-        <View style={[styles.summaryCard, { backgroundColor: "#FEF3C7" }]}>
-          <Feather name="percent" size={16} color="#D97706" />
-          <Text style={[styles.summaryVal, { color: "#D97706" }]}>Tap to</Text>
-          <Text style={styles.summarySub}>Calculate</Text>
-        </View>
-      </View>
-
-      <View style={styles.searchBar}>
-        <Feather name="search" size={15} color={Colors.textLight} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search salesman..."
-          placeholderTextColor={Colors.textLight}
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch("")}>
-            <Feather name="x" size={15} color={Colors.textLight} />
-          </TouchableOpacity>
-        )}
-      </View>
-
       {entries.length === 0 && !isLoading && (
         <View style={styles.empty}>
           <Feather name="percent" size={44} color={Colors.textLight} />
-          <Text style={styles.emptyTitle}>{search ? "No results" : "No salesmen yet"}</Text>
-          <Text style={styles.emptySub}>{search ? "Try a different name or phone" : "Commission data will appear once orders are placed"}</Text>
+          <Text style={styles.emptyTitle}>No salesmen yet</Text>
+          <Text style={styles.emptySub}>Commission data will appear once orders are placed</Text>
         </View>
       )}
     </>
-  ), [totalSalesmen, totalConfirmedSales, search, entries.length, isLoading]);
+  ), [entries.length, isLoading]);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
