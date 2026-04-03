@@ -16,7 +16,6 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
       role: usersTable.role,
       name: usersTable.name,
       city: usersTable.city,
-      directoryPhone: usersTable.directoryPhone,
       regionId: usersTable.regionId,
       points: usersTable.points,
       createdAt: usersTable.createdAt,
@@ -33,7 +32,7 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { phone, password, role, name, email, city, directoryPhone, regionId } = req.body;
+    const { phone, password, role, name, email, city, regionId } = req.body;
     if (!phone || !password || !role) {
       res.status(400).json({ error: "Phone, password, and role are required" });
       return;
@@ -59,7 +58,6 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       name: name?.trim() || null,
       email: email?.trim() || null,
       city: city?.trim() || null,
-      directoryPhone: directoryPhone?.trim() || null,
       regionId: regionId ? Number(regionId) : null,
       points: 0,
     }).returning();
@@ -71,7 +69,6 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       role: user.role,
       name: user.name,
       city: user.city,
-      directoryPhone: user.directoryPhone,
       regionId: user.regionId,
       points: user.points,
       createdAt: user.createdAt.toISOString(),
@@ -116,7 +113,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid user id" }); return; }
-    const { phone, role, name, email, city, directoryPhone, password, regionId } = req.body;
+    const { phone, role, name, email, city, password, regionId } = req.body;
     const validRoles = ["admin", "salesman", "mechanic", "retailer"];
     if (role && !validRoles.includes(role)) {
       res.status(400).json({ error: "Invalid role" }); return;
@@ -133,7 +130,6 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     if (name !== undefined) updates.name = name?.trim() || null;
     if (email !== undefined) updates.email = email?.trim() || null;
     if (city !== undefined) updates.city = city?.trim() || null;
-    if (directoryPhone !== undefined) updates.directoryPhone = directoryPhone?.trim() || null;
     if (regionId !== undefined) updates.regionId = regionId ? Number(regionId) : null;
     if (password) {
       if (password.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
@@ -144,7 +140,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     const user = updated[0];
     res.json({
       id: user.id, phone: user.phone, email: user.email, role: user.role,
-      name: user.name, city: user.city, directoryPhone: user.directoryPhone,
+      name: user.name, city: user.city,
       regionId: user.regionId, points: user.points,
       createdAt: user.createdAt.toISOString(),
     });

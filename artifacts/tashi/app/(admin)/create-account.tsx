@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Contacts from "expo-contacts";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Redirect, router } from "expo-router";
@@ -89,7 +91,6 @@ interface User {
   role: Role;
   name: string | null;
   city: string | null;
-  directoryPhone: string | null;
   regionId: number | null;
   points: number;
   createdAt: string;
@@ -141,8 +142,11 @@ export default function CreateAccountScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
-  const [directoryPhone, setDirectoryPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [contactsVisible, setContactsVisible] = useState(false);
+  const [contactsList, setContactsList] = useState<Contacts.Contact[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactsLoading, setContactsLoading] = useState(false);
   const [role, setRole] = useState<Role>("retailer");
   const [access, setAccess] = useState({ ...DEFAULT_ACCESS });
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -175,10 +179,43 @@ export default function CreateAccountScreen() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  const openContactsPicker = async () => {
+    if (Platform.OS === "web") return;
+    setContactsLoading(true);
+    setContactsVisible(true);
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== "granted") {
+        setContactsVisible(false);
+        Alert.alert("Permission Denied", "Please allow contacts access in your device settings.");
+        return;
+      }
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+        sort: Contacts.SortTypes.FirstName,
+      });
+      setContactsList(data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0));
+      setContactSearch("");
+    } catch {
+      Alert.alert("Error", "Could not load contacts.");
+      setContactsVisible(false);
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
+  const selectContact = (contact: Contacts.Contact) => {
+    const raw = contact.phoneNumbers?.[0]?.number ?? "";
+    const cleaned = raw.replace(/\D/g, "").replace(/^92/, "0").replace(/^0+/, "0");
+    setPhone(cleaned);
+    setContactsVisible(false);
+    setContactSearch("");
+  };
+
   const openAdd = () => {
     setEditingUser(null);
     setErrorMsg("");
-    setName(""); setPhone(""); setCity(""); setDirectoryPhone(""); setPassword("");
+    setName(""); setPhone(""); setCity(""); setPassword("");
     setRole(activeFilter !== "all" ? activeFilter : "retailer");
     setAccess({ ...DEFAULT_ACCESS });
     setRegionId(null);
@@ -194,7 +231,6 @@ export default function CreateAccountScreen() {
     setName(user.name || "");
     setPhone(user.phone);
     setCity(user.city || "");
-    setDirectoryPhone(user.directoryPhone || "");
     setPassword("");
     setRole(user.role);
     setAccess({ ...DEFAULT_ACCESS });
@@ -226,7 +262,6 @@ export default function CreateAccountScreen() {
     try {
       const body: Record<string, any> = {
         name: name.trim(), phone: phone.trim(), city: city.trim(), role,
-        directoryPhone: directoryPhone.trim() || null,
         regionId: regionId ?? null,
       };
       if (password.trim()) body.password = password;
@@ -466,14 +501,25 @@ export default function CreateAccountScreen() {
                 </View>
 
                 <Text style={styles.fieldLabel}>Phone Number *</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="e.g. 03001234567"
-                  placeholderTextColor={Colors.textLight}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
+                <View style={caStyles.phoneRow}>
+                  <TextInput
+                    style={[styles.modalInput, caStyles.phoneInput]}
+                    placeholder="e.g. 03001234567"
+                    placeholderTextColor={Colors.textLight}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                  />
+                  {Platform.OS !== "web" && (
+                    <TouchableOpacity
+                      style={caStyles.contactsBtn}
+                      onPress={openContactsPicker}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="book-open" size={18} color={Colors.white} />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 <Text style={styles.fieldLabel}>Full Name</Text>
                 <TextInput
@@ -493,16 +539,6 @@ export default function CreateAccountScreen() {
                   value={city}
                   onChangeText={setCity}
                   autoCorrect={false}
-                />
-
-                <Text style={styles.fieldLabel}>Directory Phone</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="e.g. 03001234567"
-                  placeholderTextColor={Colors.textLight}
-                  value={directoryPhone}
-                  onChangeText={setDirectoryPhone}
-                  keyboardType="phone-pad"
                 />
 
                 {(role === "retailer" || role === "salesman") && (
@@ -627,6 +663,80 @@ export default function CreateAccountScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Contacts Picker Modal */}
+      <Modal visible={contactsVisible} transparent animationType="slide" onRequestClose={() => setContactsVisible(false)}>
+        <View style={caStyles.contactsOverlay}>
+          <View style={[caStyles.contactsSheet, { paddingBottom: bottomPad + 16 }]}>
+            <View style={caStyles.contactsHandle} />
+            <View style={caStyles.contactsHeader}>
+              <Text style={caStyles.contactsTitle}>Select Contact</Text>
+              <TouchableOpacity onPress={() => setContactsVisible(false)} activeOpacity={0.7}>
+                <Feather name="x" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={caStyles.contactsSearchWrap}>
+              <Feather name="search" size={15} color={Colors.textSecondary} />
+              <TextInput
+                style={caStyles.contactsSearchInput}
+                placeholder="Search contacts…"
+                placeholderTextColor={Colors.textLight}
+                value={contactSearch}
+                onChangeText={setContactSearch}
+                autoFocus
+                autoCorrect={false}
+              />
+              {contactSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setContactSearch("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="x" size={14} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            {contactsLoading ? (
+              <View style={caStyles.contactsLoading}>
+                <ActivityIndicator size="large" color={Colors.adminAccent} />
+                <Text style={caStyles.contactsLoadingText}>Loading contacts…</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={contactsList.filter(c =>
+                  !contactSearch ||
+                  (c.name ?? "").toLowerCase().includes(contactSearch.toLowerCase()) ||
+                  (c.phoneNumbers?.[0]?.number ?? "").includes(contactSearch)
+                )}
+                keyExtractor={(item) => item.id ?? item.name ?? Math.random().toString()}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  <View style={caStyles.contactsEmpty}>
+                    <Feather name="users" size={36} color={Colors.textLight} />
+                    <Text style={caStyles.contactsEmptyText}>No contacts found</Text>
+                  </View>
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={caStyles.contactItem}
+                    onPress={() => selectContact(item)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={caStyles.contactAvatar}>
+                      <Text style={caStyles.contactAvatarText}>
+                        {(item.name ?? "?").charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={caStyles.contactInfo}>
+                      <Text style={caStyles.contactName} numberOfLines={1}>{item.name ?? "Unknown"}</Text>
+                      <Text style={caStyles.contactPhone} numberOfLines={1}>
+                        {item.phoneNumbers?.[0]?.number ?? ""}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={Colors.textLight} />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </View>
       </Modal>
 
       {/* Delete Confirm Modal */}
@@ -980,5 +1090,126 @@ const caStyles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: Colors.adminAccent,
     flexShrink: 0,
+  },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  phoneInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  contactsBtn: {
+    width: 45,
+    height: 45,
+    borderRadius: 12,
+    backgroundColor: Colors.adminAccent,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  contactsOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  contactsSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    maxHeight: "85%",
+  },
+  contactsHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  contactsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  contactsTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: Colors.adminText,
+  },
+  contactsSearchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F7F8FA",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  contactsSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.adminText,
+  },
+  contactsLoading: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    gap: 12,
+  },
+  contactsLoadingText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  contactsEmpty: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    gap: 10,
+  },
+  contactsEmptyText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textLight,
+  },
+  contactItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  contactAvatar: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: `${Colors.adminAccent}18`,
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  contactAvatarText: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: Colors.adminAccent,
+  },
+  contactInfo: { flex: 1 },
+  contactName: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.adminText,
+  },
+  contactPhone: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
 });
