@@ -492,16 +492,13 @@ function BillModal({
             {/* Top accent stripe */}
             <View style={billStyles.accentStripe} />
 
-            {/* Logo + brand */}
+            {/* Logo */}
             <View style={billStyles.logoRow}>
               <Image
                 source={require("@/assets/images/tashi-logo.png")}
                 style={billStyles.logo}
                 resizeMode="contain"
               />
-              <View style={billStyles.billBadge}>
-                <Text style={billStyles.billBadgeText}>DISPATCH BILL</Text>
-              </View>
             </View>
 
             {/* Divider */}
@@ -1050,10 +1047,10 @@ const billStyles = StyleSheet.create({
   },
 
   logoRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    alignItems: "center", justifyContent: "center",
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
   },
-  logo: { width: 200, height: 66 },
+  logo: { width: 240, height: 80 },
   billBadge: {
     backgroundColor: `${Colors.primary}15`,
     borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
