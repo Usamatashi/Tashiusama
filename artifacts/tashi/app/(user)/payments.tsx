@@ -110,16 +110,20 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
     <ViewShot ref={cardRef as any} options={{ format: "png", quality: 1 }}>
       <View style={rcStyles.card}>
         <View style={rcStyles.header}>
-          <Image source={{ uri: logoUri }} style={rcStyles.logo} resizeMode="contain" />
+          <View style={rcStyles.logoContainer}>
+            <Image source={{ uri: logoUri }} style={rcStyles.logo} resizeMode="contain" />
+          </View>
           <View style={rcStyles.badge}>
             <Feather name="check-circle" size={11} color="#fff" />
             <Text style={rcStyles.badgeText}>Payment Received</Text>
           </View>
         </View>
         <View style={rcStyles.body}>
-          <Text style={rcStyles.amountLabel}>Amount Collected</Text>
-          <Text style={rcStyles.amount}>Rs. {data.amount.toLocaleString()}</Text>
-          <View style={rcStyles.divider} />
+          <View style={rcStyles.amountSection}>
+            <Text style={rcStyles.amountLabel}>Amount Collected</Text>
+            <Text style={rcStyles.amount}>Rs. {data.amount.toLocaleString()}</Text>
+          </View>
+          <View style={[rcStyles.divider, { width: "100%" }]} />
           <View style={rcStyles.row}>
             <Feather name="user" size={13} color="#666" />
             <Text style={rcStyles.rowLabel}>Retailer</Text>
@@ -152,13 +156,6 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
               <Text style={rcStyles.rowValue}>{data.notes}</Text>
             </View>
           ) : null}
-          <View style={rcStyles.statusRow}>
-            <Feather name="clock" size={12} color="#D97706" />
-            <Text style={rcStyles.statusText}>Pending admin verification</Text>
-          </View>
-        </View>
-        <View style={rcStyles.footer}>
-          <Text style={rcStyles.footerText}>Powered by TASHI · Brake Parts Loyalty Program</Text>
         </View>
       </View>
     </ViewShot>
@@ -181,13 +178,14 @@ function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose:
       `Collected By: ${data.salesmanName}\n` +
       (data.notes ? `Notes: ${data.notes}\n` : "") +
       `\nShukria! - Tashi Brake Parts`;
-    const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
-    const canOpen = await Linking.canOpenURL(url);
-    if (!canOpen) {
-      Alert.alert("WhatsApp Not Found", "WhatsApp is not installed on this device. Please use SMS instead.");
-      return;
+    try {
+      const waUrl = `whatsapp://send?phone=${waPhone}&text=${encodeURIComponent(message)}`;
+      const webUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
+      const canOpenWa = await Linking.canOpenURL(waUrl);
+      await Linking.openURL(canOpenWa ? waUrl : webUrl);
+    } catch {
+      Alert.alert("WhatsApp Not Found", "Could not open WhatsApp. Please use SMS instead.");
     }
-    await Linking.openURL(url);
   }, [data]);
 
   const handleSMS = useCallback(async () => {
@@ -858,7 +856,13 @@ const rcStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  logo: { width: 110, height: 36 },
+  logoContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  logo: { width: 100, height: 34 },
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -870,8 +874,10 @@ const rcStyles = StyleSheet.create({
   },
   badgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
   body: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, gap: 10 },
-  amountLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#999", textTransform: "uppercase", letterSpacing: 0.7 },
-  amount: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#10B981" },
+  amountSection: { alignItems: "center", width: "100%" },
+  amountLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#999", textTransform: "uppercase", letterSpacing: 0.7, textAlign: "center" },
+  amount: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#10B981", textAlign: "center" },
+  dividerFull: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 4, width: "100%" },
   divider: { height: 1, backgroundColor: "#F0F0F0", marginVertical: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
   rowLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#999", width: 100 },
