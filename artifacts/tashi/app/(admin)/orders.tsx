@@ -508,7 +508,7 @@ function BillModal({
         <body>
           <div class="accent"></div>
           <div class="header">
-            <strong style="font-size:28px;color:#E87722;letter-spacing:1px;">TASHI</strong>
+            <img src="${logoDataUri}" style="width:180px;height:auto;" alt="Tashi" />
           </div>
           <hr class="divider"/>
           <div class="meta-grid">
