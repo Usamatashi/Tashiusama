@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -17,17 +18,23 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Sharing from "expo-sharing";
 import * as SMS from "expo-sms";
-import * as FileSystem from "expo-file-system";
-import ViewShot, { captureRef } from "react-native-view-shot";
+import ViewShot from "react-native-view-shot";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
 import { TASHI_LOGO_BASE64 } from "@/constants/tashibLogoBase64";
+
+function toWhatsAppPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("92")) return digits;
+  if (digits.startsWith("0")) return "92" + digits.slice(1);
+  return "92" + digits;
+}
 
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -162,31 +169,26 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
 function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const cardRef = useRef<ViewShot | null>(null);
-  const [sharing, setSharing] = useState(false);
 
   const handleWhatsApp = useCallback(async () => {
-    if (!cardRef.current) return;
-    setSharing(true);
-    try {
-      const uri = await captureRef(cardRef, { format: "png", quality: 1 });
-      const destUri = `${FileSystem.cacheDirectory}tashi-receipt-${Date.now()}.png`;
-      await FileSystem.copyAsync({ from: uri, to: destUri });
-      const canShare = await Sharing.isAvailableAsync();
-      if (!canShare) {
-        Alert.alert("Sharing not available", "Sharing is not supported on this device.");
-        return;
-      }
-      await Sharing.shareAsync(destUri, {
-        mimeType: "image/png",
-        dialogTitle: "Share Receipt via WhatsApp",
-        UTI: "public.png",
-      });
-    } catch (e) {
-      Alert.alert("Error", "Could not capture receipt image. Please try SMS instead.");
-    } finally {
-      setSharing(false);
+    const waPhone = toWhatsAppPhone(data.retailerPhone);
+    const dateStr = new Date(data.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    const message =
+      `Assalam-o-Alaikum ${data.retailerName || data.retailerPhone}!\n\n` +
+      `Aap ki payment receive ho gayi hai.\n\n` +
+      `Amount: Rs. ${data.amount.toLocaleString()}\n` +
+      `Date: ${dateStr}\n` +
+      `Collected By: ${data.salesmanName}\n` +
+      (data.notes ? `Notes: ${data.notes}\n` : "") +
+      `\nShukria! - Tashi Brake Parts`;
+    const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
+    const canOpen = await Linking.canOpenURL(url);
+    if (!canOpen) {
+      Alert.alert("WhatsApp Not Found", "WhatsApp is not installed on this device. Please use SMS instead.");
+      return;
     }
-  }, []);
+    await Linking.openURL(url);
+  }, [data]);
 
   const handleSMS = useCallback(async () => {
     const isAvailable = await SMS.isAvailableAsync();
@@ -224,12 +226,9 @@ function ShareReceiptModal({ data, onClose }: { data: ShareReceiptData; onClose:
               style={[shareStyles.actionBtn, shareStyles.waBtn]}
               onPress={handleWhatsApp}
               activeOpacity={0.8}
-              disabled={sharing}
             >
-              {sharing
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <><Feather name="image" size={18} color="#fff" /><Text style={shareStyles.actionBtnText}>Share Image (WhatsApp)</Text></>
-              }
+              <FontAwesome name="whatsapp" size={20} color="#fff" />
+              <Text style={shareStyles.actionBtnText}>Send WhatsApp Message</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
