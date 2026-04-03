@@ -243,11 +243,7 @@ router.get("/monthly-totals", requireAuth, requireAdmin, async (req, res) => {
     const items = await db
       .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
       .from(orderItemsTable)
-      .where(
-        orderIds.length === 1
-          ? eq(orderItemsTable.orderId, orderIds[0])
-          : sql`${orderItemsTable.orderId} = ANY(ARRAY[${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)}])`
-      );
+      .where(inArray(orderItemsTable.orderId, orderIds));
 
     const valueMap: Record<number, number> = {};
     for (const item of items) {

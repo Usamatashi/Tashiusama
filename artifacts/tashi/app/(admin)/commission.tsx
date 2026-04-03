@@ -62,6 +62,8 @@ function MonthlyTotalsModal({ visible, onClose }: { visible: boolean; onClose: (
       return res.json();
     },
     enabled: visible,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const months = data?.months ?? [];
