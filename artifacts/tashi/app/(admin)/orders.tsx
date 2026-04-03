@@ -457,12 +457,19 @@ function BillModal({
         return;
       }
 
-      const logoAsset = Asset.fromModule(require("@/assets/images/tashi-logo.png"));
-      await logoAsset.downloadAsync();
-      const logoBase64 = await FileSystem.readAsStringAsync(logoAsset.localUri!, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const logoDataUri = `data:image/png;base64,${logoBase64}`;
+      let logoDataUri = "";
+      try {
+        const logoAsset = Asset.fromModule(require("@/assets/images/tashi-logo.png"));
+        await logoAsset.downloadAsync();
+        if (logoAsset.localUri) {
+          const logoBase64 = await FileSystem.readAsStringAsync(logoAsset.localUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          logoDataUri = `data:image/png;base64,${logoBase64}`;
+        }
+      } catch {
+        // Logo loading failed, will use text fallback in PDF
+      }
 
       const itemRows = items.map(i => `
         <tr>
@@ -508,7 +515,10 @@ function BillModal({
         <body>
           <div class="accent"></div>
           <div class="header">
-            <img src="${logoDataUri}" style="width:180px;height:auto;" alt="Tashi" />
+            ${logoDataUri
+              ? `<img src="${logoDataUri}" style="width:180px;height:auto;" alt="Tashi" />`
+              : `<strong style="font-size:28px;color:#E87722;letter-spacing:1px;">TASHI</strong>`
+            }
           </div>
           <hr class="divider"/>
           <div class="meta-grid">
