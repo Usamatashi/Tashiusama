@@ -197,12 +197,11 @@ function SummaryBanner({ entries, onPressSales }: { entries: CommissionEntry[]; 
 }
 
 // ─── Salesman Card ─────────────────────────────────────────────────────────────
-function SalesmanCard({ item, rank, onPress }: { item: CommissionEntry; rank: number; onPress: () => void }) {
+function SalesmanCard({ item, rank, onPress, contributionPct }: { item: CommissionEntry; rank: number; onPress: () => void; contributionPct: number }) {
   const displayName = item.name || item.phone;
   const initials = displayName.slice(0, 2).toUpperCase();
   const hasOrders = item.totalOrders > 0;
   const color = avatarColor(item.salesmanId);
-  const confirmedPct = item.totalOrders > 0 ? Math.round((item.confirmedOrders / item.totalOrders) * 100) : 0;
 
   return (
     <TouchableOpacity
@@ -234,35 +233,18 @@ function SalesmanCard({ item, rank, onPress }: { item: CommissionEntry; rank: nu
 
       {/* Active salesman stats */}
       {hasOrders && (
-        <>
-          <View style={styles.chipRow}>
-            <View style={[styles.chip, { backgroundColor: "#EFF6FF" }]}>
-              <Feather name="shopping-bag" size={11} color="#1D4ED8" />
-              <Text style={[styles.chipText, { color: "#1D4ED8" }]}>{item.currentMonthOrders} this month</Text>
-            </View>
-            <View style={[styles.chip, { backgroundColor: "#DCFCE7" }]}>
-              <Feather name="check" size={11} color="#059669" />
-              <Text style={[styles.chipText, { color: "#059669" }]}>{item.confirmedOrders} confirmed</Text>
-            </View>
-            <View style={[styles.chip, { backgroundColor: "#FEF3C7" }]}>
-              <Feather name="star" size={11} color={Colors.adminAccent} />
-              <Text style={[styles.chipText, { color: Colors.adminAccent }]}>{item.totalBonus} pts</Text>
-            </View>
+        <View style={styles.salesRow}>
+          <View>
+            <Text style={styles.salesLbl}>This Month Sales</Text>
+            <Text style={[styles.salesVal, { color }]}>Rs. {item.currentMonthSalesValue.toLocaleString()}</Text>
           </View>
-
-          <View style={styles.salesRow}>
-            <View>
-              <Text style={styles.salesLbl}>This Month Sales</Text>
-              <Text style={[styles.salesVal, { color }]}>Rs. {item.currentMonthSalesValue.toLocaleString()}</Text>
+          <View style={styles.progressWrap}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${contributionPct}%`, backgroundColor: color }]} />
             </View>
-            <View style={styles.progressWrap}>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${confirmedPct}%`, backgroundColor: color }]} />
-              </View>
-              <Text style={styles.progressLbl}>{confirmedPct}% confirmed</Text>
-            </View>
+            <Text style={styles.progressLbl}>{contributionPct}% of month</Text>
           </View>
-        </>
+        </View>
       )}
 
       {!hasOrders && (
@@ -299,6 +281,8 @@ export default function CommissionScreen() {
     if (a.totalOrders === 0 && b.totalOrders > 0) return 1;
     return b.currentMonthSalesValue - a.currentMonthSalesValue;
   });
+
+  const totalMonthSales = entries.reduce((s, e) => s + e.currentMonthSalesValue, 0);
 
   function handleCardPress(item: CommissionEntry) {
     router.push({
@@ -351,7 +335,12 @@ export default function CommissionScreen() {
           data={entries}
           keyExtractor={(item) => String(item.salesmanId)}
           renderItem={({ item, index }) => (
-            <SalesmanCard item={item} rank={index + 1} onPress={() => handleCardPress(item)} />
+            <SalesmanCard
+              item={item}
+              rank={index + 1}
+              onPress={() => handleCardPress(item)}
+              contributionPct={totalMonthSales > 0 ? Math.round((item.currentMonthSalesValue / totalMonthSales) * 100) : 0}
+            />
           )}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={[styles.list, { paddingBottom: bottomPad + 24 }]}
