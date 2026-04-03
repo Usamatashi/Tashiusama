@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,13 +9,14 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import ViewShot from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -432,6 +433,9 @@ function BillModal({
   visible: boolean;
   onClose: () => void;
 }) {
+  const viewShotRef = useRef<ViewShot>(null);
+  const [sharing, setSharing] = useState(false);
+
   if (!order) return null;
 
   const items = order.items ?? [];
@@ -445,34 +449,26 @@ function BillModal({
 
   const handleShare = async () => {
     Haptics.selectionAsync();
-    const itemLines = items
-      .map(i => `  • ${i.productName || "Product"} × ${i.quantity}  –  Rs. ${i.totalValue.toLocaleString()}`)
-      .join("\n");
-
-    const billText = [
-      "━━━━━━━━━━━━━━━━━━━━━━━━",
-      "🧾  *TASHI — DISPATCH BILL*",
-      "━━━━━━━━━━━━━━━━━━━━━━━━",
-      `📦  Order #${order.id}`,
-      `👤  Customer: ${order.retailerName || order.retailerPhone || "—"}`,
-      `📞  Phone: ${order.retailerPhone || "—"}`,
-      `📅  Date: ${date}  ${time}`,
-      "",
-      "🛒  *ITEMS*",
-      "────────────────────────",
-      itemLines,
-      "────────────────────────",
-      `💰  *Total: Rs. ${grandTotal.toLocaleString()}*`,
-      "",
-      "✅  Status: DISPATCHED",
-      "━━━━━━━━━━━━━━━━━━━━━━━━",
-      "Powered by *Tashi*",
-    ].join("\n");
-
+    setSharing(true);
     try {
-      await Share.share({ message: billText, title: `Tashi Bill – Order #${order.id}` });
+      if (Platform.OS === "web") {
+        Alert.alert("Share", "Image sharing is only available on mobile devices.");
+        return;
+      }
+      const uri = await (viewShotRef.current as any).capture();
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert("Sharing unavailable", "Your device does not support sharing.");
+        return;
+      }
+      await Sharing.shareAsync(uri, {
+        mimeType: "image/png",
+        dialogTitle: `Tashi Bill – Order #${order.id}`,
+      });
     } catch (e) {
-      Alert.alert("Error", "Could not open share sheet.");
+      Alert.alert("Error", "Could not share the bill. Please try again.");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -490,7 +486,8 @@ function BillModal({
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-          {/* Bill card */}
+          {/* Bill card — captured as image for sharing */}
+          <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1.0 }}>
           <View style={billStyles.billCard}>
             {/* Top accent stripe */}
             <View style={billStyles.accentStripe} />
@@ -589,11 +586,19 @@ function BillModal({
               <Text style={billStyles.footerBrand}>Tashi</Text>
             </View>
           </View>
+          </ViewShot>
 
           {/* Share button */}
-          <TouchableOpacity style={billStyles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
-            <Feather name="share-2" size={18} color="#fff" />
-            <Text style={billStyles.shareBtnText}>Send to Customer</Text>
+          <TouchableOpacity
+            style={[billStyles.shareBtn, sharing && { opacity: 0.7 }]}
+            onPress={handleShare}
+            activeOpacity={0.85}
+            disabled={sharing}
+          >
+            {sharing
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Feather name="share-2" size={18} color="#fff" />}
+            <Text style={billStyles.shareBtnText}>{sharing ? "Preparing..." : "Send to Customer"}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
