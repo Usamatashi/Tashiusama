@@ -13,6 +13,7 @@
     "@react-navigation/drawer": "^7.9.5",
     "expo-camera": "^17.0.10",
     "expo-contacts": "^55.0.9",
+    "expo-print": "^55.0.9",
     "expo-sharing": "^55.0.14",
     "expo-sms": "56.0.0-canary-20260305-5163746",
     "react-native-qrcode-svg": "^6.3.21",

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import ViewShot from "react-native-view-shot";
+import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -433,7 +433,6 @@ function BillModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const viewShotRef = useRef<ViewShot>(null);
   const [sharing, setSharing] = useState(false);
 
   if (!order) return null;
@@ -452,21 +451,122 @@ function BillModal({
     setSharing(true);
     try {
       if (Platform.OS === "web") {
-        Alert.alert("Share", "Image sharing is only available on mobile devices.");
+        Alert.alert("Share", "PDF sharing is only available on mobile devices.");
         return;
       }
-      const uri = await (viewShotRef.current as any).capture();
+
+      const itemRows = items.map(i => `
+        <tr>
+          <td>${i.productName || "Product"}</td>
+          <td style="text-align:center">${i.quantity}</td>
+          <td style="text-align:right">Rs. ${i.totalValue.toLocaleString()}</td>
+        </tr>
+      `).join("");
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8"/>
+          <meta name="viewport" content="width=device-width, initial-scale=1"/>
+          <style>
+            * { margin:0; padding:0; box-sizing:border-box; }
+            body { font-family: Arial, sans-serif; color: #1a1a2e; background: #fff; padding: 32px 28px; }
+            .accent { background: #E87722; height: 8px; border-radius: 4px; margin-bottom: 28px; }
+            .header { text-align: center; margin-bottom: 24px; }
+            .header img { width: 180px; }
+            .divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+            .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; background: #f9f9fb; border-radius: 12px; padding: 16px; }
+            .meta-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+            .meta-value { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+            .customer-box { display: flex; align-items: center; gap: 14px; background: #fff8f4; border: 1px solid rgba(232,119,34,0.2); border-radius: 12px; padding: 14px; margin-bottom: 20px; }
+            .customer-icon { width: 42px; height: 42px; background: rgba(232,119,34,0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+            .customer-name { font-size: 16px; font-weight: 700; }
+            .customer-phone { font-size: 13px; color: #888; margin-top: 2px; }
+            table { width: 100%; border-collapse: collapse; font-size: 14px; }
+            thead tr { background: #f7f8fa; }
+            thead th { padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #888; }
+            thead th:nth-child(2) { text-align: center; }
+            thead th:nth-child(3) { text-align: right; }
+            tbody tr { border-bottom: 1px solid #f0f0f0; }
+            tbody td { padding: 12px; vertical-align: middle; }
+            .total-row { background: #E87722; color: #fff; border-radius: 10px; }
+            .total-row td { padding: 14px 12px; font-weight: 700; font-size: 15px; }
+            .footer { text-align: center; margin-top: 32px; color: #bbb; font-size: 12px; }
+            .footer strong { color: #E87722; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="accent"></div>
+          <div class="header">
+            <strong style="font-size:28px;color:#E87722;letter-spacing:1px;">TASHI</strong>
+          </div>
+          <hr class="divider"/>
+          <div class="meta-grid">
+            <div>
+              <div class="meta-label">Order No.</div>
+              <div class="meta-value">#${order.id}</div>
+            </div>
+            <div>
+              <div class="meta-label">Date</div>
+              <div class="meta-value">${date}</div>
+            </div>
+            <div>
+              <div class="meta-label">Time</div>
+              <div class="meta-value">${time}</div>
+            </div>
+            <div>
+              <div class="meta-label">Status</div>
+              <div class="meta-value" style="color:#3b82f6">DISPATCHED</div>
+            </div>
+          </div>
+          <div class="customer-box">
+            <div class="customer-icon">👤</div>
+            <div>
+              <div class="customer-name">${order.retailerName || "Customer"}</div>
+              ${order.retailerPhone ? `<div class="customer-phone">${order.retailerPhone}</div>` : ""}
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRows}
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="2">Grand Total</td>
+                <td style="text-align:right">Rs. ${grandTotal.toLocaleString()}</td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="footer">
+            <p>Thank you for your business!</p>
+            <br/>
+            <strong>Tashi</strong>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
         Alert.alert("Sharing unavailable", "Your device does not support sharing.");
         return;
       }
       await Sharing.shareAsync(uri, {
-        mimeType: "image/png",
+        mimeType: "application/pdf",
         dialogTitle: `Tashi Bill – Order #${order.id}`,
+        UTI: "com.adobe.pdf",
       });
     } catch (e) {
-      Alert.alert("Error", "Could not share the bill. Please try again.");
+      Alert.alert("Error", "Could not generate the bill PDF. Please try again.");
     } finally {
       setSharing(false);
     }
@@ -486,8 +586,7 @@ function BillModal({
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-          {/* Bill card — captured as image for sharing */}
-          <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1.0 }}>
+          {/* Bill card */}
           <View style={billStyles.billCard}>
             {/* Top accent stripe */}
             <View style={billStyles.accentStripe} />
@@ -583,7 +682,6 @@ function BillModal({
               <Text style={billStyles.footerBrand}>Tashi</Text>
             </View>
           </View>
-          </ViewShot>
 
           {/* Share button */}
           <TouchableOpacity
