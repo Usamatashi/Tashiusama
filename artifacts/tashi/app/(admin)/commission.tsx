@@ -325,23 +325,59 @@ function CommissionModal({
 function SalesmanCard({ item, onPress }: { item: CommissionEntry; onPress: () => void }) {
   const displayName = item.name || item.phone;
   const initials = displayName.slice(0, 2).toUpperCase();
+  const hasOrders = item.totalOrders > 0;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+      {/* Header row */}
       <View style={styles.cardHeader}>
-        <View style={styles.avatar}>
+        <View style={[styles.avatar, !hasOrders && { backgroundColor: "#94A3B8" }]}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName} numberOfLines={1}>{displayName}</Text>
           <Text style={styles.cardPhone}>{item.phone}</Text>
         </View>
-        <View style={styles.calcBadge}>
-          <Feather name="percent" size={12} color={Colors.adminAccent} />
-          <Text style={styles.calcText}>Calculate</Text>
-        </View>
+        {hasOrders ? (
+          <View style={styles.calcBadge}>
+            <Feather name="percent" size={12} color={Colors.adminAccent} />
+            <Text style={styles.calcText}>Calculate</Text>
+          </View>
+        ) : (
+          <View style={styles.noOrderBadge}>
+            <Feather name="minus-circle" size={12} color="#94A3B8" />
+            <Text style={styles.noOrderText}>No Orders</Text>
+          </View>
+        )}
       </View>
 
+      {/* Order stats row — only when orders exist */}
+      {hasOrders && (
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{item.totalOrders}</Text>
+            <Text style={styles.statLabel}>Total Orders</Text>
+          </View>
+          <View style={[styles.statBox, styles.statBoxMid]}>
+            <Text style={[styles.statValue, { color: "#059669" }]}>{item.confirmedOrders}</Text>
+            <Text style={styles.statLabel}>Confirmed</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={[styles.statValue, { color: Colors.adminAccent, fontSize: 12 }]}>
+              Rs. {item.totalSalesValue.toLocaleString()}
+            </Text>
+            <Text style={styles.statLabel}>Sales Value</Text>
+          </View>
+        </View>
+      )}
+
+      {/* No-orders notice */}
+      {!hasOrders && (
+        <View style={styles.noOrderRow}>
+          <Feather name="info" size={13} color="#94A3B8" />
+          <Text style={styles.noOrderNotice}>No orders placed yet</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -478,6 +514,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF3C7",
   },
   calcText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.adminAccent },
+  noOrderBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+  },
+  noOrderText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#94A3B8" },
+  noOrderRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingTop: 4,
+  },
+  noOrderNotice: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#94A3B8" },
 
   statsGrid: { flexDirection: "row" },
   statBox: { flex: 1, alignItems: "center", gap: 2 },

@@ -590,6 +590,12 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
 // ─── GET /orders/salesman-commissions — admin only ────────────────────────────
 router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) => {
   try {
+    // Fetch ALL salesmen regardless of whether they have orders
+    const allSalesmen = await db
+      .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
+      .from(usersTable)
+      .where(eq(usersTable.role, "salesman"));
+
     const rows = await db
       .select({
         id: ordersTable.id,
@@ -617,7 +623,12 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
       orders: Array<{ id: number; status: string; bonusPoints: number; totalValue: number; createdAt: string }>;
     };
 
+    // Seed map with all salesmen (ensures those with no orders are included)
     const byId: Record<number, SmEntry> = {};
+    for (const sm of allSalesmen) {
+      byId[sm.id] = { salesmanId: sm.id, name: sm.name, phone: sm.phone!, orders: [] };
+    }
+
     for (const r of rows) {
       if (!byId[r.salesmanId]) {
         byId[r.salesmanId] = { salesmanId: r.salesmanId, name: r.salesmanName, phone: r.salesmanPhone!, orders: [] };
