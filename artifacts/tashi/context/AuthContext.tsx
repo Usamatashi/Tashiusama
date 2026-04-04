@@ -27,13 +27,30 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const STORAGE_KEY_TOKEN = "tashi_token";
 const STORAGE_KEY_USER = "tashi_user";
 
+const RAILWAY_URL = process.env.EXPO_PUBLIC_RAILWAY_URL ?? "";
+const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+
+function resolveApiBaseUrl(): string {
+  if (RAILWAY_URL) {
+    return RAILWAY_URL.startsWith("http") ? RAILWAY_URL : `https://${RAILWAY_URL}`;
+  }
+  if (DOMAIN) {
+    return `https://${DOMAIN}`;
+  }
+  return "";
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+    const baseUrl = resolveApiBaseUrl();
+    if (baseUrl) {
+      setBaseUrl(baseUrl);
+    }
+
     let storedToken: string | null = null;
     setAuthTokenGetter(() => storedToken);
 
@@ -59,32 +76,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (phone: string, password: string) => {
-    const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/auth/login`, {
+    const baseUrl = resolveApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, password }),
     });
-    let body: any;
-    try {
-      body = await res.json();
-    } catch {
-      throw new Error("Server error. Please try again.");
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error ?? "Login failed");
     }
-    if (!res.ok) {
-      throw new Error(body?.error || "Login failed");
-    }
-    const data = body;
-    const newToken = data.token as string;
-    const newUser = data.user as AuthUser;
-    await AsyncStorage.setItem(STORAGE_KEY_TOKEN, newToken);
-    await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
+
+    const data = await response.json();
+    const { token: newToken, user: newUser } = data;
+
+    await Promise.all([
+      AsyncStorage.setItem(STORAGE_KEY_TOKEN, newToken),
+      AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser)),
+    ]);
+
     setToken(newToken);
     setUser(newUser);
     setAuthTokenGetter(() => newToken);
   }, []);
 
   const logout = useCallback(async () => {
-    await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_USER]);
+    await Promise.all([
+      AsyncStorage.removeItem(STORAGE_KEY_TOKEN),
+      AsyncStorage.removeItem(STORAGE_KEY_USER),
+    ]);
     setToken(null);
     setUser(null);
     setAuthTokenGetter(() => null);
@@ -92,14 +113,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     if (!token) return;
+    const baseUrl = resolveApiBaseUrl();
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/auth/me`, {
+      const response = await fetch(`${baseUrl}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const fresh = await res.json() as AuthUser;
-        setUser(fresh);
-        await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(fresh));
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUser(updatedUser);
+        await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(updatedUser));
       }
     } catch {
       // ignore
@@ -108,14 +130,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     if (!token) throw new Error("Not authenticated");
-    const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/auth/change-password`, {
+    const baseUrl = resolveApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/auth/change-password`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ currentPassword, newPassword }),
     });
-    let body: any;
-    try { body = await res.json(); } catch { throw new Error("Server error"); }
-    if (!res.ok) throw new Error(body?.error || "Failed to change password");
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error ?? "Password change failed");
+    }
   }, [token]);
 
   return (
@@ -125,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;

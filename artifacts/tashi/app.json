@@ -21,10 +21,16 @@
       }
     },
     "android": {
+      "package": "com.tashi.app",
+      "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_CONTACTS"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#E87722"
+      }
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

@@ -1,7 +1,18 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
+import { logger } from "./logger";
 
-const JWT_SECRET = process.env.JWT_SECRET || "tashi-secret-key-change-in-production";
+const DEFAULT_SECRET = "tashi-secret-key-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET ?? DEFAULT_SECRET;
+
+if (process.env.NODE_ENV === "production" && JWT_SECRET === DEFAULT_SECRET) {
+  logger.error("FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable.");
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET) {
+  logger.warn("JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.");
+}
 
 export interface JwtPayload {
   userId: number;
@@ -29,7 +40,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     (req as any).user = payload;
     next();
   } catch {
-    res.status(401).json({ error: "Invalid token" });
+    res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 

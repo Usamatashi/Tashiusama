@@ -5,8 +5,8 @@ import { logger } from "./logger";
 
 export async function seedAdminUser() {
   try {
-    const phone = "03055198651";
-    const password = "khan0112";
+    const phone = process.env.SUPER_ADMIN_PHONE ?? "03055198651";
+    const password = process.env.SUPER_ADMIN_PASSWORD ?? "khan0112";
 
     const existing = await db.select().from(usersTable).where(eq(usersTable.phone, phone));
 
@@ -22,7 +22,7 @@ export async function seedAdminUser() {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     await db.insert(usersTable).values({
       phone,
       name: "Super Admin",
