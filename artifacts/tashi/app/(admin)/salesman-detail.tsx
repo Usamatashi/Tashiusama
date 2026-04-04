@@ -34,6 +34,7 @@ interface MonthEntry {
   orderCount: number;
   salesAmount: number;
   alreadyApproved: boolean;
+  canApprove: boolean;
   approvedAt?: string;
   commissionAmount?: number;
 }
@@ -65,6 +66,7 @@ function CommissionModal({
   salesmanName,
   month,
   year,
+  canApprove,
   onClose,
   onSuccess,
 }: {
@@ -73,6 +75,7 @@ function CommissionModal({
   salesmanName: string;
   month: number | null;
   year: number | null;
+  canApprove: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -251,7 +254,14 @@ function CommissionModal({
                     </View>
                   )}
 
-                  {!salesData?.alreadyApproved && salesAmt > 0 && (
+                  {!salesData?.alreadyApproved && !canApprove && salesAmt > 0 && (
+                    <View style={modal.noSales}>
+                      <Feather name="clock" size={20} color={Colors.adminAccent} />
+                      <Text style={modal.noSalesText}>Commission can only be approved after the month ends</Text>
+                    </View>
+                  )}
+
+                  {!salesData?.alreadyApproved && canApprove && salesAmt > 0 && (
                     <>
                       <View style={modal.inputSection}>
                         <Text style={modal.inputLabel}>Commission Percentage</Text>
@@ -307,7 +317,7 @@ function CommissionModal({
                 </View>
               </View>
             ) : (
-              !salesData?.alreadyApproved && salesAmt > 0 && (
+              !salesData?.alreadyApproved && canApprove && salesAmt > 0 && (
                 <TouchableOpacity
                   style={[modal.approveBtn, salesLoading && { opacity: 0.6 }]}
                   onPress={handleApprove}
@@ -351,12 +361,20 @@ function MonthCard({ entry, onPress }: { entry: MonthEntry; onPress: () => void 
               <Text style={styles.approvedAmount}>Rs. {fmt(entry.commissionAmount)}</Text>
             )}
           </View>
+        ) : entry.canApprove ? (
+          <View style={styles.pendingBadge}>
+            <Text style={styles.pendingBadgeText}>Rs. {fmt(entry.salesAmount)}</Text>
+            <View style={styles.calcBadgeRow}>
+              <Feather name="clock" size={11} color="#D97706" />
+              <Text style={[styles.calcBadgeText, { color: "#D97706" }]}>Pending</Text>
+            </View>
+          </View>
         ) : (
           <View style={styles.pendingBadge}>
             <Text style={styles.pendingBadgeText}>Rs. {fmt(entry.salesAmount)}</Text>
             <View style={styles.calcBadgeRow}>
               <Feather name="percent" size={11} color={Colors.adminAccent} />
-              <Text style={styles.calcBadgeText}>Calculate</Text>
+              <Text style={styles.calcBadgeText}>View</Text>
             </View>
           </View>
         )}
@@ -376,7 +394,7 @@ export default function SalesmanDetailScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const [selectedMonth, setSelectedMonth] = useState<{ month: number; year: number } | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<{ month: number; year: number; canApprove: boolean } | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
 
   React.useEffect(() => {
@@ -424,7 +442,7 @@ export default function SalesmanDetailScreen() {
           renderItem={({ item }) => (
             <MonthCard
               entry={item}
-              onPress={() => setSelectedMonth({ month: item.month, year: item.year })}
+              onPress={() => setSelectedMonth({ month: item.month, year: item.year, canApprove: item.canApprove })}
             />
           )}
           ListHeaderComponent={
@@ -495,6 +513,7 @@ export default function SalesmanDetailScreen() {
         salesmanName={displayName}
         month={selectedMonth?.month ?? null}
         year={selectedMonth?.year ?? null}
+        canApprove={selectedMonth?.canApprove ?? false}
         onClose={() => setSelectedMonth(null)}
         onSuccess={() => {
           setSelectedMonth(null);

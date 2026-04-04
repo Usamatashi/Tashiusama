@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, ordersTable, orderItemsTable, commissionsTable } from "@workspace/db";
-import { eq, and, gte, lt, ne, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, gte, lt, ne, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
@@ -176,6 +176,14 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const monthStart = new Date(periodFrom);
     const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
 
+    // Guard: commission can only be approved for months that have fully passed
+    const now2 = new Date();
+    const nowMonthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+    if (monthStart >= nowMonthStart) {
+      res.status(400).json({ error: "Commission can only be approved after the month has ended" });
+      return;
+    }
+
     // Guard: prevent duplicate commission for the same month
     const [duplicate] = await db
       .select({ id: commissionsTable.id })
@@ -330,11 +338,7 @@ router.get("/salesman-months/:salesmanId", requireAuth, requireAdmin, async (req
       const items = await db
         .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
         .from(orderItemsTable)
-        .where(
-          orderIds.length === 1
-            ? eq(orderItemsTable.orderId, orderIds[0])
-            : sql`${orderItemsTable.orderId} = ANY(ARRAY[${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)}])`
-        );
+        .where(inArray(orderItemsTable.orderId, orderIds));
 
       const orderValueMap: Record<number, number> = {};
       for (const item of items) {
@@ -365,10 +369,17 @@ router.get("/salesman-months/:salesmanId", requireAuth, requireAdmin, async (req
       monthData[key].commissionAmount = comm.commissionAmount;
     }
 
-    // Sort newest first
-    const months = Object.values(monthData).sort((a, b) =>
-      b.year !== a.year ? b.year - a.year : b.month - a.month
-    );
+    // Sort newest first; annotate whether the month has fully passed (can be approved)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const months = Object.values(monthData)
+      .sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month)
+      .map((m) => ({
+        ...m,
+        canApprove: m.year < currentYear || (m.year === currentYear && m.month < currentMonth),
+      }));
 
     res.json({ salesmanId, salesmanName: salesman.name, salesmanPhone: salesman.phone, months });
   } catch (err) {
