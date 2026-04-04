@@ -138,7 +138,7 @@ export default function AdminPaymentsScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const [tab, setTab] = useState<Tab>("balances");
+  const [tab, setTab] = useState<Tab>("balances"); // balances=Outstanding, history=Collected, pending=Awaiting
   const [collectTarget, setCollectTarget] = useState<RetailerBalance | null>(null);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
@@ -189,12 +189,6 @@ export default function AdminPaymentsScreen() {
 
   if (user?.role !== "super_admin" && !settings.tab_payments) return <Redirect href="/(admin)" />;
 
-  const TABS: { key: Tab; label: string; count?: number }[] = [
-    { key: "balances", label: "Balances" },
-    { key: "history", label: "History" },
-    { key: "pending", label: "Verify", count: pendingPayments.length },
-  ];
-
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
       <View style={styles.header}>
@@ -203,36 +197,55 @@ export default function AdminPaymentsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
+      {/* Summary banner — each cell is a nav button */}
       <View style={styles.summaryBar}>
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Total Collected</Text>
-          <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalPaidAll)}</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Outstanding</Text>
-          <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>Rs. {fmt(totalOutstanding)}</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryCellLabel}>Awaiting</Text>
-          <Text style={[styles.summaryCellValue, { color: pendingPayments.length > 0 ? "#D97706" : Colors.text }]}>{pendingPayments.length}</Text>
-        </View>
-      </View>
+        <TouchableOpacity
+          style={[styles.summaryCell, tab === "balances" && styles.summaryCellActive]}
+          onPress={() => setTab("balances")}
+          activeOpacity={0.8}
+        >
+          <Feather name="alert-circle" size={13} color={tab === "balances" ? "#EF4444" : Colors.textSecondary} />
+          <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>
+            Rs. {fmt(totalOutstanding)}
+          </Text>
+          <Text style={[styles.summaryCellLabel, tab === "balances" && styles.summaryCellLabelActive]}>Outstanding</Text>
+          {tab === "balances" && <View style={styles.summaryActiveLine} />}
+        </TouchableOpacity>
 
-      <View style={styles.tabRow}>
-        {TABS.map(t => (
-          <Pressable key={t.key} style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]} onPress={() => setTab(t.key)}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <Text style={[styles.tabBtnText, tab === t.key && styles.tabBtnTextActive]}>{t.label}</Text>
-              {t.count != null && t.count > 0 && (
-                <View style={[styles.tabBadge, tab === t.key && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, tab === t.key && styles.tabBadgeTextActive]}>{t.count}</Text>
-                </View>
-              )}
-            </View>
-          </Pressable>
-        ))}
+        <View style={styles.summaryDivider} />
+
+        <TouchableOpacity
+          style={[styles.summaryCell, tab === "history" && styles.summaryCellActive]}
+          onPress={() => setTab("history")}
+          activeOpacity={0.8}
+        >
+          <Feather name="check-circle" size={13} color={tab === "history" ? "#10B981" : Colors.textSecondary} />
+          <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalPaidAll)}</Text>
+          <Text style={[styles.summaryCellLabel, tab === "history" && styles.summaryCellLabelActive]}>Total Collected</Text>
+          {tab === "history" && <View style={[styles.summaryActiveLine, { backgroundColor: "#10B981" }]} />}
+        </TouchableOpacity>
+
+        <View style={styles.summaryDivider} />
+
+        <TouchableOpacity
+          style={[styles.summaryCell, tab === "pending" && styles.summaryCellActive]}
+          onPress={() => setTab("pending")}
+          activeOpacity={0.8}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Feather name="clock" size={13} color={tab === "pending" ? "#D97706" : Colors.textSecondary} />
+            {pendingPayments.length > 0 && (
+              <View style={styles.awaitingDot}>
+                <Text style={styles.awaitingDotText}>{pendingPayments.length}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.summaryCellValue, { color: pendingPayments.length > 0 ? "#D97706" : Colors.text }]}>
+            {pendingPayments.length}
+          </Text>
+          <Text style={[styles.summaryCellLabel, tab === "pending" && styles.summaryCellLabelActive]}>Awaiting</Text>
+          {tab === "pending" && <View style={[styles.summaryActiveLine, { backgroundColor: "#D97706" }]} />}
+        </TouchableOpacity>
       </View>
 
       {tab === "balances" ? (
@@ -376,24 +389,27 @@ const styles = StyleSheet.create({
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,
-    paddingHorizontal: 16, paddingVertical: 14,
+    paddingHorizontal: 0, paddingTop: 14, paddingBottom: 0,
   },
-  summaryCell: { flex: 1, alignItems: "center", gap: 4 },
+  summaryCell: {
+    flex: 1, alignItems: "center", gap: 3,
+    paddingBottom: 12, paddingHorizontal: 4,
+    position: "relative",
+  },
+  summaryCellActive: { backgroundColor: "#FAFAFA" },
   summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  summaryCellValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.text },
-  summaryDivider: { width: 1, backgroundColor: Colors.border, marginVertical: 4 },
-  tabRow: {
-    flexDirection: "row", backgroundColor: "#fff", gap: 8, padding: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  summaryCellLabelActive: { color: Colors.adminAccent, fontFamily: "Inter_700Bold" },
+  summaryCellValue: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
+  summaryDivider: { width: 1, backgroundColor: Colors.border, marginBottom: 12 },
+  summaryActiveLine: {
+    position: "absolute", bottom: 0, left: 8, right: 8,
+    height: 3, borderRadius: 2, backgroundColor: "#EF4444",
   },
-  tabBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, backgroundColor: "#F0F0F0", alignItems: "center" },
-  tabBtnActive: { backgroundColor: Colors.primary },
-  tabBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
-  tabBtnTextActive: { color: "#fff" },
-  tabBadge: { backgroundColor: "#D97706", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
-  tabBadgeActive: { backgroundColor: "rgba(255,255,255,0.3)" },
-  tabBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
-  tabBadgeTextActive: { color: "#fff" },
+  awaitingDot: {
+    backgroundColor: "#D97706", borderRadius: 8,
+    paddingHorizontal: 5, paddingVertical: 1, minWidth: 16, alignItems: "center",
+  },
+  awaitingDotText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginBottom: 12,
     borderWidth: 1, borderColor: "#F0F0F0",
