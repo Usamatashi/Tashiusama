@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -105,8 +106,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token]);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/auth/change-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    let body: any;
+    try { body = await res.json(); } catch { throw new Error("Server error"); }
+    if (!res.ok) throw new Error(body?.error || "Failed to change password");
+  }, [token]);
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, refreshUser, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

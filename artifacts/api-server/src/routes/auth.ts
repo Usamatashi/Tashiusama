@@ -42,6 +42,38 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/change-password", requireAuth, async (req, res) => {
+  try {
+    const { userId } = (req as any).user;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: "currentPassword and newPassword are required" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: "New password must be at least 6 characters" });
+      return;
+    }
+    const users = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    const user = users[0];
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "Current password is incorrect" });
+      return;
+    }
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await db.update(usersTable).set({ passwordHash: hashed }).where(eq(usersTable.id, userId));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const { userId } = (req as any).user;

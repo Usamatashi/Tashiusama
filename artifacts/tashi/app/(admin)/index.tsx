@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -145,7 +149,7 @@ const CARD_KEY_MAP: Record<string, keyof AdminSettings> = {
 };
 
 export default function AdminDashboard() {
-  const { logout, user } = useAuth();
+  const { logout, user, changePassword } = useAuth();
   const { settings, fetchSettings } = useAdminSettings();
   const insets = useSafeAreaInsets();
   const isSuperAdmin = user?.role === "super_admin";
@@ -162,6 +166,45 @@ export default function AdminDashboard() {
   const [pendingPayments, setPendingPayments] = useState(0);
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [changingPw, setChangingPw] = useState(false);
+
+  const closeChangePw = () => {
+    setShowChangePw(false);
+    setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    setShowCurrentPw(false); setShowNewPw(false); setShowConfirmPw(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPw || !newPw || !confirmPw) {
+      Alert.alert("Missing fields", "Please fill in all fields.");
+      return;
+    }
+    if (newPw.length < 6) {
+      Alert.alert("Too short", "New password must be at least 6 characters.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      Alert.alert("Mismatch", "New passwords do not match.");
+      return;
+    }
+    setChangingPw(true);
+    try {
+      await changePassword(currentPw, newPw);
+      closeChangePw();
+      Alert.alert("Success", "Your password has been updated.");
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Failed to change password.");
+    } finally {
+      setChangingPw(false);
+    }
+  };
 
   const fetchCounts = useCallback(async () => {
     try {
@@ -241,10 +284,15 @@ export default function AdminDashboard() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <TouchableOpacity onPress={logout} style={styles.headerBtn}>
-          <Feather name="log-out" size={16} color={Colors.adminAccent} />
-          <Text style={styles.headerBtnText}>Log out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity onPress={() => setShowChangePw(true)} style={styles.iconBtn}>
+            <Feather name="lock" size={18} color={Colors.adminAccent} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.headerBtn}>
+            <Feather name="log-out" size={16} color={Colors.adminAccent} />
+            <Text style={styles.headerBtnText}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -342,6 +390,63 @@ export default function AdminDashboard() {
           })}
         </View>
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal visible={showChangePw} transparent animationType="slide" onRequestClose={closeChangePw}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeChangePw} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Change Password</Text>
+            <Text style={styles.modalSubtitle}>Enter your current password then choose a new one</Text>
+
+            {/* Current Password */}
+            <View style={styles.pwFieldWrap}>
+              <Text style={styles.pwFieldLabel}>Current Password</Text>
+              <View style={styles.pwInputRow}>
+                <TextInput style={styles.pwInput} value={currentPw} onChangeText={setCurrentPw}
+                  secureTextEntry={!showCurrentPw} placeholder="••••••••" placeholderTextColor={Colors.textSecondary} autoCapitalize="none" />
+                <TouchableOpacity onPress={() => setShowCurrentPw((v) => !v)} style={styles.pwEyeBtn}>
+                  <Feather name={showCurrentPw ? "eye-off" : "eye"} size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* New Password */}
+            <View style={styles.pwFieldWrap}>
+              <Text style={styles.pwFieldLabel}>New Password</Text>
+              <View style={styles.pwInputRow}>
+                <TextInput style={styles.pwInput} value={newPw} onChangeText={setNewPw}
+                  secureTextEntry={!showNewPw} placeholder="••••••••" placeholderTextColor={Colors.textSecondary} autoCapitalize="none" />
+                <TouchableOpacity onPress={() => setShowNewPw((v) => !v)} style={styles.pwEyeBtn}>
+                  <Feather name={showNewPw ? "eye-off" : "eye"} size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Confirm New Password */}
+            <View style={styles.pwFieldWrap}>
+              <Text style={styles.pwFieldLabel}>Confirm New Password</Text>
+              <View style={styles.pwInputRow}>
+                <TextInput style={styles.pwInput} value={confirmPw} onChangeText={setConfirmPw}
+                  secureTextEntry={!showConfirmPw} placeholder="••••••••" placeholderTextColor={Colors.textSecondary} autoCapitalize="none" />
+                <TouchableOpacity onPress={() => setShowConfirmPw((v) => !v)} style={styles.pwEyeBtn}>
+                  <Feather name={showConfirmPw ? "eye-off" : "eye"} size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={[styles.submitBtn, changingPw && { opacity: 0.7 }]}
+              onPress={handleChangePassword} disabled={changingPw} activeOpacity={0.82}>
+              {changingPw ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Update Password</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={closeChangePw} activeOpacity={0.7}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
     </View>
   );
@@ -529,4 +634,42 @@ const styles = StyleSheet.create({
     color: "#92400E",
     letterSpacing: 0.3,
   },
+  iconBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: "rgba(232,119,34,0.1)", borderWidth: 1, borderColor: "rgba(232,119,34,0.25)",
+    alignItems: "center", justifyContent: "center",
+  },
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 40,
+    shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 16,
+    elevation: 20,
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    alignSelf: "center", marginBottom: 20,
+  },
+  modalTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text, marginBottom: 6 },
+  modalSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginBottom: 24 },
+  pwFieldWrap: { marginBottom: 16 },
+  pwFieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  pwInputRow: {
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
+    backgroundColor: "#F9F9F9",
+  },
+  pwInput: {
+    flex: 1, paddingHorizontal: 16, paddingVertical: 14,
+    fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.text,
+  },
+  pwEyeBtn: { paddingHorizontal: 14, paddingVertical: 14 },
+  submitBtn: {
+    backgroundColor: Colors.adminAccent, borderRadius: 14,
+    paddingVertical: 16, alignItems: "center", marginTop: 8, marginBottom: 12,
+  },
+  submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  cancelBtn: { alignItems: "center", paddingVertical: 8 },
+  cancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
 });
