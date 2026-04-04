@@ -199,41 +199,62 @@ export default function AdminPaymentsScreen() {
 
       {/* Summary banner — each cell is a nav button */}
       <View style={styles.summaryBar}>
+        {/* Outstanding */}
         <TouchableOpacity
-          style={[styles.summaryCell, tab === "balances" && styles.summaryCellActive]}
+          style={[styles.summaryCell, tab === "balances" && styles.summaryCellRedActive]}
           onPress={() => setTab("balances")}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>
+          <View style={[styles.summaryDot, { backgroundColor: tab === "balances" ? "#EF4444" : "#FECACA" }]} />
+          <Text style={[styles.summaryCellValue, { color: "#EF4444" }]} numberOfLines={1} adjustsFontSizeToFit>
             Rs. {fmt(totalOutstanding)}
           </Text>
-          <Text style={[styles.summaryCellLabel, tab === "balances" && styles.summaryCellLabelActive]}>Outstanding</Text>
-          {tab === "balances" && <View style={styles.summaryActiveLine} />}
+          <Text style={[styles.summaryCellLabel, tab === "balances" && { color: "#EF4444", fontFamily: "Inter_700Bold" }]}>
+            Outstanding
+          </Text>
+          {tab === "balances" && <View style={[styles.summaryActiveLine, { backgroundColor: "#EF4444" }]} />}
         </TouchableOpacity>
 
         <View style={styles.summaryDivider} />
 
+        {/* Total Collected */}
         <TouchableOpacity
-          style={[styles.summaryCell, tab === "history" && styles.summaryCellActive]}
+          style={[styles.summaryCell, tab === "history" && styles.summaryCellGreenActive]}
           onPress={() => setTab("history")}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalPaidAll)}</Text>
-          <Text style={[styles.summaryCellLabel, tab === "history" && styles.summaryCellLabelActive]}>Total Collected</Text>
+          <View style={[styles.summaryDot, { backgroundColor: tab === "history" ? "#10B981" : "#A7F3D0" }]} />
+          <Text style={[styles.summaryCellValue, { color: "#059669" }]} numberOfLines={1} adjustsFontSizeToFit>
+            Rs. {fmt(totalPaidAll)}
+          </Text>
+          <Text style={[styles.summaryCellLabel, tab === "history" && { color: "#059669", fontFamily: "Inter_700Bold" }]}>
+            Collected
+          </Text>
           {tab === "history" && <View style={[styles.summaryActiveLine, { backgroundColor: "#10B981" }]} />}
         </TouchableOpacity>
 
         <View style={styles.summaryDivider} />
 
+        {/* Awaiting — smaller */}
         <TouchableOpacity
-          style={[styles.summaryCell, tab === "pending" && styles.summaryCellActive]}
+          style={[styles.summaryCellSmall, tab === "pending" && styles.summaryCellAmberActive]}
           onPress={() => setTab("pending")}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.summaryCellValue, { color: pendingPayments.length > 0 ? "#D97706" : Colors.text }]}>
-            {pendingPayments.length}
+          <View style={[styles.summaryDot, { backgroundColor: tab === "pending" ? "#D97706" : "#FDE68A" }]} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Text style={[styles.summaryCellValueSmall, { color: pendingPayments.length > 0 ? "#D97706" : Colors.textSecondary }]}>
+              {pendingPayments.length}
+            </Text>
+            {pendingPayments.length > 0 && (
+              <View style={styles.awaitingBadge}>
+                <Text style={styles.awaitingBadgeText}>!</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.summaryCellLabelSmall, tab === "pending" && { color: "#D97706", fontFamily: "Inter_700Bold" }]}>
+            Awaiting
           </Text>
-          <Text style={[styles.summaryCellLabel, tab === "pending" && styles.summaryCellLabelActive]}>Awaiting</Text>
           {tab === "pending" && <View style={[styles.summaryActiveLine, { backgroundColor: "#D97706" }]} />}
         </TouchableOpacity>
       </View>
@@ -378,28 +399,41 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    paddingHorizontal: 0, paddingTop: 14, paddingBottom: 0,
+    marginHorizontal: 14, marginTop: 14, marginBottom: 4,
+    borderRadius: 20, overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09, shadowRadius: 14, elevation: 5,
   },
   summaryCell: {
     flex: 1, alignItems: "center", gap: 3,
-    paddingBottom: 12, paddingHorizontal: 4,
+    paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6,
     position: "relative",
   },
-  summaryCellActive: { backgroundColor: "#FAFAFA" },
-  summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  summaryCellLabelActive: { color: Colors.adminAccent, fontFamily: "Inter_700Bold" },
+  summaryCellSmall: {
+    flex: 0.58, alignItems: "center", gap: 3,
+    paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6,
+    position: "relative",
+  },
+  summaryCellRedActive: { backgroundColor: "#FFF5F5" },
+  summaryCellGreenActive: { backgroundColor: "#F0FDF9" },
+  summaryCellAmberActive: { backgroundColor: "#FFFBEB" },
+  summaryDot: {
+    width: 7, height: 7, borderRadius: 4, marginBottom: 2,
+  },
+  summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.4 },
+  summaryCellLabelSmall: { fontSize: 9, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.4 },
   summaryCellValue: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
-  summaryDivider: { width: 1, backgroundColor: Colors.border, marginBottom: 12 },
+  summaryCellValueSmall: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
+  summaryDivider: { width: 1, backgroundColor: "#F0F0F0", marginVertical: 14 },
   summaryActiveLine: {
-    position: "absolute", bottom: 0, left: 8, right: 8,
-    height: 3, borderRadius: 2, backgroundColor: "#EF4444",
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    height: 3, borderRadius: 0,
   },
-  awaitingDot: {
-    backgroundColor: "#D97706", borderRadius: 8,
-    paddingHorizontal: 5, paddingVertical: 1, minWidth: 16, alignItems: "center",
+  awaitingBadge: {
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: "#D97706", alignItems: "center", justifyContent: "center",
   },
-  awaitingDotText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
+  awaitingBadgeText: { fontSize: 9, fontFamily: "Inter_800ExtraBold", color: "#fff" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginBottom: 12,
     borderWidth: 1, borderColor: "#F0F0F0",
