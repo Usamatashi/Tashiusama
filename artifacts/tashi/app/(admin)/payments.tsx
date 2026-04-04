@@ -71,8 +71,6 @@ function StatusBadge({ status }: { status: "pending" | "verified" }) {
 
 function BalanceCard({ item }: { item: RetailerBalance }) {
   const isCredit = item.outstanding < 0;
-  const dueColor = item.outstanding <= 0 ? "#10B981" : "#EF4444";
-  const dueBg = item.outstanding <= 0 ? "#F0FDF4" : "#FEF2F2";
   return (
     <View style={styles.card}>
       <View style={styles.cardTop}>
@@ -83,9 +81,9 @@ function BalanceCard({ item }: { item: RetailerBalance }) {
           <Text style={styles.cardName} numberOfLines={1}>{item.name || item.phone}</Text>
           <Text style={styles.cardSub}>{item.phone} · {item.city || "—"}</Text>
         </View>
-        <View style={[styles.dueBox, { borderColor: dueColor, backgroundColor: dueBg }]}>
+        <View style={styles.dueBox}>
           <Text style={styles.dueBoxLabel}>{isCredit ? "Credit" : "Due"}</Text>
-          <Text style={[styles.dueBoxAmount, { color: dueColor }]}>
+          <Text style={styles.dueBoxAmount}>
             Rs. {fmt(Math.abs(item.outstanding))}
           </Text>
         </View>
@@ -444,11 +442,12 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
   cardSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   dueBox: {
-    borderWidth: 1.5, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10,
-    alignItems: "center", minWidth: 80,
+    borderWidth: 1.5, borderColor: "#EF4444", borderRadius: 10,
+    paddingVertical: 6, paddingHorizontal: 10,
+    alignItems: "center", minWidth: 80, backgroundColor: "#fff",
   },
-  dueBoxLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
-  dueBoxAmount: { fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 },
+  dueBoxLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#EF4444", textTransform: "uppercase", letterSpacing: 0.5 },
+  dueBoxAmount: { fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2, color: "#EF4444" },
   historyCard: {
     flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
     backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10,
