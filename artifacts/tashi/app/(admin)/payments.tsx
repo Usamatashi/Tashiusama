@@ -204,7 +204,6 @@ export default function AdminPaymentsScreen() {
           onPress={() => setTab("balances")}
           activeOpacity={0.8}
         >
-          <Feather name="alert-circle" size={13} color={tab === "balances" ? "#EF4444" : Colors.textSecondary} />
           <Text style={[styles.summaryCellValue, { color: totalOutstanding > 0 ? "#EF4444" : Colors.text }]}>
             Rs. {fmt(totalOutstanding)}
           </Text>
@@ -219,7 +218,6 @@ export default function AdminPaymentsScreen() {
           onPress={() => setTab("history")}
           activeOpacity={0.8}
         >
-          <Feather name="check-circle" size={13} color={tab === "history" ? "#10B981" : Colors.textSecondary} />
           <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalPaidAll)}</Text>
           <Text style={[styles.summaryCellLabel, tab === "history" && styles.summaryCellLabelActive]}>Total Collected</Text>
           {tab === "history" && <View style={[styles.summaryActiveLine, { backgroundColor: "#10B981" }]} />}
@@ -232,14 +230,6 @@ export default function AdminPaymentsScreen() {
           onPress={() => setTab("pending")}
           activeOpacity={0.8}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Feather name="clock" size={13} color={tab === "pending" ? "#D97706" : Colors.textSecondary} />
-            {pendingPayments.length > 0 && (
-              <View style={styles.awaitingDot}>
-                <Text style={styles.awaitingDotText}>{pendingPayments.length}</Text>
-              </View>
-            )}
-          </View>
           <Text style={[styles.summaryCellValue, { color: pendingPayments.length > 0 ? "#D97706" : Colors.text }]}>
             {pendingPayments.length}
           </Text>
