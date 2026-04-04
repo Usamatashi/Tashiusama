@@ -79,7 +79,8 @@ function BalanceCard({ item }: { item: RetailerBalance }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name || item.phone}</Text>
-          <Text style={styles.cardSub}>{item.phone} · {item.city || "—"}</Text>
+          <Text style={styles.cardSub}>{item.phone}</Text>
+          <Text style={styles.cardSub}>{item.city || "—"}</Text>
         </View>
         <View style={styles.dueBox}>
           <Text style={styles.dueBoxLabel}>{isCredit ? "Credit" : "Due"}</Text>
