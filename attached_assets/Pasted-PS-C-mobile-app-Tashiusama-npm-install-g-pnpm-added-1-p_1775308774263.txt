@@ -1,0 +1,47 @@
+PS C:\mobile app\Tashiusama> npm install -g pnpm                      
+
+added 1 package in 11s
+
+1 package is looking for funding
+  run `npm fund` for details
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.12.1     
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+npm notice To update run: npm install -g npm@11.12.1
+npm notice
+PS C:\mobile app\Tashiusama> npm install -g eas-cli
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me    
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me    
+npm warn deprecated rimraf@2.4.5: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@6.0.4: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me     
+npm warn deprecated lodash.get@4.4.2: This package is deprecated. Use the optional chaining (?.) operator instead.
+npm warn deprecated @xmldom/xmldom@0.7.13: this version has critical issues, please update to the latest version
+npm warn deprecated tar@7.5.7: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me       
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me    
+
+added 514 packages in 1m
+
+65 packages are looking for funding
+  run `npm fund` for details
+PS C:\mobile app\Tashiusama> pnpm install
+Scope: all 9 workspace projects
+artifacts/api-server                     |  WARN  deprecated @types/bcryptjs@3.0.0
+ WARN  Tarball download average speed 3 KiB/s (size 6 KiB) is below 50 KiB/s: https://registry.npmjs.org/@radix-ui/react-avatar/-/react-avatar-1.1.11.tgz (GET)
+ WARN  Tarball download average speed 7 KiB/s (size 14 KiB) is below 50 KiB/s: https://registry.npmjs.org/@radix-ui/react-dialog/-/react-dialog-1.1.15.tgz (GET)
+ WARN  Tarball download average speed 13 KiB/s (size 23 KiB) is below 50 KiB/s: https://registry.npmjs.org/react/-/react-19.1.0.tgz (GET)
+ WARN  Tarball download average speed 20 KiB/s (size 37 KiB) is below 50 KiB/s: https://registry.npmjs.org/vaul/-/vaul-1.1.2.tgz (GET)
+ WARN  Tarball download average speed 8 KiB/s (size 31 KiB) is below 50 KiB/s: https://registry.npmjs.org/sonner/-/sonner-2.0.7.tgz (GET)   
+ WARN  33 other warnings
+Downloading react-native@0.81.5: 24.77 MB/24.77 MB, done
+Downloading expo-contacts@55.0.11: 9.34 MB/9.34 MB, done
+ WARN  6 deprecated subdependencies found: @xmldom/xmldom@0.8.11, glob@7.2.3, inflight@1.0.6, rimraf@3.0.2, text-encoding@0.7.0, uuid@3.4.0
+Packages: +1128
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1109, reused 0, downloaded 1102, added 1128, done
+node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild: Running postinnode_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild: Running postinstall script, done in 7.1s
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_…
+│ 'sh' is not recognized as an internal or external command,
+│ operable program or batch file.
+└─ Failed in 76ms at C:\mobile app\Tashiusama
+ ELIFECYCLE  Command failed with exit code 1.
