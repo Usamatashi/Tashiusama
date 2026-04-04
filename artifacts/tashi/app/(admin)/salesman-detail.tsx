@@ -166,7 +166,12 @@ function CommissionModal({
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 460 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={true}
+              style={modal.scrollArea}
+              contentContainerStyle={modal.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
               {salesLoading ? (
                 <View style={modal.loading}>
                   <ActivityIndicator size="large" color={Colors.adminAccent} />
@@ -174,66 +179,37 @@ function CommissionModal({
                 </View>
               ) : (
                 <>
+                  {/* Already approved banner */}
                   {salesData?.alreadyApproved && (
-                    <>
-                      <View style={modal.approvedBanner}>
-                        <Feather name="check-circle" size={16} color="#065F46" />
-                        <Text style={modal.approvedBannerText}>
-                          Commission approved{salesData.approvedAt ? ` on ${fmtDate(salesData.approvedAt)}` : ""}
-                          {salesData.commissionPercentage !== undefined ? ` · ${salesData.commissionPercentage}%` : ""}
-                          {salesData.commissionAmount !== undefined ? ` = Rs. ${fmt(salesData.commissionAmount)}` : ""}
-                        </Text>
-                      </View>
-                      <View style={modal.salesBox}>
-                        <View style={modal.salesRow}>
-                          <View style={modal.salesItem}>
-                            <Text style={modal.salesLabel}>Orders</Text>
-                            <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData.orderCount}</Text>
-                          </View>
-                          <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
-                            <Text style={modal.salesLabel}>Total Sales</Text>
-                            <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData.salesAmount)}</Text>
-                          </View>
-                        </View>
-                      </View>
-                      {salesData.orders.length > 0 && (
-                        <View style={modal.orderList}>
-                          <Text style={modal.sectionLabel}>Order Breakdown</Text>
-                          {salesData.orders.map((o) => (
-                            <View key={o.id} style={modal.orderRow}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={modal.orderRetailer} numberOfLines={1}>
-                                  {o.retailerName || o.retailerPhone || "Unknown"}
-                                </Text>
-                                <Text style={modal.orderDate}>{fmtDate(o.createdAt)}</Text>
-                              </View>
-                              <Text style={modal.orderValue}>Rs. {fmt(o.totalValue)}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                    </>
-                  )}
-
-                  {!salesData?.alreadyApproved && (
-                    <View style={modal.salesBox}>
-                      <View style={modal.salesRow}>
-                        <View style={modal.salesItem}>
-                          <Text style={modal.salesLabel}>Orders</Text>
-                          <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
-                        </View>
-                        <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
-                          <Text style={modal.salesLabel}>Total Sales</Text>
-                          <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData?.salesAmount ?? 0)}</Text>
-                        </View>
-                      </View>
+                    <View style={modal.approvedBanner}>
+                      <Feather name="check-circle" size={16} color="#065F46" />
+                      <Text style={modal.approvedBannerText}>
+                        Commission approved{salesData.approvedAt ? ` on ${fmtDate(salesData.approvedAt)}` : ""}
+                        {salesData.commissionPercentage !== undefined ? ` · ${salesData.commissionPercentage}%` : ""}
+                        {salesData.commissionAmount !== undefined ? ` = Rs. ${fmt(salesData.commissionAmount)}` : ""}
+                      </Text>
                     </View>
                   )}
 
-                  {!salesData?.alreadyApproved && salesData && salesData.orders.length > 0 && (
+                  {/* Orders / Sales summary */}
+                  <View style={modal.salesBox}>
+                    <View style={modal.salesRow}>
+                      <View style={modal.salesItem}>
+                        <Text style={modal.salesLabel}>Orders</Text>
+                        <Text style={[modal.salesValue, { color: "#1D4ED8" }]}>{salesData?.orderCount ?? 0}</Text>
+                      </View>
+                      <View style={[modal.salesItem, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}>
+                        <Text style={modal.salesLabel}>Total Sales</Text>
+                        <Text style={[modal.salesValue, { color: "#059669" }]}>Rs. {fmt(salesData?.salesAmount ?? 0)}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Order breakdown list */}
+                  {(salesData?.orders?.length ?? 0) > 0 && (
                     <View style={modal.orderList}>
                       <Text style={modal.sectionLabel}>Order Breakdown</Text>
-                      {salesData.orders.map((o) => (
+                      {salesData!.orders.map((o) => (
                         <View key={o.id} style={modal.orderRow}>
                           <View style={{ flex: 1 }}>
                             <Text style={modal.orderRetailer} numberOfLines={1}>
@@ -247,6 +223,7 @@ function CommissionModal({
                     </View>
                   )}
 
+                  {/* No sales */}
                   {!salesData?.alreadyApproved && salesAmt === 0 && (
                     <View style={modal.noSales}>
                       <Feather name="info" size={20} color={Colors.textLight} />
@@ -254,14 +231,8 @@ function CommissionModal({
                     </View>
                   )}
 
-                  {!salesData?.alreadyApproved && !canApprove && salesAmt > 0 && (
-                    <View style={modal.noSales}>
-                      <Feather name="clock" size={20} color={Colors.adminAccent} />
-                      <Text style={modal.noSalesText}>Commission can only be approved after the month ends</Text>
-                    </View>
-                  )}
-
-                  {!salesData?.alreadyApproved && canApprove && salesAmt > 0 && (
+                  {/* Commission calculator — shown for all months with sales */}
+                  {!salesData?.alreadyApproved && salesAmt > 0 && (
                     <>
                       <View style={modal.inputSection}>
                         <Text style={modal.inputLabel}>Commission Percentage</Text>
@@ -283,9 +254,17 @@ function CommissionModal({
 
                       {commission !== null && (
                         <View style={modal.preview}>
-                          <Text style={modal.previewLabel}>Total Commission</Text>
+                          <Text style={modal.previewLabel}>Estimated Commission</Text>
                           <Text style={modal.previewValue}>Rs. {fmt(commission)}</Text>
                           <Text style={modal.previewSub}>{pct}% of Rs. {fmt(salesAmt)}</Text>
+                        </View>
+                      )}
+
+                      {/* Lock notice for current month */}
+                      {!canApprove && (
+                        <View style={modal.lockNotice}>
+                          <Feather name="lock" size={14} color="#D97706" />
+                          <Text style={modal.lockNoticeText}>Approval unlocks once this month ends</Text>
                         </View>
                       )}
                     </>
@@ -599,7 +578,9 @@ const styles = StyleSheet.create({
 
 const modal = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end", alignItems: "center" },
-  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 32, width: "100%", gap: 16 },
+  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 32, width: "100%", gap: 12, maxHeight: "90%" },
+  scrollArea: { flexGrow: 0 },
+  scrollContent: { gap: 14, paddingBottom: 4 },
   sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   sheetAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#E87722", justifyContent: "center", alignItems: "center" },
   sheetAvatarText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
@@ -635,6 +616,12 @@ const modal = StyleSheet.create({
 
   noSales: { alignItems: "center", paddingVertical: 20, gap: 8 },
   noSalesText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  lockNotice: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#FFFBEB", borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: "#FDE68A",
+  },
+  lockNoticeText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: "#92400E" },
 
   inputSection: { gap: 8 },
   inputLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.adminText },
