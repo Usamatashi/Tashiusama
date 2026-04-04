@@ -49,7 +49,7 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const { userId, role } = (req as any).user;
 
-    if (role === "admin") {
+    if (role === "admin" || role === "super_admin") {
       const claims = await db
         .select({
           id: claimsTable.id,
