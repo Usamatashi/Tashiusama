@@ -640,13 +640,18 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
       }
       const items = buildOrderItems(r, itemsMap, r.id);
       const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
-      byId[r.salesmanId].orders.push({ id: r.id, status: r.status, bonusPoints: r.bonusPoints, totalValue, createdAt: r.createdAt });
+      byId[r.salesmanId].orders.push({ id: r.id, status: r.status, bonusPoints: r.bonusPoints, totalValue, createdAt: new Date(r.createdAt) });
     }
 
     const result = Object.values(byId).map((sm) => {
       const active    = sm.orders;
       const confirmed = sm.orders.filter((o) => o.status === "confirmed");
-      const curMonth  = sm.orders.filter((o) => o.createdAt >= monthStart && o.createdAt < monthEnd);
+      const mStart = monthStart.getTime();
+      const mEnd   = monthEnd.getTime();
+      const curMonth  = sm.orders.filter((o) => {
+        const t = o.createdAt.getTime();
+        return t >= mStart && t < mEnd;
+      });
       return {
         salesmanId: sm.salesmanId,
         name: sm.name,
