@@ -21,6 +21,12 @@ import { Colors } from "@/constants/colors";
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
 const ACTIONS = [
   {
     icon: "plus-square" as const,
@@ -312,7 +318,7 @@ export default function AdminDashboard() {
                         {loadingCounts ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                          <Text style={styles.countNumber}>{count}</Text>
+                          <Text style={styles.countNumber}>{fmtCount(count ?? 0)}</Text>
                         )}
                       </View>
                     ) : (
@@ -462,17 +468,17 @@ const styles = StyleSheet.create({
   countBadge: {
     minWidth: 44,
     height: 44,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 22,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
   },
   countNumber: {
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: "#FF3B30",
-    lineHeight: 24,
+    lineHeight: 20,
   },
   pendingDot: {
     position: "absolute",
