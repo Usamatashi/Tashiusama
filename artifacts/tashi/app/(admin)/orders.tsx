@@ -471,15 +471,16 @@ function BillModal({
       const itemRows = items.map(i => {
         const discPct = i.discountPercent ?? 0;
         const lineTotal = i.discountedValue ?? i.totalValue;
-        const discCell = discPct > 0
-          ? `<td style="text-align:center;color:#16a34a;font-weight:700">−${discPct}%</td>`
-          : `<td style="text-align:center">—</td>`;
+        const discUnitPrice = discPct > 0 ? Math.round(i.unitPrice * (1 - discPct / 100)) : i.unitPrice;
+        const discPriceCell = discPct > 0
+          ? `<td style="text-align:right;color:#16a34a;font-weight:700">Rs. ${discUnitPrice.toLocaleString()}</td>`
+          : `<td style="text-align:right">Rs. ${discUnitPrice.toLocaleString()}</td>`;
         return `
         <tr>
           <td>${i.productName || "Product"}</td>
           <td style="text-align:center">${i.quantity}</td>
           <td style="text-align:right">Rs. ${i.unitPrice.toLocaleString()}</td>
-          ${discCell}
+          ${discPriceCell}
           <td style="text-align:right;font-weight:${discPct > 0 ? "700" : "400"}">Rs. ${lineTotal.toLocaleString()}</td>
         </tr>
         `;
@@ -522,8 +523,8 @@ function BillModal({
             table { width: 100%; border-collapse: collapse; font-size: 14px; }
             thead tr { background: #f7f8fa; }
             thead th { padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #888; }
-            thead th:nth-child(2), thead th:nth-child(4) { text-align: center; }
-            thead th:nth-child(3), thead th:last-child { text-align: right; }
+            thead th:nth-child(2) { text-align: center; }
+            thead th:nth-child(3), thead th:nth-child(4), thead th:last-child { text-align: right; }
             tbody tr { border-bottom: 1px solid #f0f0f0; }
             tbody td { padding: 12px; vertical-align: middle; }
             .total-row { background: #E87722; color: #fff; border-radius: 10px; }
@@ -568,8 +569,8 @@ function BillModal({
               <tr>
                 <th>Product</th>
                 <th style="text-align:center">Qty</th>
-                <th style="text-align:right">Unit Price</th>
-                <th style="text-align:center">Disc%</th>
+                <th style="text-align:right">Sales Price</th>
+                <th style="text-align:right">Disc. Price</th>
                 <th style="text-align:right">Total</th>
               </tr>
             </thead>
@@ -679,42 +680,51 @@ function BillModal({
             </View>
 
             {/* Items table */}
-            <View style={billStyles.tableHeader}>
-              <Text style={[billStyles.th, { flex: 3 }]}>PRODUCT</Text>
-              <Text style={[billStyles.th, billStyles.thCenter, { flex: 1 }]}>QTY</Text>
-              <Text style={[billStyles.th, billStyles.thCenter, { flex: 1 }]}>DISC%</Text>
-              <Text style={[billStyles.th, billStyles.thRight, { flex: 2 }]}>TOTAL</Text>
-            </View>
-            <View style={billStyles.tableDivider} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ minWidth: 420 }}>
+                <View style={billStyles.tableHeader}>
+                  <Text style={[billStyles.th, { width: 110 }]}>PRODUCT</Text>
+                  <Text style={[billStyles.th, billStyles.thCenter, { width: 40 }]}>QTY</Text>
+                  <Text style={[billStyles.th, billStyles.thRight, { width: 80 }]}>SALE PRICE</Text>
+                  <Text style={[billStyles.th, billStyles.thRight, { width: 85 }]}>DISC. PRICE</Text>
+                  <Text style={[billStyles.th, billStyles.thRight, { width: 80 }]}>TOTAL</Text>
+                </View>
+                <View style={billStyles.tableDivider} />
 
-            {items.length === 0 ? (
-              <View style={{ paddingVertical: 20, alignItems: "center" }}>
-                <Text style={{ color: Colors.textLight, fontFamily: "Inter_400Regular" }}>No items</Text>
-              </View>
-            ) : (
-              items.map((item, idx) => {
-                const discPct = item.discountPercent ?? 0;
-                const lineTotal = item.discountedValue ?? item.totalValue;
-                return (
-                  <View
-                    key={idx}
-                    style={[
-                      billStyles.tableRow,
-                      idx % 2 === 0 ? billStyles.tableRowEven : null,
-                    ]}
-                  >
-                    <Text style={[billStyles.td, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
-                    <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1 }]}>{item.quantity}</Text>
-                    <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1, color: discPct > 0 ? "#16a34a" : Colors.textLight, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                      {discPct > 0 ? `−${discPct}%` : "—"}
-                    </Text>
-                    <Text style={[billStyles.td, billStyles.tdRight, billStyles.tdTotal, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                      Rs. {lineTotal.toLocaleString()}
-                    </Text>
+                {items.length === 0 ? (
+                  <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                    <Text style={{ color: Colors.textLight, fontFamily: "Inter_400Regular" }}>No items</Text>
                   </View>
-                );
-              })
-            )}
+                ) : (
+                  items.map((item, idx) => {
+                    const discPct = item.discountPercent ?? 0;
+                    const lineTotal = item.discountedValue ?? item.totalValue;
+                    const discUnitPrice = discPct > 0 ? Math.round(item.unitPrice * (1 - discPct / 100)) : item.unitPrice;
+                    return (
+                      <View
+                        key={idx}
+                        style={[
+                          billStyles.tableRow,
+                          idx % 2 === 0 ? billStyles.tableRowEven : null,
+                        ]}
+                      >
+                        <Text style={[billStyles.td, { width: 110 }]} numberOfLines={2}>{item.productName || "—"}</Text>
+                        <Text style={[billStyles.td, billStyles.tdCenter, { width: 40 }]}>{item.quantity}</Text>
+                        <Text style={[billStyles.td, billStyles.tdRight, { width: 80 }]}>
+                          Rs. {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
+                        </Text>
+                        <Text style={[billStyles.td, billStyles.tdRight, { width: 85, color: discPct > 0 ? "#16a34a" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                          Rs. {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
+                        </Text>
+                        <Text style={[billStyles.td, billStyles.tdRight, billStyles.tdTotal, { width: 80, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                          Rs. {lineTotal.toLocaleString()}
+                        </Text>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </ScrollView>
 
             <View style={billStyles.tableDivider} />
 
@@ -829,39 +839,47 @@ function OrderCard({
       {expanded && (
         <>
           <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
-              <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
-              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>PRICE</Text>
-              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
-            </View>
-            <View style={styles.tableDivider} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ minWidth: 430 }}>
+                <View style={styles.tableRow}>
+                  <Text style={[styles.colHead, { width: 120 }]}>PRODUCT</Text>
+                  <Text style={[styles.colHead, styles.colCenter, { width: 40 }]}>QTY</Text>
+                  <Text style={[styles.colHead, styles.colRight, { width: 80 }]}>SALE PRICE</Text>
+                  <Text style={[styles.colHead, styles.colRight, { width: 85 }]}>DISC. PRICE</Text>
+                  <Text style={[styles.colHead, styles.colRight, { width: 80 }]}>TOTAL</Text>
+                </View>
+                <View style={styles.tableDivider} />
 
-            {items.length === 0 ? (
-              <View style={[styles.tableRow, { paddingVertical: 12 }]}>
-                <Text style={[styles.colVal, { color: Colors.textLight }]}>No items</Text>
-              </View>
-            ) : (
-              items.map((item, idx) => {
-                const discPct = item.discountPercent ?? 0;
-                const lineTotal = item.discountedValue ?? item.totalValue;
-                return (
-                  <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-                    <View style={{ flex: 3 }}>
-                      <Text style={styles.colVal} numberOfLines={2}>{item.productName || "—"}</Text>
-                      {discPct > 0 && <Text style={{ fontSize: 10, color: "#16a34a", fontWeight: "700" }}>−{discPct}% off</Text>}
-                    </View>
-                    <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
-                    <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-                      {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
-                    </Text>
-                    <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                      {lineTotal > 0 ? lineTotal.toLocaleString() : "—"}
-                    </Text>
+                {items.length === 0 ? (
+                  <View style={[styles.tableRow, { paddingVertical: 12 }]}>
+                    <Text style={[styles.colVal, { color: Colors.textLight }]}>No items</Text>
                   </View>
-                );
-              })
-            )}
+                ) : (
+                  items.map((item, idx) => {
+                    const discPct = item.discountPercent ?? 0;
+                    const lineTotal = item.discountedValue ?? item.totalValue;
+                    const discUnitPrice = discPct > 0 ? Math.round(item.unitPrice * (1 - discPct / 100)) : item.unitPrice;
+                    return (
+                      <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+                        <View style={{ width: 120 }}>
+                          <Text style={styles.colVal} numberOfLines={2}>{item.productName || "—"}</Text>
+                        </View>
+                        <Text style={[styles.colVal, styles.colCenter, { width: 40 }]}>{item.quantity}</Text>
+                        <Text style={[styles.colVal, styles.colRight, { width: 80 }]}>
+                          {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
+                        </Text>
+                        <Text style={[styles.colVal, styles.colRight, { width: 85, color: discPct > 0 ? "#16a34a" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                          {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
+                        </Text>
+                        <Text style={[styles.colVal, styles.colRight, styles.colTotal, { width: 80, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                          {lineTotal > 0 ? lineTotal.toLocaleString() : "—"}
+                        </Text>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </ScrollView>
 
             {(hasItemDiscounts || orderBillPct > 0) && (
               <View style={[styles.tableRow, { paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#F0EDE8" }]}>
