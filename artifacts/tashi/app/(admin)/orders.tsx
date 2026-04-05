@@ -473,29 +473,29 @@ function BillModal({
         const lineTotal = i.discountedValue ?? i.totalValue;
         const discUnitPrice = discPct > 0 ? Math.round(i.unitPrice * (1 - discPct / 100)) : i.unitPrice;
         const discPriceCell = discPct > 0
-          ? `<td style="text-align:right;color:#16a34a;font-weight:700">Rs. ${discUnitPrice.toLocaleString()}</td>`
-          : `<td style="text-align:right">Rs. ${discUnitPrice.toLocaleString()}</td>`;
+          ? `<td style="text-align:right;color:#16a34a;font-weight:700">${discUnitPrice.toLocaleString()}</td>`
+          : `<td style="text-align:right">${discUnitPrice.toLocaleString()}</td>`;
         return `
         <tr>
           <td>${i.productName || "Product"}</td>
           <td style="text-align:center">${i.quantity}</td>
           ${discPriceCell}
-          <td style="text-align:right;font-weight:${discPct > 0 ? "700" : "400"}">Rs. ${lineTotal.toLocaleString()}</td>
+          <td style="text-align:right;font-weight:${discPct > 0 ? "700" : "400"}">${lineTotal.toLocaleString()}</td>
         </tr>
         `;
       }).join("");
 
-      const subtotalRow = (hasItemDisc || billDiscPct > 0) ? `
+      const subtotalRow = billDiscPct > 0 ? `
         <tr style="background:#f9f9fb">
           <td colspan="3" style="text-align:right;color:#888;font-size:13px;padding:10px 12px">Subtotal</td>
-          <td style="text-align:right;padding:10px 12px">Rs. ${subtotal.toLocaleString()}</td>
+          <td style="text-align:right;padding:10px 12px">${subtotal.toLocaleString()}</td>
         </tr>
       ` : "";
 
       const billDiscRow = billDiscPct > 0 ? `
         <tr style="background:#f0fdf4">
           <td colspan="3" style="text-align:right;color:#16a34a;font-size:13px;padding:8px 12px">Bill Discount (${billDiscPct}%)</td>
-          <td style="text-align:right;color:#16a34a;font-weight:700;padding:8px 12px">−Rs. ${billDiscAmt.toLocaleString()}</td>
+          <td style="text-align:right;color:#16a34a;font-weight:700;padding:8px 12px">−${billDiscAmt.toLocaleString()}</td>
         </tr>
       ` : "";
 
@@ -707,10 +707,10 @@ function BillModal({
                       <Text style={[billStyles.td, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
                       <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1 }]}>{item.quantity}</Text>
                       <Text style={[billStyles.td, billStyles.tdRight, { flex: 2, color: discPct > 0 ? "#16a34a" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                        Rs. {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
+                        {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
                       </Text>
                       <Text style={[billStyles.td, billStyles.tdRight, billStyles.tdTotal, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                        Rs. {lineTotal.toLocaleString()}
+                        {lineTotal.toLocaleString()}
                       </Text>
                     </View>
                   );
@@ -720,18 +720,18 @@ function BillModal({
 
             <View style={billStyles.tableDivider} />
 
-            {/* Subtotal + bill discount rows */}
-            {(hasItemDisc || billDiscPct > 0) && (
-              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 4 }}>
-                <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.textSecondary }}>Subtotal</Text>
-                <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.text }}>Rs. {subtotal.toLocaleString()}</Text>
-              </View>
-            )}
+            {/* Subtotal + bill discount rows — only show when bill discount applies */}
             {billDiscPct > 0 && (
-              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 4 }}>
-                <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#16a34a" }}>Bill Discount ({billDiscPct}%)</Text>
-                <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#16a34a" }}>−Rs. {billDiscAmt.toLocaleString()}</Text>
-              </View>
+              <>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, paddingHorizontal: 12 }}>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.textSecondary }}>Subtotal</Text>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.text }}>{subtotal.toLocaleString()}</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6, paddingHorizontal: 12 }}>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#16a34a" }}>Bill Discount ({billDiscPct}%)</Text>
+                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#16a34a" }}>−{billDiscAmt.toLocaleString()}</Text>
+                </View>
+              </>
             )}
 
             {/* Grand total */}
