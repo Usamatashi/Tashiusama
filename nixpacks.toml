@@ -10,7 +10,7 @@ cmds = [
 ]
 
 [start]
-cmd = "pnpm --filter @workspace/db run push-force && node --enable-source-maps artifacts/api-server/dist/index.mjs"
+cmd = "node --enable-source-maps artifacts/api-server/dist/index.mjs"
 
 [variables]
 NODE_ENV = "production"

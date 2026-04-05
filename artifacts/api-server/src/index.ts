@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedAdminUser } from "./lib/seed";
@@ -6,25 +7,55 @@ import { pool } from "@workspace/db";
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+  throw new Error("PORT environment variable is required but was not provided.");
 }
 
 const port = Number(rawPort);
-
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = app.listen(port, async (err?: Error) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+function runMigrations(): Promise<void> {
+  return new Promise((resolve) => {
+    logger.info("Running database migrations...");
 
+    const child = spawn(
+      "pnpm",
+      ["--filter", "@workspace/db", "run", "push-force"],
+      {
+        cwd: process.cwd(),
+        stdio: "pipe",
+        env: process.env,
+      },
+    );
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (d) => { stdout += d.toString(); });
+    child.stderr?.on("data", (d) => { stderr += d.toString(); });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        logger.info("Database migrations applied successfully");
+      } else {
+        logger.error({ code, stderr: stderr.trim() }, "Database migration failed — server will continue");
+      }
+      resolve();
+    });
+
+    child.on("error", (err) => {
+      logger.error({ err }, "Failed to spawn migration process — server will continue");
+      resolve();
+    });
+  });
+}
+
+const server = app.listen(port, () => {
   logger.info({ port, env: process.env.NODE_ENV ?? "development" }, "Server listening");
-  await seedAdminUser();
+
+  runMigrations()
+    .then(() => seedAdminUser())
+    .catch((err) => logger.error({ err }, "Post-startup tasks failed"));
 });
 
 async function shutdown(signal: string) {
