@@ -19,6 +19,7 @@ async function getItemsForOrders(orderIds: number[]) {
       unitPrice: orderItemsTable.unitPrice,
       totalPoints: orderItemsTable.totalPoints,
       bonusPoints: orderItemsTable.bonusPoints,
+      discountPercent: orderItemsTable.discountPercent,
     })
     .from(orderItemsTable)
     .leftJoin(productsTable, eq(orderItemsTable.productId, productsTable.id))
@@ -27,6 +28,9 @@ async function getItemsForOrders(orderIds: number[]) {
   const map: Record<number, OrderItemRow[]> = {};
   for (const r of rows) {
     if (!map[r.orderId]) map[r.orderId] = [];
+    const totalValue = r.quantity * r.unitPrice;
+    const discountPercent = r.discountPercent ?? 0;
+    const discountedValue = Math.round(totalValue * (1 - discountPercent / 100));
     map[r.orderId].push({
       productId: r.productId,
       productName: r.productName ?? "—",
@@ -34,7 +38,9 @@ async function getItemsForOrders(orderIds: number[]) {
       unitPrice: r.unitPrice,
       totalPoints: r.totalPoints,
       bonusPoints: r.bonusPoints,
-      totalValue: r.quantity * r.unitPrice,
+      totalValue,
+      discountPercent,
+      discountedValue,
     });
   }
   return map;
@@ -48,6 +54,17 @@ interface OrderItemRow {
   totalPoints: number;
   bonusPoints: number;
   totalValue: number;
+  discountPercent: number;
+  discountedValue: number;
+}
+
+// ─── Helper: compute order-level discount totals ──────────────────────────────
+function computeOrderTotals(items: OrderItemRow[], billDiscountPercent: number) {
+  const originalTotal = items.reduce((s, i) => s + i.totalValue, 0);
+  const subtotal = items.reduce((s, i) => s + i.discountedValue, 0);
+  const billDiscountAmount = Math.round(subtotal * (billDiscountPercent / 100));
+  const finalAmount = subtotal - billDiscountAmount;
+  return { originalTotal, subtotal, billDiscountAmount, finalAmount };
 }
 
 // ─── Helper: build unified items array (handles old single-product orders) ────
@@ -69,6 +86,7 @@ function buildOrderItems(
   // Backward-compat: old single-product order
   if (order.productId && order.quantity) {
     const unitPrice = order.salesPrice ?? 0;
+    const totalValue = order.quantity * unitPrice;
     return [{
       productId: order.productId,
       productName: order.productName ?? "—",
@@ -76,7 +94,9 @@ function buildOrderItems(
       unitPrice,
       totalPoints: order.totalPoints,
       bonusPoints: order.bonusPoints,
-      totalValue: order.quantity * unitPrice,
+      totalValue,
+      discountPercent: 0,
+      discountedValue: totalValue,
     }];
   }
   return [];
@@ -95,6 +115,7 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
         quantity: ordersTable.quantity,
         totalPoints: ordersTable.totalPoints,
         bonusPoints: ordersTable.bonusPoints,
+        billDiscountPercent: ordersTable.billDiscountPercent,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
         productName: productsTable.name,
@@ -115,7 +136,8 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
 
     res.json(rows.map(r => {
       const items = buildOrderItems(r, itemsMap, r.id);
-      const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
+      const billDiscountPercent = r.billDiscountPercent ?? 0;
+      const { originalTotal, subtotal, billDiscountAmount, finalAmount } = computeOrderTotals(items, billDiscountPercent);
       return {
         id: r.id,
         salesmanId: r.salesmanId,
@@ -126,7 +148,11 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
         retailerPhone: r.retailerPhone,
         totalPoints: r.totalPoints,
         bonusPoints: r.bonusPoints,
-        totalValue,
+        billDiscountPercent,
+        totalValue: originalTotal,
+        subtotal,
+        billDiscountAmount,
+        finalAmount,
         items,
       };
     }));
@@ -140,10 +166,12 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
 router.post("/", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
-    const { retailerId, items, productId, quantity } = req.body;
+    const { retailerId, items, productId, quantity, billDiscountPercent: rawBillDiscount } = req.body;
+
+    const billDiscountPercent = Math.min(100, Math.max(0, Number(rawBillDiscount ?? 0)));
 
     // Support both new format (items array) and old format (productId + quantity)
-    let orderItems: Array<{ productId: number; quantity: number }> = [];
+    let orderItems: Array<{ productId: number; quantity: number; discountPercent?: number }> = [];
     if (Array.isArray(items) && items.length > 0) {
       orderItems = items;
     } else if (productId && quantity) {
@@ -176,6 +204,8 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
       totalPoints: number;
       bonusPoints: number;
       totalValue: number;
+      discountPercent: number;
+      discountedValue: number;
     }> = [];
 
     for (const item of orderItems) {
@@ -189,10 +219,13 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
         return;
       }
       const p = product[0];
+      const discountPercent = Math.min(100, Math.max(0, Number(item.discountPercent ?? 0)));
       const itemTotalPoints = Number(item.quantity) * p.points;
       const itemBonusPoints = Math.round(itemTotalPoints * 0.1);
       orderTotalPoints += itemTotalPoints;
       orderBonusPoints += itemBonusPoints;
+      const totalValue = Number(item.quantity) * p.salesPrice;
+      const discountedValue = Math.round(totalValue * (1 - discountPercent / 100));
       resolvedItems.push({
         productId: p.id,
         productName: p.name,
@@ -200,7 +233,9 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
         unitPrice: p.salesPrice,
         totalPoints: itemTotalPoints,
         bonusPoints: itemBonusPoints,
-        totalValue: Number(item.quantity) * p.salesPrice,
+        totalValue,
+        discountPercent,
+        discountedValue,
       });
     }
 
@@ -213,6 +248,7 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
       quantity: isMultiItem ? null : resolvedItems[0].quantity,
       totalPoints: orderTotalPoints,
       bonusPoints: orderBonusPoints,
+      billDiscountPercent,
       status: "pending",
     }).returning();
 
@@ -227,10 +263,11 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
         unitPrice: item.unitPrice,
         totalPoints: item.totalPoints,
         bonusPoints: item.bonusPoints,
+        discountPercent: item.discountPercent,
       }))
     );
 
-    const totalValue = resolvedItems.reduce((s, i) => s + i.totalValue, 0);
+    const { originalTotal, subtotal, billDiscountAmount, finalAmount } = computeOrderTotals(resolvedItems, billDiscountPercent);
 
     res.status(201).json({
       id: order.id,
@@ -239,7 +276,11 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
       status: order.status,
       totalPoints: order.totalPoints,
       bonusPoints: order.bonusPoints,
-      totalValue,
+      billDiscountPercent,
+      totalValue: originalTotal,
+      subtotal,
+      billDiscountAmount,
+      finalAmount,
       createdAt: order.createdAt.toISOString(),
       retailerName: retailer[0].name,
       retailerPhone: retailer[0].phone,
@@ -382,6 +423,7 @@ router.put("/:id/items", requireAuth, async (req, res) => {
       unitPrice: number;
       totalPoints: number;
       bonusPoints: number;
+      discountPercent: number;
     }> = [];
 
     for (const item of items) {
@@ -395,6 +437,7 @@ router.put("/:id/items", requireAuth, async (req, res) => {
         return;
       }
       const p = product[0];
+      const discountPercent = Math.min(100, Math.max(0, Number(item.discountPercent ?? 0)));
       const itemTotalPoints = Number(item.quantity) * p.points;
       const itemBonusPoints = Math.round(itemTotalPoints * 0.1);
       orderTotalPoints += itemTotalPoints;
@@ -405,6 +448,7 @@ router.put("/:id/items", requireAuth, async (req, res) => {
         unitPrice: p.salesPrice,
         totalPoints: itemTotalPoints,
         bonusPoints: itemBonusPoints,
+        discountPercent,
       });
     }
 
@@ -485,6 +529,7 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
         quantity: ordersTable.quantity,
         totalPoints: ordersTable.totalPoints,
         bonusPoints: ordersTable.bonusPoints,
+        billDiscountPercent: ordersTable.billDiscountPercent,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
         productName: productsTable.name,
@@ -500,13 +545,18 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
 
     res.json(rows.map(r => {
       const items = buildOrderItems(r, itemsMap, r.id);
-      const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
+      const billDiscountPercent = r.billDiscountPercent ?? 0;
+      const { originalTotal, subtotal, billDiscountAmount, finalAmount } = computeOrderTotals(items, billDiscountPercent);
       return {
         id: r.id,
         status: r.status,
         createdAt: r.createdAt.toISOString(),
         totalPoints: r.totalPoints,
-        totalValue,
+        billDiscountPercent,
+        totalValue: originalTotal,
+        subtotal,
+        billDiscountAmount,
+        finalAmount,
         items,
       };
     }));
@@ -527,6 +577,7 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
         quantity: ordersTable.quantity,
         bonusPoints: ordersTable.bonusPoints,
         totalPoints: ordersTable.totalPoints,
+        billDiscountPercent: ordersTable.billDiscountPercent,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,
         productName: productsTable.name,
@@ -543,16 +594,21 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
 
     const ordersWithItems = rows.map(r => {
       const items = buildOrderItems(r, itemsMap, r.id);
-      const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
+      const billDiscountPercent = r.billDiscountPercent ?? 0;
+      const { originalTotal, subtotal, billDiscountAmount, finalAmount } = computeOrderTotals(items, billDiscountPercent);
       return {
         id: r.id,
         bonusPoints: r.bonusPoints,
         totalPoints: r.totalPoints,
+        billDiscountPercent,
+        totalValue: originalTotal,
+        subtotal,
+        billDiscountAmount,
+        finalAmount,
         status: r.status,
         createdAt: r.createdAt.toISOString(),
         retailerName: r.retailerName,
         retailerPhone: r.retailerPhone,
-        totalValue,
         items,
       };
     });
@@ -569,8 +625,8 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
 
     const totalBonus = ordersWithItems.reduce((s, r) => s + (r.status !== "cancelled" ? r.bonusPoints : 0), 0);
     const confirmedBonus = ordersWithItems.reduce((s, r) => s + (r.status === "confirmed" ? r.bonusPoints : 0), 0);
-    const totalSalesValue = thisMonthDispatched.reduce((s, r) => s + r.totalValue, 0);
-    const confirmedSalesValue = ordersWithItems.reduce((s, r) => s + (r.status === "confirmed" ? r.totalValue : 0), 0);
+    const totalSalesValue = thisMonthDispatched.reduce((s, r) => s + r.finalAmount, 0);
+    const confirmedSalesValue = ordersWithItems.reduce((s, r) => s + (r.status === "confirmed" ? r.finalAmount : 0), 0);
     const totalOrders = thisMonthDispatched.length;
 
     res.json({

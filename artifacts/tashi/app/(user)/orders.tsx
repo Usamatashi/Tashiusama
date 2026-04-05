@@ -39,7 +39,7 @@ const CATEGORY_META: Record<ProductCategory, { label: string; icon: React.Compon
   other:       { label: "Other Products", icon: "box",    color: "#7B2FBE", bg: "#F5F0FF" },
 };
 const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
-interface CartItem { product: Product; quantity: number; }
+interface CartItem { product: Product; quantity: number; discountPercent: number; }
 
 interface OrderItemResponse {
   productId: number;
@@ -49,6 +49,8 @@ interface OrderItemResponse {
   totalPoints: number;
   bonusPoints: number;
   totalValue: number;
+  discountPercent: number;
+  discountedValue: number;
 }
 
 interface Order {
@@ -56,6 +58,10 @@ interface Order {
   totalPoints: number;
   bonusPoints: number;
   totalValue: number;
+  billDiscountPercent: number;
+  subtotal: number;
+  billDiscountAmount: number;
+  finalAmount: number;
   status: "pending" | "confirmed" | "dispatched" | "cancelled";
   retailerName: string | null;
   retailerPhone: string | null;
@@ -67,6 +73,10 @@ interface RetailerOrder {
   id: number;
   totalPoints: number;
   totalValue: number;
+  billDiscountPercent: number;
+  subtotal: number;
+  billDiscountAmount: number;
+  finalAmount: number;
   status: "pending" | "confirmed" | "cancelled";
   createdAt: string;
   items: OrderItemResponse[];
@@ -410,6 +420,9 @@ function InvoiceCard({
   date,
   status,
   items = [],
+  billDiscountPercent = 0,
+  billDiscountAmount = 0,
+  finalAmount,
   expanded,
   onToggle,
   style,
@@ -420,11 +433,16 @@ function InvoiceCard({
   date: string;
   status: string;
   items: OrderItemResponse[];
+  billDiscountPercent?: number;
+  billDiscountAmount?: number;
+  finalAmount?: number;
   expanded: boolean;
   onToggle: () => void;
   style?: object;
 }) {
-  const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
+  const hasItemDisc = items.some(i => (i.discountPercent ?? 0) > 0);
+  const subtotal = items.reduce((s, i) => s + (i.discountedValue ?? i.totalValue), 0);
+  const grandTotal = finalAmount ?? (subtotal - (billDiscountAmount ?? 0));
   return (
     <View style={[styles.card, style]}>
       {/* Tappable summary row — always visible */}
@@ -463,18 +481,37 @@ function InvoiceCard({
             <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
           </View>
           <View style={styles.tableDivider} />
-          {items.map((item, idx) => (
-            <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-              <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName}</Text>
-              <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
-              <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-                {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
-              </Text>
-              <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
-                {item.totalValue > 0 ? item.totalValue.toLocaleString() : "—"}
-              </Text>
+          {items.map((item, idx) => {
+            const discPct = item.discountPercent ?? 0;
+            const lineTotal = item.discountedValue ?? item.totalValue;
+            return (
+              <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+                <View style={{ flex: 3 }}>
+                  <Text style={styles.colVal} numberOfLines={2}>{item.productName}</Text>
+                  {discPct > 0 && <Text style={{ fontSize: 10, color: "#10B981", fontWeight: "700" }}>−{discPct}% off</Text>}
+                </View>
+                <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+                  {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
+                </Text>
+                <Text style={[styles.colVal, styles.colRight, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                  {lineTotal > 0 ? lineTotal.toLocaleString() : "—"}
+                </Text>
+              </View>
+            );
+          })}
+          {(hasItemDisc || billDiscountPercent > 0) && (
+            <View style={[styles.tableRow, { paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#F0EDE8" }]}>
+              <Text style={[styles.colHead, { flex: 1 }]}>Subtotal</Text>
+              <Text style={[styles.colVal, styles.colRight, { flex: 1 }]}>Rs. {subtotal.toLocaleString()}</Text>
             </View>
-          ))}
+          )}
+          {billDiscountPercent > 0 && (
+            <View style={[styles.tableRow, { paddingVertical: 6 }]}>
+              <Text style={[styles.colHead, { flex: 1, color: "#10B981" }]}>Bill Discount ({billDiscountPercent}%)</Text>
+              <Text style={[styles.colVal, styles.colRight, { flex: 1, color: "#10B981" }]}>−Rs. {billDiscountAmount.toLocaleString()}</Text>
+            </View>
+          )}
           <View style={styles.totalFooter}>
             <Text style={styles.totalFooterLabel}>Order Total</Text>
             <Text style={styles.totalFooterValue}>Rs. {grandTotal.toLocaleString()}</Text>
@@ -509,6 +546,9 @@ function OrderCard({
         date={date}
         status={order.status}
         items={order.items}
+        billDiscountPercent={order.billDiscountPercent ?? 0}
+        billDiscountAmount={order.billDiscountAmount ?? 0}
+        finalAmount={order.finalAmount}
         expanded={expanded}
         onToggle={() => { Haptics.selectionAsync(); setExpanded(prev => !prev); }}
       />
@@ -634,6 +674,9 @@ function RetailerOrderCard({
         date={date}
         status={order.status}
         items={safeItems}
+        billDiscountPercent={order.billDiscountPercent ?? 0}
+        billDiscountAmount={order.billDiscountAmount ?? 0}
+        finalAmount={order.finalAmount}
         expanded={expanded}
         onToggle={handleToggle}
         style={{ marginBottom: 0 }}
@@ -767,6 +810,8 @@ export default function OrdersScreen() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState("1");
+  const [itemDiscount, setItemDiscount] = useState("0");
+  const [billDiscount, setBillDiscount] = useState("0");
   const [submitError, setSubmitError] = useState("");
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [smsSending, setSmsSending] = useState(false);
@@ -804,7 +849,7 @@ export default function OrdersScreen() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: { retailerId: number; items: { productId: number; quantity: number }[] }) =>
+    mutationFn: (body: { retailerId: number; billDiscountPercent: number; items: { productId: number; quantity: number; discountPercent: number }[] }) =>
       apiFetch<Order>("/orders", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: (order) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
@@ -829,6 +874,8 @@ export default function OrdersScreen() {
     setCartItems([]);
     setSelectedProduct(null);
     setQuantity("1");
+    setItemDiscount("0");
+    setBillDiscount("0");
     setSubmitError("");
     setSmsSending(false);
   }, []);
@@ -851,17 +898,23 @@ export default function OrdersScreen() {
     });
 
     const items = order.items ?? [];
-    const itemLines = items.map(i =>
-      `• ${i.productName}: ${i.quantity} set${i.quantity !== 1 ? "s" : ""} × Rs. ${i.unitPrice.toLocaleString()} = Rs. ${i.totalValue.toLocaleString()}`
-    ).join("\n");
+    const itemLines = items.map(i => {
+      const discPct = i.discountPercent ?? 0;
+      const lineTotal = i.discountedValue ?? i.totalValue;
+      const discStr = discPct > 0 ? ` (${discPct}% off)` : "";
+      return `• ${i.productName}: ${i.quantity} set${i.quantity !== 1 ? "s" : ""} × Rs. ${i.unitPrice.toLocaleString()} = Rs. ${lineTotal.toLocaleString()}${discStr}`;
+    }).join("\n");
 
-    const grandTotal = items.reduce((s, i) => s + i.totalValue, 0);
+    const finalTotal = order.finalAmount ?? items.reduce((s, i) => s + (i.discountedValue ?? i.totalValue), 0);
+    const billPct = order.billDiscountPercent ?? 0;
+    const billAmt = order.billDiscountAmount ?? 0;
+    const subtotalLine = billPct > 0 ? `\nSubtotal: Rs. ${(order.subtotal ?? finalTotal + billAmt).toLocaleString()}\nBill Discount (${billPct}%): −Rs. ${billAmt.toLocaleString()}` : "";
     const retailerName = order.retailerName ? `\nRetailer: ${order.retailerName}` : "";
 
     const message =
       `*Tashi Order #${order.id}*${retailerName}\nDate: ${date}\n\n` +
-      `${itemLines}\n\n` +
-      `Order Total: Rs. ${grandTotal.toLocaleString()}\nStatus: PENDING\n\n` +
+      `${itemLines}\n${subtotalLine}\n` +
+      `Order Total: Rs. ${finalTotal.toLocaleString()}\nStatus: PENDING\n\n` +
       `This order is pending confirmation. Thank you!`;
 
     setSmsSending(true);
@@ -876,18 +929,20 @@ export default function OrdersScreen() {
     if (!selectedProduct) return;
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty < 1) return;
+    const discountPct = Math.min(100, Math.max(0, parseInt(itemDiscount || "0", 10)));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCartItems(prev => {
       const existing = prev.findIndex(c => c.product.id === selectedProduct.id);
       if (existing >= 0) {
         const updated = [...prev];
-        updated[existing] = { product: selectedProduct, quantity: updated[existing].quantity + qty };
+        updated[existing] = { product: selectedProduct, quantity: updated[existing].quantity + qty, discountPercent: discountPct };
         return updated;
       }
-      return [...prev, { product: selectedProduct, quantity: qty }];
+      return [...prev, { product: selectedProduct, quantity: qty, discountPercent: discountPct }];
     });
     setSelectedProduct(null);
     setQuantity("1");
+    setItemDiscount("0");
   };
 
   const removeFromCart = (productId: number) => {
@@ -901,20 +956,33 @@ export default function OrdersScreen() {
       return;
     }
     setSubmitError("");
+    const billDiscountPct = Math.min(100, Math.max(0, parseInt(billDiscount || "0", 10)));
     createMutation.mutate({
       retailerId: selectedRetailer.id,
-      items: cartItems.map(c => ({ productId: c.product.id, quantity: c.quantity })),
+      billDiscountPercent: billDiscountPct,
+      items: cartItems.map(c => ({ productId: c.product.id, quantity: c.quantity, discountPercent: c.discountPercent })),
     });
   };
 
   const cartTotal = cartItems.reduce((s, c) => s + c.product.salesPrice * c.quantity, 0);
+  const cartSubtotal = cartItems.reduce((s, c) => {
+    const lineTotal = c.product.salesPrice * c.quantity;
+    return s + Math.round(lineTotal * (1 - c.discountPercent / 100));
+  }, 0);
+  const billDiscountPct = Math.min(100, Math.max(0, parseInt(billDiscount || "0", 10)));
+  const billDiscountAmt = Math.round(cartSubtotal * (billDiscountPct / 100));
+  const cartFinalAmount = cartSubtotal - billDiscountAmt;
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
   // ── Order Placed Success Panel ───────────────────────────────────────────────
   if (placedOrder) {
     const orderItems = placedOrder.items ?? [];
-    const grandTotal = orderItems.reduce((s, i) => s + i.totalValue, 0);
+    const hasItemDisc = orderItems.some(i => (i.discountPercent ?? 0) > 0);
+    const placedSubtotal = placedOrder.subtotal ?? orderItems.reduce((s, i) => s + (i.discountedValue ?? i.totalValue), 0);
+    const placedBillPct = placedOrder.billDiscountPercent ?? 0;
+    const placedBillAmt = placedOrder.billDiscountAmount ?? 0;
+    const placedFinal = placedOrder.finalAmount ?? placedSubtotal;
     const date = new Date(placedOrder.createdAt).toLocaleDateString("en-GB", {
       day: "2-digit", month: "short", year: "numeric",
     });
@@ -962,20 +1030,39 @@ export default function OrdersScreen() {
                 <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
               </View>
               <View style={styles.tableDivider} />
-              {orderItems.map((item, idx) => (
-                <View
-                  key={idx}
-                  style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < orderItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}
-                >
-                  <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{item.productName}</Text>
-                  <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
-                  <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.unitPrice.toLocaleString()}</Text>
-                  <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.totalValue.toLocaleString()}</Text>
+              {orderItems.map((item, idx) => {
+                const discPct = item.discountPercent ?? 0;
+                const lineTotal = item.discountedValue ?? item.totalValue;
+                return (
+                  <View
+                    key={idx}
+                    style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < orderItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8", flexWrap: "wrap" }]}
+                  >
+                    <View style={{ flex: 3 }}>
+                      <Text style={styles.colVal} numberOfLines={2}>{item.productName}</Text>
+                      {discPct > 0 && <Text style={{ fontSize: 10, color: "#10B981", fontWeight: "700" }}>−{discPct}% off</Text>}
+                    </View>
+                    <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                    <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{item.unitPrice.toLocaleString()}</Text>
+                    <Text style={[styles.colVal, styles.colRight, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>Rs.{"\u00A0"}{lineTotal.toLocaleString()}</Text>
+                  </View>
+                );
+              })}
+              {(hasItemDisc || placedBillPct > 0) && (
+                <View style={[styles.tableRow, { paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#F0EDE8" }]}>
+                  <Text style={[styles.colHead, { flex: 1 }]}>Subtotal</Text>
+                  <Text style={[styles.colVal, styles.colRight, { flex: 1 }]}>Rs.{"\u00A0"}{placedSubtotal.toLocaleString()}</Text>
                 </View>
-              ))}
+              )}
+              {placedBillPct > 0 && (
+                <View style={[styles.tableRow, { paddingVertical: 6 }]}>
+                  <Text style={[styles.colHead, { flex: 1, color: "#10B981" }]}>Bill Discount ({placedBillPct}%)</Text>
+                  <Text style={[styles.colVal, styles.colRight, { flex: 1, color: "#10B981" }]}>−Rs.{"\u00A0"}{placedBillAmt.toLocaleString()}</Text>
+                </View>
+              )}
               <View style={styles.totalFooter}>
                 <Text style={styles.totalFooterLabel}>Grand Total</Text>
-                <Text style={styles.totalFooterValue}>{grandTotal.toLocaleString()}</Text>
+                <Text style={styles.totalFooterValue}>Rs.{"\u00A0"}{placedFinal.toLocaleString()}</Text>
               </View>
             </View>
           </View>
@@ -1122,21 +1209,26 @@ export default function OrdersScreen() {
                 <View style={styles.cartBox}>
                   <View style={styles.cartBoxHeader}>
                     <Text style={styles.cartBoxTitle}>Cart ({cartItems.length} product{cartItems.length !== 1 ? "s" : ""})</Text>
-                    <Text style={styles.cartBoxTotal}>Rs. {cartTotal.toLocaleString()}</Text>
+                    <Text style={styles.cartBoxTotal}>Rs. {cartSubtotal.toLocaleString()}</Text>
                   </View>
-                  {cartItems.map(c => (
-                    <View key={c.product.id} style={styles.cartRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cartItemName}>{c.product.name}</Text>
-                        <Text style={styles.cartItemSub}>
-                          {c.quantity} sets × Rs. {c.product.salesPrice.toLocaleString()} = Rs. {(c.quantity * c.product.salesPrice).toLocaleString()}
-                        </Text>
+                  {cartItems.map(c => {
+                    const lineTotal = c.quantity * c.product.salesPrice;
+                    const discounted = Math.round(lineTotal * (1 - c.discountPercent / 100));
+                    return (
+                      <View key={c.product.id} style={styles.cartRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cartItemName}>{c.product.name}</Text>
+                          <Text style={styles.cartItemSub}>
+                            {c.quantity} sets × Rs. {c.product.salesPrice.toLocaleString()}
+                            {c.discountPercent > 0 ? ` −${c.discountPercent}% = Rs. ${discounted.toLocaleString()}` : ` = Rs. ${lineTotal.toLocaleString()}`}
+                          </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => removeFromCart(c.product.id)} style={styles.removeBtn}>
+                          <Feather name="trash-2" size={15} color="#EF4444" />
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity onPress={() => removeFromCart(c.product.id)} style={styles.removeBtn}>
-                        <Feather name="trash-2" size={15} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
 
@@ -1235,15 +1327,60 @@ export default function OrdersScreen() {
                     </TouchableOpacity>
                   </View>
 
+                  {/* Item discount % */}
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <Text style={[styles.previewLabel, { fontWeight: "600", color: Colors.textSecondary }]}>Item Discount (%)</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E5E0DB", borderRadius: 10, backgroundColor: "#FFF", overflow: "hidden" }}>
+                      <TouchableOpacity
+                        style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                        onPress={() => { const n = Math.max(0, parseInt(itemDiscount || "0", 10) - 1); setItemDiscount(String(n)); }}
+                      >
+                        <Feather name="minus" size={14} color={Colors.primary} />
+                      </TouchableOpacity>
+                      <TextInput
+                        style={{ width: 44, textAlign: "center", fontSize: 15, fontWeight: "700", color: Colors.text }}
+                        value={itemDiscount}
+                        onChangeText={v => { const n = Math.min(100, parseInt(v.replace(/[^0-9]/g, "") || "0", 10)); setItemDiscount(String(n)); }}
+                        keyboardType="number-pad"
+                        maxLength={3}
+                      />
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: Colors.textSecondary, paddingRight: 4 }}>%</Text>
+                      <TouchableOpacity
+                        style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                        onPress={() => { const n = Math.min(100, parseInt(itemDiscount || "0", 10) + 1); setItemDiscount(String(n)); }}
+                      >
+                        <Feather name="plus" size={14} color={Colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
                   {/* Line total */}
                   {parseInt(quantity, 10) > 0 && (
                     <View style={styles.previewCard}>
-                      <View style={styles.previewRow}>
-                        <Text style={styles.previewLabel}>Line Total</Text>
-                        <Text style={[styles.previewVal, { color: Colors.primary, fontWeight: "700" }]}>
-                          Rs. {(parseInt(quantity, 10) * selectedProduct.salesPrice).toLocaleString()}
-                        </Text>
-                      </View>
+                      {(() => {
+                        const qty = parseInt(quantity, 10);
+                        const discPct = Math.min(100, Math.max(0, parseInt(itemDiscount || "0", 10)));
+                        const lineTotal = qty * selectedProduct.salesPrice;
+                        const discounted = Math.round(lineTotal * (1 - discPct / 100));
+                        return (
+                          <>
+                            {discPct > 0 && (
+                              <View style={styles.previewRow}>
+                                <Text style={styles.previewLabel}>Original</Text>
+                                <Text style={[styles.previewVal, { textDecorationLine: "line-through", color: Colors.textLight }]}>
+                                  Rs. {lineTotal.toLocaleString()}
+                                </Text>
+                              </View>
+                            )}
+                            <View style={styles.previewRow}>
+                              <Text style={styles.previewLabel}>{discPct > 0 ? `After ${discPct}% Off` : "Line Total"}</Text>
+                              <Text style={[styles.previewVal, { color: Colors.primary, fontWeight: "700" }]}>
+                                Rs. {discounted.toLocaleString()}
+                              </Text>
+                            </View>
+                          </>
+                        );
+                      })()}
                     </View>
                   )}
 
@@ -1311,18 +1448,66 @@ export default function OrdersScreen() {
                   <View style={styles.tableDivider} />
                   {cartItems.map((c, idx) => {
                     const lineTotal = c.quantity * c.product.salesPrice;
+                    const discounted = Math.round(lineTotal * (1 - c.discountPercent / 100));
                     return (
                       <View key={c.product.id} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < cartItems.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-                        <Text style={[styles.colVal, { flex: 3 }]} numberOfLines={2}>{c.product.name}</Text>
+                        <View style={{ flex: 3 }}>
+                          <Text style={styles.colVal} numberOfLines={2}>{c.product.name}</Text>
+                          {c.discountPercent > 0 && <Text style={{ fontSize: 10, color: "#10B981", fontWeight: "700" }}>−{c.discountPercent}% off</Text>}
+                        </View>
                         <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{c.quantity}</Text>
                         <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{c.product.salesPrice.toLocaleString()}</Text>
-                        <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>Rs.{"\u00A0"}{lineTotal.toLocaleString()}</Text>
+                        <Text style={[styles.colVal, styles.colRight, { flex: 2, fontWeight: c.discountPercent > 0 ? "700" : "400" }]}>Rs.{"\u00A0"}{discounted.toLocaleString()}</Text>
                       </View>
                     );
                   })}
+                  {cartItems.some(c => c.discountPercent > 0) && (
+                    <View style={[styles.tableRow, { paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#F0EDE8" }]}>
+                      <Text style={[styles.colHead, { flex: 1 }]}>Subtotal</Text>
+                      <Text style={[styles.colVal, styles.colRight, { flex: 1 }]}>Rs.{"\u00A0"}{cartSubtotal.toLocaleString()}</Text>
+                    </View>
+                  )}
+                  {billDiscountPct > 0 && (
+                    <View style={[styles.tableRow, { paddingVertical: 6 }]}>
+                      <Text style={[styles.colHead, { flex: 1, color: "#10B981" }]}>Bill Disc ({billDiscountPct}%)</Text>
+                      <Text style={[styles.colVal, styles.colRight, { flex: 1, color: "#10B981" }]}>−Rs.{"\u00A0"}{billDiscountAmt.toLocaleString()}</Text>
+                    </View>
+                  )}
                   <View style={styles.totalFooter}>
                     <Text style={styles.totalFooterLabel}>Grand Total</Text>
-                    <Text style={styles.totalFooterValue}>Rs. {cartTotal.toLocaleString()}</Text>
+                    <Text style={styles.totalFooterValue}>Rs. {cartFinalAmount.toLocaleString()}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Bill-level discount */}
+              <View style={[styles.summaryCard, { marginTop: -2 }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: Colors.text }}>Bill Discount (%)</Text>
+                    <Text style={{ fontSize: 11, color: Colors.textLight, marginTop: 2 }}>Applied to the whole bill</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E5E0DB", borderRadius: 10, backgroundColor: "#FFF", overflow: "hidden" }}>
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                      onPress={() => { const n = Math.max(0, parseInt(billDiscount || "0", 10) - 1); setBillDiscount(String(n)); }}
+                    >
+                      <Feather name="minus" size={14} color={Colors.primary} />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={{ width: 44, textAlign: "center", fontSize: 15, fontWeight: "700", color: Colors.text }}
+                      value={billDiscount}
+                      onChangeText={v => { const n = Math.min(100, parseInt(v.replace(/[^0-9]/g, "") || "0", 10)); setBillDiscount(String(n)); }}
+                      keyboardType="number-pad"
+                      maxLength={3}
+                    />
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: Colors.textSecondary, paddingRight: 4 }}>%</Text>
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                      onPress={() => { const n = Math.min(100, parseInt(billDiscount || "0", 10) + 1); setBillDiscount(String(n)); }}
+                    >
+                      <Feather name="plus" size={14} color={Colors.primary} />
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>

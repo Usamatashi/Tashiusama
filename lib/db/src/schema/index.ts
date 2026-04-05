@@ -118,6 +118,7 @@ export const ordersTable = pgTable("orders", {
   quantity: integer("quantity"),
   totalPoints: integer("total_points").notNull().default(0),
   bonusPoints: integer("bonus_points").notNull().default(0),
+  billDiscountPercent: integer("bill_discount_percent").notNull().default(0),
   status: orderStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -130,6 +131,7 @@ export const orderItemsTable = pgTable("order_items", {
   unitPrice: integer("unit_price").notNull().default(0),
   totalPoints: integer("total_points").notNull().default(0),
   bonusPoints: integer("bonus_points").notNull().default(0),
+  discountPercent: integer("discount_percent").notNull().default(0),
 });
 
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true });
