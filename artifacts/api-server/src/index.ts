@@ -54,7 +54,12 @@ function runMigrations(): Promise<void> {
 const server = app.listen(port, () => {
   logger.info({ port, env: process.env.NODE_ENV ?? "development" }, "Server listening");
 
-  // Validate config after binding so healthcheck passes even if misconfigured
+  // Validate config after binding — server stays up even if misconfigured,
+  // errors appear in Railway logs rather than crashing before healthcheck
+  if (!process.env.DATABASE_URL) {
+    logger.error("DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.");
+  }
+
   validateConfig();
 
   runMigrations()
