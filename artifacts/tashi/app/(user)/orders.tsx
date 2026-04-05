@@ -474,41 +474,33 @@ function InvoiceCard({
       {/* Expanded: full items table */}
       {expanded && (
         <View style={styles.table}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ minWidth: 430 }}>
-              <View style={styles.tableRow}>
-                <Text style={[styles.colHead, { width: 120 }]}>PRODUCT</Text>
-                <Text style={[styles.colHead, styles.colCenter, { width: 40 }]}>SETS</Text>
-                <Text style={[styles.colHead, styles.colRight, { width: 80 }]}>SALE PRICE</Text>
-                <Text style={[styles.colHead, styles.colRight, { width: 85 }]}>DISC. PRICE</Text>
-                <Text style={[styles.colHead, styles.colRight, { width: 80 }]}>TOTAL</Text>
+          <View style={styles.tableRow}>
+            <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
+            <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>SETS</Text>
+            <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>DISC. PRICE</Text>
+            <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
+          </View>
+          <View style={styles.tableDivider} />
+          {items.map((item, idx) => {
+            const discPct = item.discountPercent ?? 0;
+            const lineTotal = item.discountedValue ?? item.totalValue;
+            const discUnitPrice = discPct > 0 ? Math.round(item.unitPrice * (1 - discPct / 100)) : item.unitPrice;
+            return (
+              <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
+                <View style={{ flex: 3 }}>
+                  <Text style={styles.colVal} numberOfLines={2}>{item.productName}</Text>
+                </View>
+                <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                <Text style={[styles.colVal, styles.colRight, { flex: 2, color: discPct > 0 ? "#10B981" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                  {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
+                </Text>
+                <Text style={[styles.colVal, styles.colRight, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                  {lineTotal > 0 ? lineTotal.toLocaleString() : "—"}
+                </Text>
               </View>
-              <View style={styles.tableDivider} />
-              {items.map((item, idx) => {
-                const discPct = item.discountPercent ?? 0;
-                const lineTotal = item.discountedValue ?? item.totalValue;
-                const discUnitPrice = discPct > 0 ? Math.round(item.unitPrice * (1 - discPct / 100)) : item.unitPrice;
-                return (
-                  <View key={idx} style={[styles.tableRow, { paddingVertical: 8, borderBottomWidth: idx < items.length - 1 ? 1 : 0, borderBottomColor: "#F0EDE8" }]}>
-                    <View style={{ width: 120 }}>
-                      <Text style={styles.colVal} numberOfLines={2}>{item.productName}</Text>
-                    </View>
-                    <Text style={[styles.colVal, styles.colCenter, { width: 40 }]}>{item.quantity}</Text>
-                    <Text style={[styles.colVal, styles.colRight, { width: 80 }]}>
-                      {item.unitPrice > 0 ? item.unitPrice.toLocaleString() : "—"}
-                    </Text>
-                    <Text style={[styles.colVal, styles.colRight, { width: 85, color: discPct > 0 ? "#10B981" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                      {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
-                    </Text>
-                    <Text style={[styles.colVal, styles.colRight, { width: 80, fontWeight: discPct > 0 ? "700" : "400" }]}>
-                      {lineTotal > 0 ? lineTotal.toLocaleString() : "—"}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
-          {(hasItemDisc || billDiscountPercent > 0) && (
+            );
+          })}
+          {billDiscountPercent > 0 && (
             <View style={[styles.tableRow, { paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#F0EDE8" }]}>
               <Text style={[styles.colHead, { flex: 1 }]}>Subtotal</Text>
               <Text style={[styles.colVal, styles.colRight, { flex: 1 }]}>Rs. {subtotal.toLocaleString()}</Text>
@@ -1056,7 +1048,7 @@ export default function OrdersScreen() {
                   </View>
                 );
               })}
-              {(hasItemDisc || placedBillPct > 0) && (
+              {placedBillPct > 0 && (
                 <View style={[styles.tableRow, { paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#F0EDE8" }]}>
                   <Text style={[styles.colHead, { flex: 1 }]}>Subtotal</Text>
                   <Text style={[styles.colVal, styles.colRight, { flex: 1 }]}>Rs.{"\u00A0"}{placedSubtotal.toLocaleString()}</Text>
