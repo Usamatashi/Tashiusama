@@ -584,11 +584,6 @@ function BillModal({
               </tr>
             </tfoot>
           </table>
-          <div class="footer">
-            <p>Thank you for your business!</p>
-            <br/>
-            <strong>Tashi</strong>
-          </div>
         </body>
         </html>
       `;
@@ -740,11 +735,6 @@ function BillModal({
               <Text style={billStyles.grandTotalValue}>Rs. {grandTotal.toLocaleString()}</Text>
             </View>
 
-            {/* Footer */}
-            <View style={billStyles.billFooter}>
-              <Text style={billStyles.footerText}>Thank you for your business!</Text>
-              <Text style={billStyles.footerBrand}>Tashi</Text>
-            </View>
           </View>
 
           {/* Share button */}
