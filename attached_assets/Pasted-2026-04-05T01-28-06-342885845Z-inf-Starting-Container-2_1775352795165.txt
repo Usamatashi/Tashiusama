@@ -1,0 +1,56 @@
+2026-04-05T01:28:06.342885845Z [inf]  Starting Container
+2026-04-05T01:28:07.235213026Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:07.235218778Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:07.235223531Z [inf]  Server listening
+2026-04-05T01:28:07.235228214Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:07.235233476Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:07.535200040Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:07.535209217Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:07.624219357Z [inf]  Server listening
+2026-04-05T01:28:07.624231570Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:07.624237003Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:08.569126062Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:08.574220336Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:08.667172682Z [inf]  Server listening
+2026-04-05T01:28:08.667182568Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:08.667190378Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:09.621525092Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:09.621535568Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:10.230303002Z [inf]  Server listening
+2026-04-05T01:28:10.230311479Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:10.230319048Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:11.249126174Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:11.249265441Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:11.249269875Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:11.249274815Z [inf]  Server listening
+2026-04-05T01:28:11.249280406Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:12.239509557Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:12.239516014Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:12.239523026Z [inf]  Server listening
+2026-04-05T01:28:12.239529040Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:12.239534780Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:13.286023498Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:13.286029600Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:13.286035598Z [inf]  Server listening
+2026-04-05T01:28:13.286041437Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:13.286049353Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:14.308948337Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:14.308961113Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:14.309091547Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:14.309098241Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:14.309104226Z [inf]  Server listening
+2026-04-05T01:28:15.250846519Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:15.250852216Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:15.250858364Z [inf]  Server listening
+2026-04-05T01:28:15.250864031Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:15.250869719Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:16.286429642Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:16.286433963Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:16.286440892Z [inf]  Server listening
+2026-04-05T01:28:16.286446223Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.
+2026-04-05T01:28:16.286470807Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:17.250506594Z [err]  [db] WARNING: DATABASE_URL is not set — database operations will fail. Set DATABASE_URL in your Railway Variables and link it to your PostgreSQL service.
+2026-04-05T01:28:17.250513146Z [inf]  JWT_SECRET is not set — using insecure default. Set JWT_SECRET before deploying to production.
+2026-04-05T01:28:17.328166175Z [inf]  Server listening
+2026-04-05T01:28:17.328172381Z [inf]  DATABASE_URL is not set. Go to Railway → your service → Variables and add DATABASE_URL from your PostgreSQL service.
+2026-04-05T01:28:17.328176711Z [inf]  FATAL: JWT_SECRET is using the default insecure value in production. Set a strong JWT_SECRET environment variable and restart the server.

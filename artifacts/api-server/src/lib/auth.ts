@@ -12,10 +12,9 @@ if (!process.env.JWT_SECRET) {
 export function validateConfig(): void {
   if (process.env.NODE_ENV === "production" && JWT_SECRET === DEFAULT_SECRET) {
     logger.error(
-      "FATAL: JWT_SECRET is using the default insecure value in production. " +
-      "Set a strong JWT_SECRET environment variable and restart the server.",
+      "SECURITY WARNING: JWT_SECRET is using the default insecure value in production. " +
+      "Set a strong JWT_SECRET environment variable in Railway Variables and redeploy.",
     );
-    process.exit(1);
   }
 }
 
