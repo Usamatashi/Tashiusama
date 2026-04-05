@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, claimsTable, usersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, claimsTable, usersTable, scansTable } from "@workspace/db";
+import { eq, desc, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../lib/auth";
 
 const router = Router();
@@ -152,6 +152,85 @@ router.post("/:id/mark-received", requireAuth, requireAdmin, async (req, res) =>
       status: updated[0].status,
       pointsClaimed: updated[0].pointsClaimed,
       claimedAt: updated[0].claimedAt.toISOString(),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/claims/from-scan - admin creates a claim for a mechanic based on a specific scan
+router.post("/from-scan", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { scanId } = req.body;
+    if (!scanId || isNaN(Number(scanId))) {
+      res.status(400).json({ error: "scanId is required" });
+      return;
+    }
+
+    const scanIdNum = Number(scanId);
+
+    // Check scan exists
+    const scanRows = await db
+      .select()
+      .from(scansTable)
+      .where(eq(scansTable.id, scanIdNum));
+
+    const scan = scanRows[0];
+    if (!scan) {
+      res.status(404).json({ error: "Scan not found" });
+      return;
+    }
+
+    // Check not already claimed via this scan
+    const existingClaims = await db
+      .select()
+      .from(claimsTable)
+      .where(eq(claimsTable.scanId, scanIdNum));
+
+    if (existingClaims.length > 0) {
+      res.status(400).json({ error: "This scan has already been claimed" });
+      return;
+    }
+
+    // Get mechanic info
+    const userRows = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, scan.userId));
+
+    const mechanic = userRows[0];
+    if (!mechanic) {
+      res.status(404).json({ error: "Mechanic user not found" });
+      return;
+    }
+
+    const pointsToClaim = scan.pointsEarned;
+
+    // Deduct points from mechanic
+    await db
+      .update(usersTable)
+      .set({ points: sql`GREATEST(${usersTable.points} - ${pointsToClaim}, 0)` })
+      .where(eq(usersTable.id, mechanic.id));
+
+    // Create claim linked to this scan
+    const inserted = await db
+      .insert(claimsTable)
+      .values({
+        userId: mechanic.id,
+        pointsClaimed: pointsToClaim,
+        scanId: scanIdNum,
+        status: "pending",
+      })
+      .returning();
+
+    res.status(201).json({
+      id: inserted[0].id,
+      pointsClaimed: pointsToClaim,
+      scanId: scanIdNum,
+      claimedAt: inserted[0].claimedAt.toISOString(),
+      mechanicName: mechanic.name || "",
+      mechanicPhone: mechanic.phone || null,
     });
   } catch (err) {
     req.log.error(err);

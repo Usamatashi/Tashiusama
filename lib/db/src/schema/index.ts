@@ -80,6 +80,7 @@ export const claimsTable = pgTable("claims", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   pointsClaimed: integer("points_claimed").notNull(),
   status: claimStatusEnum("status").notNull().default("pending"),
+  scanId: integer("scan_id").references(() => scansTable.id, { onDelete: "set null" }),
   claimedAt: timestamp("claimed_at").notNull().defaultNow(),
 });
 
