@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedAdminUser } from "./lib/seed";
+import { validateConfig } from "./lib/auth";
 import { pool } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
@@ -52,6 +53,9 @@ function runMigrations(): Promise<void> {
 
 const server = app.listen(port, () => {
   logger.info({ port, env: process.env.NODE_ENV ?? "development" }, "Server listening");
+
+  // Validate config after binding so healthcheck passes even if misconfigured
+  validateConfig();
 
   runMigrations()
     .then(() => seedAdminUser())

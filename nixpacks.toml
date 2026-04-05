@@ -11,6 +11,3 @@ cmds = [
 
 [start]
 cmd = "node --enable-source-maps artifacts/api-server/dist/index.mjs"
-
-[variables]
-NODE_ENV = "production"
