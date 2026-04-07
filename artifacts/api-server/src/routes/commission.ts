@@ -77,7 +77,7 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
         )
       );
 
-    // Compute order values
+    // Compute order values (commission base = sum of unit sales prices, not quantity × price)
     let salesAmount = 0;
     let orderList: Array<{ id: number; createdAt: Date; retailerName: string | null; retailerPhone: string | null; totalValue: number }> = [];
 
@@ -90,7 +90,7 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
 
       const orderValueMap: Record<number, number> = {};
       for (const item of items) {
-        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
+        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.unitPrice;
       }
 
       for (const o of orders) {
@@ -253,7 +253,7 @@ router.get("/monthly-totals", requireAuth, requireAdmin, async (req, res) => {
 
     const valueMap: Record<number, number> = {};
     for (const item of items) {
-      valueMap[item.orderId] = (valueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
+      valueMap[item.orderId] = (valueMap[item.orderId] ?? 0) + item.unitPrice;
     }
 
     type MonthKey = string;
@@ -342,7 +342,7 @@ router.get("/salesman-months/:salesmanId", requireAuth, requireAdmin, async (req
 
       const orderValueMap: Record<number, number> = {};
       for (const item of items) {
-        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.quantity * item.unitPrice;
+        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.unitPrice;
       }
 
       for (const order of orders) {

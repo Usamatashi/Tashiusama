@@ -695,7 +695,7 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
         byId[r.salesmanId] = { salesmanId: r.salesmanId, name: r.salesmanName, phone: r.salesmanPhone!, orders: [] };
       }
       const items = buildOrderItems(r, itemsMap, r.id);
-      const totalValue = items.reduce((s, i) => s + i.totalValue, 0);
+      const totalValue = items.reduce((s, i) => s + i.unitPrice, 0);
       byId[r.salesmanId].orders.push({ id: r.id, status: r.status, bonusPoints: r.bonusPoints, totalValue, createdAt: new Date(r.createdAt) });
     }
 
