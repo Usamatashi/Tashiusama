@@ -6,6 +6,42 @@ import type { JwtPayload } from "../lib/auth";
 
 const router = Router();
 
+// ─── Helper: compute the final amount a retailer pays (after all discounts) ───
+async function computeFinalAmounts(orderIds: number[]): Promise<Record<number, number>> {
+  if (orderIds.length === 0) return {};
+
+  const [items, orderRows] = await Promise.all([
+    db.select({
+      orderId: orderItemsTable.orderId,
+      quantity: orderItemsTable.quantity,
+      unitPrice: orderItemsTable.unitPrice,
+      discountPercent: orderItemsTable.discountPercent,
+    }).from(orderItemsTable).where(inArray(orderItemsTable.orderId, orderIds)),
+
+    db.select({ id: ordersTable.id, billDiscountPercent: ordersTable.billDiscountPercent })
+      .from(ordersTable).where(inArray(ordersTable.id, orderIds)),
+  ]);
+
+  const billDiscountMap: Record<number, number> = {};
+  for (const o of orderRows) billDiscountMap[o.id] = o.billDiscountPercent ?? 0;
+
+  // Subtotal per order = sum of item-discounted values
+  const subtotalMap: Record<number, number> = {};
+  for (const item of items) {
+    const discountedValue = Math.round(item.quantity * item.unitPrice * (1 - (item.discountPercent ?? 0) / 100));
+    subtotalMap[item.orderId] = (subtotalMap[item.orderId] ?? 0) + discountedValue;
+  }
+
+  // Apply bill discount to get finalAmount
+  const finalMap: Record<number, number> = {};
+  for (const orderId of orderIds) {
+    const subtotal = subtotalMap[orderId] ?? 0;
+    const billDiscount = billDiscountMap[orderId] ?? 0;
+    finalMap[orderId] = Math.round(subtotal * (1 - billDiscount / 100));
+  }
+  return finalMap;
+}
+
 // ─── GET /commission/salesman-sales/:salesmanId ───────────────────────────────
 // Returns sales for the requested calendar month (defaults to current month).
 // If a commission was already approved for that month, returns alreadyApproved=true.
@@ -77,24 +113,16 @@ router.get("/salesman-sales/:salesmanId", requireAuth, requireAdmin, async (req,
         )
       );
 
-    // Compute order values (commission base = sum of unit sales prices, not quantity × price)
+    // Compute commission base = final amount retailer pays (after all discounts)
     let salesAmount = 0;
     let orderList: Array<{ id: number; createdAt: Date; retailerName: string | null; retailerPhone: string | null; totalValue: number }> = [];
 
     if (orders.length > 0) {
       const orderIds = orders.map((o) => o.id);
-      const items = await db
-        .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
-        .from(orderItemsTable)
-        .where(inArray(orderItemsTable.orderId, orderIds));
-
-      const orderValueMap: Record<number, number> = {};
-      for (const item of items) {
-        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.unitPrice;
-      }
+      const finalMap = await computeFinalAmounts(orderIds);
 
       for (const o of orders) {
-        const value = orderValueMap[o.id] ?? 0;
+        const value = finalMap[o.id] ?? 0;
         salesAmount += value;
         orderList.push({ id: o.id, createdAt: o.createdAt, retailerName: o.retailerName, retailerPhone: o.retailerPhone, totalValue: value });
       }
@@ -244,17 +272,9 @@ router.get("/monthly-totals", requireAuth, requireAdmin, async (req, res) => {
     const smMap: Record<number, { name: string | null; phone: string }> = {};
     for (const sm of salesmen) smMap[sm.id] = { name: sm.name, phone: sm.phone! };
 
-    // Items for all orders
+    // Commission base = final amount retailer pays (after all discounts)
     const orderIds = orders.map((o) => o.id);
-    const items = await db
-      .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
-      .from(orderItemsTable)
-      .where(inArray(orderItemsTable.orderId, orderIds));
-
-    const valueMap: Record<number, number> = {};
-    for (const item of items) {
-      valueMap[item.orderId] = (valueMap[item.orderId] ?? 0) + item.unitPrice;
-    }
+    const valueMap = await computeFinalAmounts(orderIds);
 
     type MonthKey = string;
     type SmSales = { salesmanId: number; name: string | null; phone: string; salesAmount: number; orderCount: number };
@@ -329,21 +349,13 @@ router.get("/salesman-months/:salesmanId", requireAuth, requireAdmin, async (req
       .from(commissionsTable)
       .where(eq(commissionsTable.salesmanId, salesmanId));
 
-    // Compute order values via items
+    // Commission base = final amount retailer pays (after all discounts)
     type MonthKey = string; // "YYYY-MM"
     const monthData: Record<MonthKey, { year: number; month: number; orderCount: number; salesAmount: number; alreadyApproved: boolean; approvedAt?: string; commissionAmount?: number }> = {};
 
     if (orders.length > 0) {
       const orderIds = orders.map((o) => o.id);
-      const items = await db
-        .select({ orderId: orderItemsTable.orderId, quantity: orderItemsTable.quantity, unitPrice: orderItemsTable.unitPrice })
-        .from(orderItemsTable)
-        .where(inArray(orderItemsTable.orderId, orderIds));
-
-      const orderValueMap: Record<number, number> = {};
-      for (const item of items) {
-        orderValueMap[item.orderId] = (orderValueMap[item.orderId] ?? 0) + item.unitPrice;
-      }
+      const orderValueMap = await computeFinalAmounts(orderIds);
 
       for (const order of orders) {
         const d = new Date(order.createdAt);
