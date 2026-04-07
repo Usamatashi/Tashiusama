@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -55,6 +55,8 @@ export const scansTable = pgTable("scans", {
   qrId: integer("qr_id").notNull().references(() => qrCodesTable.id),
   pointsEarned: integer("points_earned").notNull().default(0),
   scannedAt: timestamp("scanned_at").notNull().defaultNow(),
+  claimId: integer("claim_id"),
+  adminVerified: boolean("admin_verified"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });
@@ -79,8 +81,8 @@ export const claimsTable = pgTable("claims", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   pointsClaimed: integer("points_claimed").notNull(),
+  verifiedPoints: integer("verified_points").notNull().default(0),
   status: claimStatusEnum("status").notNull().default("pending"),
-  scanId: integer("scan_id").references(() => scansTable.id, { onDelete: "set null" }),
   claimedAt: timestamp("claimed_at").notNull().defaultNow(),
 });
 
