@@ -1,5 +1,5 @@
 kind = "mobile"
-previewPath = "/"
+previewPath = "/tashi/"
 title = "Tashi"
 version = "1.0.0"
 id = "artifacts/tashi"
@@ -12,7 +12,7 @@ version = "1.0.0"
 [[services]]
 ensurePreviewReachable = "/status"
 name = "expo"
-paths = [ "/" ]
+paths = [ "/tashi/" ]
 localPort = 19190
 
 [services.development]
@@ -24,4 +24,4 @@ run = [ "pnpm", "--filter", "@workspace/tashi", "run", "serve" ]
 
 [services.env]
 PORT = "19190"
-BASE_PATH = "/"
+BASE_PATH = "/tashi/"
