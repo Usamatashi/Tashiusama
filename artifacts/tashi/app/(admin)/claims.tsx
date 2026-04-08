@@ -517,9 +517,9 @@ export default function AdminClaimsScreen() {
                   {/* QR summary chips — moved here from left */}
                   {hasVerification && (
                     <View style={styles.qrSummaryCol}>
-                      <View style={styles.qrSummaryChip}>
-                        <Feather name="maximize" size={10} color={Colors.textSecondary} />
-                        <Text style={styles.qrSummaryText}>{item.totalScans} QRs</Text>
+                      <View style={[styles.qrSummaryChip, styles.qrSummaryMissing]}>
+                        <Feather name="maximize" size={10} color="#EF4444" />
+                        <Text style={[styles.qrSummaryText, { color: "#EF4444" }]}>{item.totalScans} QRs</Text>
                       </View>
                       {item.missingScans > 0 && (
                         <View style={[styles.qrSummaryChip, styles.qrSummaryMissing]}>
