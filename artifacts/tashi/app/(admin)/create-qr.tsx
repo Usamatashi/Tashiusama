@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import {
   Alert,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -10,12 +11,12 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton } from "@/components/BackButton";
 import QRCode from "react-native-qrcode-svg";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
 interface Product {
   id: number;
@@ -33,7 +34,30 @@ export default function CreateQRScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanned, setScanned] = useState(false);
   const qrRef = useRef<any>(null);
+
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+
+  const handleOpenScanner = async () => {
+    if (!cameraPermission?.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) {
+        Alert.alert("Permission Required", "Camera access is needed to scan QR codes.");
+        return;
+      }
+    }
+    setScanned(false);
+    setScannerOpen(true);
+  };
+
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    setScanned(true);
+    setScannerOpen(false);
+    setQrNumber(data);
+  };
 
   const fetchProducts = async () => {
     if (products.length > 0) return;
@@ -79,7 +103,7 @@ export default function CreateQRScreen() {
 
   const handleDownload = () => {
     if (!qrRef.current) return;
-    qrRef.current.toDataURL((data: string) => {
+    qrRef.current.toDataURL((_data: string) => {
       Alert.alert("QR Code", "QR code data URL generated. In production, use expo-media-library to save.", [
         { text: "OK" },
       ]);
@@ -141,14 +165,19 @@ export default function CreateQRScreen() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.inputGroup}>
           <Text style={styles.label}>QR Number</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter unique QR number"
-            placeholderTextColor={Colors.textLight}
-            value={qrNumber}
-            onChangeText={setQrNumber}
-            keyboardType="default"
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="Enter or scan QR number"
+              placeholderTextColor={Colors.textLight}
+              value={qrNumber}
+              onChangeText={setQrNumber}
+              keyboardType="default"
+            />
+            <TouchableOpacity style={styles.scanBtn} onPress={handleOpenScanner} activeOpacity={0.8}>
+              <Feather name="camera" size={20} color={Colors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
@@ -201,6 +230,30 @@ export default function CreateQRScreen() {
           <Text style={styles.buttonText}>{loading ? "Creating..." : "Generate QR Code"}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+          />
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerFrame} />
+          </View>
+          <View style={[styles.scannerHeader, { paddingTop: insets.top + 12 }]}>
+            <TouchableOpacity style={styles.scannerClose} onPress={() => setScannerOpen(false)}>
+              <Feather name="x" size={24} color={Colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.scannerTitle}>Scan QR Code</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <View style={styles.scannerHint}>
+            <Text style={styles.scannerHintText}>Point the camera at any QR code</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -217,11 +270,11 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText, flex: 1, textAlign: "center" },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   scroll: { padding: 20, gap: 20 },
   resultScroll: { padding: 20, alignItems: "center", gap: 20 },
   inputGroup: { gap: 8 },
   label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
+  inputRow: { flexDirection: "row", gap: 10, alignItems: "center" },
   input: {
     backgroundColor: Colors.adminCard,
     borderWidth: 1,
@@ -232,6 +285,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_400Regular",
     color: Colors.adminText,
+  },
+  scanBtn: {
+    backgroundColor: Colors.adminAccent,
+    borderRadius: 12,
+    width: 52,
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
   },
   picker: {
     backgroundColor: Colors.adminCard,
@@ -314,4 +375,55 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   newBtnText: { color: Colors.adminAccent, fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  scannerContainer: { flex: 1, backgroundColor: Colors.black },
+  scannerHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  scannerTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  scannerClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scannerFrame: {
+    width: 240,
+    height: 240,
+    borderWidth: 2,
+    borderColor: Colors.white,
+    borderRadius: 16,
+    backgroundColor: "transparent",
+  },
+  scannerHint: {
+    position: "absolute",
+    bottom: 80,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  scannerHintText: {
+    color: Colors.white,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
 });
