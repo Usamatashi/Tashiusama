@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  bannerScroll: { borderRadius: 18 },
+  bannerScroll: { borderRadius: 18, zIndex: 5, elevation: 5 },
   banner: { height: 140, borderRadius: 18, padding: 20, justifyContent: "flex-end", gap: 4 },
   bannerImage: { height: 140, borderRadius: 18 },
   bannerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.white },
