@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Modal,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,6 +16,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as Haptics from "expo-haptics";
 
 interface Product {
   id: number;
@@ -24,10 +24,16 @@ interface Product {
   points: number;
 }
 
+function generateQRNumber(): string {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+  return `TQ-${ts}-${rand}`;
+}
+
 export default function CreateQRScreen() {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
-  const [qrNumber, setQrNumber] = useState("");
+  const [qrNumber, setQrNumber] = useState(() => generateQRNumber());
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [createdQR, setCreatedQR] = useState<{ qrNumber: string; productName: string; points: number } | null>(null);
@@ -39,6 +45,15 @@ export default function CreateQRScreen() {
   const qrRef = useRef<any>(null);
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const handleRegenerate = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setQrNumber(generateQRNumber());
+  };
 
   const handleOpenScanner = async () => {
     if (!cameraPermission?.granted) {
@@ -60,7 +75,6 @@ export default function CreateQRScreen() {
   };
 
   const fetchProducts = async () => {
-    if (products.length > 0) return;
     setLoadingProducts(true);
     try {
       const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/products`, {
@@ -76,23 +90,21 @@ export default function CreateQRScreen() {
   };
 
   const handleCreate = async () => {
-    if (!qrNumber.trim()) {
-      Alert.alert("Error", "Please enter a QR number");
-      return;
-    }
     if (!selectedProduct) {
-      Alert.alert("Error", "Please select a product");
+      Alert.alert("Select Product", "Please choose a product before generating.");
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     try {
       const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/qrcodes`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ qrNumber: qrNumber.trim(), productId: selectedProduct.id }),
+        body: JSON.stringify({ qrNumber, productId: selectedProduct.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create QR code");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setCreatedQR({ qrNumber: data.qrNumber, productName: data.productName, points: data.points });
     } catch (err: any) {
       Alert.alert("Error", err.message);
@@ -101,18 +113,9 @@ export default function CreateQRScreen() {
     }
   };
 
-  const handleDownload = () => {
-    if (!qrRef.current) return;
-    qrRef.current.toDataURL((_data: string) => {
-      Alert.alert("QR Code", "QR code data URL generated. In production, use expo-media-library to save.", [
-        { text: "OK" },
-      ]);
-    });
-  };
-
   const handleReset = () => {
     setCreatedQR(null);
-    setQrNumber("");
+    setQrNumber(generateQRNumber());
     setSelectedProduct(null);
   };
 
@@ -120,7 +123,7 @@ export default function CreateQRScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>QR Code Created</Text>
+          <Text style={styles.headerTitle}>QR Code Ready</Text>
           <TouchableOpacity onPress={handleReset}>
             <Feather name="x" size={24} color={Colors.adminText} />
           </TouchableOpacity>
@@ -143,12 +146,9 @@ export default function CreateQRScreen() {
             <Text style={styles.resultLabel}>Points</Text>
             <Text style={[styles.resultValue, { color: Colors.adminAccent }]}>{createdQR.points} pts</Text>
           </View>
-          <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload} activeOpacity={0.8}>
-            <Feather name="download" size={20} color={Colors.white} />
-            <Text style={styles.downloadBtnText}>Download QR</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.newBtn} onPress={handleReset} activeOpacity={0.8}>
-            <Text style={styles.newBtnText}>Create Another QR</Text>
+            <Feather name="plus" size={18} color={Colors.adminAccent} />
+            <Text style={styles.newBtnText}>Generate Another</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -162,44 +162,57 @@ export default function CreateQRScreen() {
         <Text style={styles.headerTitle}>Create QR Code</Text>
         <View style={{ width: 38 }} />
       </View>
+
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>QR Number</Text>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Enter or scan QR number"
-              placeholderTextColor={Colors.textLight}
+
+        {/* Auto-generated QR preview */}
+        <View style={styles.previewCard}>
+          <View style={styles.qrPreviewBox}>
+            <QRCode
               value={qrNumber}
-              onChangeText={setQrNumber}
-              keyboardType="default"
+              size={160}
+              color={Colors.black}
+              backgroundColor={Colors.white}
             />
-            <TouchableOpacity style={styles.scanBtn} onPress={handleOpenScanner} activeOpacity={0.8}>
-              <Feather name="camera" size={20} color={Colors.white} />
-            </TouchableOpacity>
+          </View>
+          <View style={styles.qrMeta}>
+            <Text style={styles.qrMetaLabel}>QR Number</Text>
+            <Text style={styles.qrMetaValue} numberOfLines={1}>{qrNumber}</Text>
+            <View style={styles.qrActions}>
+              <TouchableOpacity style={styles.regenBtn} onPress={handleRegenerate} activeOpacity={0.8}>
+                <Feather name="refresh-cw" size={14} color={Colors.adminAccent} />
+                <Text style={styles.regenBtnText}>New ID</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.scanSmallBtn} onPress={handleOpenScanner} activeOpacity={0.8}>
+                <Feather name="camera" size={14} color={Colors.white} />
+                <Text style={styles.scanSmallBtnText}>Scan</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
+        {/* Product picker */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Assign to Product</Text>
-          <TouchableOpacity
-            style={styles.picker}
-            onPress={() => {
-              fetchProducts();
-              setShowPicker(!showPicker);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.pickerText, !selectedProduct && { color: Colors.textLight }]}>
-              {selectedProduct ? `${selectedProduct.name} (${selectedProduct.points} pts)` : "Select a product..."}
-            </Text>
-            <Feather name={showPicker ? "chevron-up" : "chevron-down"} size={20} color={Colors.textLight} />
-          </TouchableOpacity>
+          {loadingProducts ? (
+            <View style={styles.picker}>
+              <Text style={[styles.pickerText, { color: Colors.textLight }]}>Loading products...</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.picker}
+              onPress={() => setShowPicker(!showPicker)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.pickerText, !selectedProduct && { color: Colors.textLight }]}>
+                {selectedProduct ? `${selectedProduct.name} — ${selectedProduct.points} pts` : "Select a product..."}
+              </Text>
+              <Feather name={showPicker ? "chevron-up" : "chevron-down"} size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+          )}
           {showPicker && (
             <View style={styles.dropdown}>
-              {loadingProducts ? (
-                <Text style={styles.dropdownLoading}>Loading products...</Text>
-              ) : products.length === 0 ? (
+              {products.length === 0 ? (
                 <Text style={styles.dropdownLoading}>No products. Create some first.</Text>
               ) : (
                 products.map((p) => (
@@ -221,13 +234,13 @@ export default function CreateQRScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[styles.button, (!selectedProduct || loading) && styles.buttonDisabled]}
           onPress={handleCreate}
-          disabled={loading}
+          disabled={!selectedProduct || loading}
           activeOpacity={0.8}
         >
-          <Feather name="plus-square" size={20} color={Colors.white} />
-          <Text style={styles.buttonText}>{loading ? "Creating..." : "Generate QR Code"}</Text>
+          <Feather name="check-circle" size={20} color={Colors.white} />
+          <Text style={styles.buttonText}>{loading ? "Saving..." : "Save QR Code"}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -272,28 +285,55 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.adminText, flex: 1, textAlign: "center" },
   scroll: { padding: 20, gap: 20 },
   resultScroll: { padding: 20, alignItems: "center", gap: 20 },
-  inputGroup: { gap: 8 },
-  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
-  inputRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  input: {
+
+  previewCard: {
     backgroundColor: Colors.adminCard,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    color: Colors.adminText,
-  },
-  scanBtn: {
-    backgroundColor: Colors.adminAccent,
-    borderRadius: 12,
-    width: 52,
-    height: 52,
-    justifyContent: "center",
+    padding: 20,
+    flexDirection: "row",
     alignItems: "center",
+    gap: 16,
   },
+  qrPreviewBox: {
+    backgroundColor: Colors.white,
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  qrMeta: { flex: 1, gap: 4 },
+  qrMetaLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+  qrMetaValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.adminText },
+  qrActions: { flexDirection: "row", gap: 8, marginTop: 10 },
+  regenBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1.5,
+    borderColor: Colors.adminAccent,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  regenBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.adminAccent },
+  scanSmallBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: Colors.adminAccent,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  scanSmallBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white },
+
+  inputGroup: { gap: 8 },
+  label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
   picker: {
     backgroundColor: Colors.adminCard,
     borderWidth: 1,
@@ -326,6 +366,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: { fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.adminText },
   dropdownItemPts: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.adminAccent },
+
   button: {
     backgroundColor: Colors.adminAccent,
     borderRadius: 12,
@@ -336,13 +377,19 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 8,
   },
-  buttonDisabled: { opacity: 0.6 },
+  buttonDisabled: { opacity: 0.45 },
   buttonText: { color: Colors.white, fontSize: 16, fontFamily: "Inter_600SemiBold" },
+
   qrContainer: {
     backgroundColor: Colors.white,
     padding: 24,
     borderRadius: 20,
     marginTop: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   resultInfo: {
     backgroundColor: Colors.adminCard,
@@ -355,32 +402,23 @@ const styles = StyleSheet.create({
   },
   resultLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase" },
   resultValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.adminText, marginBottom: 8 },
-  downloadBtn: {
-    backgroundColor: Colors.adminAccent,
-    borderRadius: 12,
-    paddingVertical: 14,
+  newBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    width: "100%",
-  },
-  downloadBtnText: { color: Colors.white, fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  newBtn: {
+    gap: 8,
     borderWidth: 1.5,
     borderColor: Colors.adminAccent,
     borderRadius: 12,
     paddingVertical: 14,
-    alignItems: "center",
+    justifyContent: "center",
     width: "100%",
   },
   newBtnText: { color: Colors.adminAccent, fontSize: 16, fontFamily: "Inter_600SemiBold" },
+
   scannerContainer: { flex: 1, backgroundColor: Colors.black },
   scannerHeader: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
+    top: 0, left: 0, right: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -390,40 +428,20 @@ const styles = StyleSheet.create({
   },
   scannerTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: Colors.white },
   scannerClose: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center", alignItems: "center",
   },
-  scannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  scannerOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center" },
   scannerFrame: {
-    width: 240,
-    height: 240,
-    borderWidth: 2,
-    borderColor: Colors.white,
-    borderRadius: 16,
-    backgroundColor: "transparent",
+    width: 240, height: 240,
+    borderWidth: 2, borderColor: Colors.white,
+    borderRadius: 16, backgroundColor: "transparent",
   },
-  scannerHint: {
-    position: "absolute",
-    bottom: 80,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
+  scannerHint: { position: "absolute", bottom: 80, left: 0, right: 0, alignItems: "center" },
   scannerHintText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
+    color: Colors.white, fontSize: 15, fontFamily: "Inter_400Regular",
     backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20,
   },
 });
