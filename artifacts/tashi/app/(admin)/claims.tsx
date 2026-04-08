@@ -490,7 +490,6 @@ export default function AdminClaimsScreen() {
                   </View>
                   <View style={styles.cardInfo}>
                     <Text style={styles.cardName} numberOfLines={1}>{item.userName || "—"}</Text>
-                    <Text style={styles.cardRole}>{item.userRole?.toUpperCase()}</Text>
                     {item.userPhone && <Text style={styles.cardPhone}>{item.userPhone}</Text>}
                     <Text style={styles.cardDate}>{formatDate(item.claimedAt)}</Text>
                   </View>
@@ -522,12 +521,6 @@ export default function AdminClaimsScreen() {
                         <Feather name="maximize" size={10} color={Colors.textSecondary} />
                         <Text style={styles.qrSummaryText}>{item.totalScans} QRs</Text>
                       </View>
-                      {item.verifiedScans > 0 && (
-                        <View style={[styles.qrSummaryChip, styles.qrSummaryVerified]}>
-                          <Feather name="check" size={10} color="#10B981" />
-                          <Text style={[styles.qrSummaryText, { color: "#10B981" }]}>{item.verifiedScans} verified</Text>
-                        </View>
-                      )}
                       {item.missingScans > 0 && (
                         <View style={[styles.qrSummaryChip, styles.qrSummaryMissing]}>
                           <Feather name="x" size={10} color="#EF4444" />
