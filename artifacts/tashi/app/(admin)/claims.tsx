@@ -438,23 +438,6 @@ export default function AdminClaimsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Summary card */}
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{claims.length}</Text>
-          <Text style={styles.summaryLabel}>Total Claims</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{pendingCount}</Text>
-          <Text style={styles.summaryLabel}>Pending</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{totalPoints}</Text>
-          <Text style={styles.summaryLabel}>Total Points</Text>
-        </View>
-      </View>
 
       {loading ? (
         <View style={styles.center}>
