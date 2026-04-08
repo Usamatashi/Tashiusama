@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
   bannerImage: { height: 140, borderRadius: 18 },
   bannerTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.white },
   bannerSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.82)" },
-  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: -8 },
+  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: -8, zIndex: 10 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#D9C9BF" },
   dotActive: { backgroundColor: Colors.primary, width: 16 },
 
