@@ -48,11 +48,7 @@ interface Claim {
 
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return (
-    d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
-    "  " +
-    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-  );
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function ScanRow({
@@ -497,27 +493,6 @@ export default function AdminClaimsScreen() {
                     <Text style={styles.cardRole}>{item.userRole?.toUpperCase()}</Text>
                     {item.userPhone && <Text style={styles.cardPhone}>{item.userPhone}</Text>}
                     <Text style={styles.cardDate}>{formatDate(item.claimedAt)}</Text>
-                    {/* QR verification summary */}
-                    {hasVerification && (
-                      <View style={styles.qrSummaryRow}>
-                        <View style={styles.qrSummaryChip}>
-                          <Feather name="maximize" size={10} color={Colors.textSecondary} />
-                          <Text style={styles.qrSummaryText}>{item.totalScans} QRs</Text>
-                        </View>
-                        {item.verifiedScans > 0 && (
-                          <View style={[styles.qrSummaryChip, styles.qrSummaryVerified]}>
-                            <Feather name="check" size={10} color="#10B981" />
-                            <Text style={[styles.qrSummaryText, { color: "#10B981" }]}>{item.verifiedScans} verified</Text>
-                          </View>
-                        )}
-                        {item.missingScans > 0 && (
-                          <View style={[styles.qrSummaryChip, styles.qrSummaryMissing]}>
-                            <Feather name="x" size={10} color="#EF4444" />
-                            <Text style={[styles.qrSummaryText, { color: "#EF4444" }]}>{item.missingScans} missing</Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
                   </View>
                 </View>
                 <View style={styles.cardRight}>
@@ -540,11 +515,34 @@ export default function AdminClaimsScreen() {
                       </>
                     )}
                   </View>
-                  <View style={[styles.statusBadge, isPending ? styles.statusPending : styles.statusReceived]}>
-                    <Text style={[styles.statusText, isPending ? styles.statusTextPending : styles.statusTextReceived]}>
-                      {isPending ? (allChecked ? "Verify Done" : "Tap to Verify") : "Received"}
-                    </Text>
-                  </View>
+                  {/* QR summary chips — moved here from left */}
+                  {hasVerification && (
+                    <View style={styles.qrSummaryCol}>
+                      <View style={styles.qrSummaryChip}>
+                        <Feather name="maximize" size={10} color={Colors.textSecondary} />
+                        <Text style={styles.qrSummaryText}>{item.totalScans} QRs</Text>
+                      </View>
+                      {item.verifiedScans > 0 && (
+                        <View style={[styles.qrSummaryChip, styles.qrSummaryVerified]}>
+                          <Feather name="check" size={10} color="#10B981" />
+                          <Text style={[styles.qrSummaryText, { color: "#10B981" }]}>{item.verifiedScans} verified</Text>
+                        </View>
+                      )}
+                      {item.missingScans > 0 && (
+                        <View style={[styles.qrSummaryChip, styles.qrSummaryMissing]}>
+                          <Feather name="x" size={10} color="#EF4444" />
+                          <Text style={[styles.qrSummaryText, { color: "#EF4444" }]}>{item.missingScans} missing</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  {!hasVerification && (
+                    <View style={[styles.statusBadge, isPending ? styles.statusPending : styles.statusReceived]}>
+                      <Text style={[styles.statusText, isPending ? styles.statusTextPending : styles.statusTextReceived]}>
+                        {isPending ? "Tap to Verify" : "Received"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -853,6 +851,7 @@ const styles = StyleSheet.create({
   cardPhone: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight },
   cardDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textLight, marginTop: 2 },
   qrSummaryRow: { flexDirection: "row", gap: 6, marginTop: 6, flexWrap: "wrap" },
+  qrSummaryCol: { flexDirection: "column", gap: 4, alignItems: "flex-end", marginTop: 4 },
   qrSummaryChip: {
     flexDirection: "row", alignItems: "center", gap: 3,
     backgroundColor: "#F0F0F0", borderRadius: 8,
