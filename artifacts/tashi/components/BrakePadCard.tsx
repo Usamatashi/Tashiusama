@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   wrapper: {
     width: W,
     marginHorizontal: -16,
-    marginTop: 0,
+    marginTop: -22,
     marginBottom: 8,
     position: "relative",
   },

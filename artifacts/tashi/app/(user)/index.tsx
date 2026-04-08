@@ -309,6 +309,7 @@ export default function UserHomeScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!isSalesman}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
 
@@ -399,7 +400,7 @@ export default function UserHomeScreen() {
               ))}
         </ScrollView>
         {(isRetailer || isSalesman) ? (
-          <View style={{ gap: 4 }}>
+          <View style={{ gap: 0 }}>
             <View style={styles.dots}>
               {activeBanners.map((_, i) => (
                 <View key={i} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
