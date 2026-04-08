@@ -25,10 +25,17 @@ interface Product {
   points: number;
 }
 
+// Unambiguous chars only — no 0/O, 1/I, S/5 confusion.
+// 32 chars × 24 positions = ~2¹²⁰ combinations (unguessable).
+const QR_CHARS = "ABCDEFGHJKLMNPQRTUVWXYZ2346789";
+
 function generateQRNumber(): string {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `TQ-${ts}-${rand}`;
+  const len = QR_CHARS.length;
+  let a = "", b = "", c = "";
+  for (let i = 0; i < 8; i++) a += QR_CHARS[Math.floor(Math.random() * len)];
+  for (let i = 0; i < 8; i++) b += QR_CHARS[Math.floor(Math.random() * len)];
+  for (let i = 0; i < 8; i++) c += QR_CHARS[Math.floor(Math.random() * len)];
+  return `${a}-${b}-${c}`;
 }
 
 export default function CreateQRScreen() {
