@@ -472,14 +472,13 @@ function BillModal({
         const discPct = i.discountPercent ?? 0;
         const lineTotal = i.discountedValue ?? i.totalValue;
         const discUnitPrice = discPct > 0 ? Math.round(i.unitPrice * (1 - discPct / 100)) : i.unitPrice;
-        const discPriceCell = discPct > 0
-          ? `<td style="text-align:right;color:#16a34a;font-weight:700">${discUnitPrice.toLocaleString()}</td>`
-          : `<td style="text-align:right">${discUnitPrice.toLocaleString()}</td>`;
         return `
         <tr>
           <td>${i.productName || "Product"}</td>
+          <td style="text-align:right">${i.unitPrice.toLocaleString()}</td>
+          <td style="text-align:center">${discPct > 0 ? discPct + "%" : "—"}</td>
+          <td style="text-align:right;${discPct > 0 ? "color:#16a34a;font-weight:700" : ""}">${discUnitPrice.toLocaleString()}</td>
           <td style="text-align:center">${i.quantity}</td>
-          ${discPriceCell}
           <td style="text-align:right;font-weight:${discPct > 0 ? "700" : "400"}">${lineTotal.toLocaleString()}</td>
         </tr>
         `;
@@ -487,14 +486,14 @@ function BillModal({
 
       const subtotalRow = billDiscPct > 0 ? `
         <tr style="background:#f9f9fb">
-          <td colspan="3" style="text-align:right;color:#888;font-size:13px;padding:10px 12px">Subtotal</td>
+          <td colspan="5" style="text-align:right;color:#888;font-size:13px;padding:10px 12px">Subtotal</td>
           <td style="text-align:right;padding:10px 12px">${subtotal.toLocaleString()}</td>
         </tr>
       ` : "";
 
       const billDiscRow = billDiscPct > 0 ? `
         <tr style="background:#f0fdf4">
-          <td colspan="3" style="text-align:right;color:#16a34a;font-size:13px;padding:8px 12px">Bill Discount (${billDiscPct}%)</td>
+          <td colspan="5" style="text-align:right;color:#16a34a;font-size:13px;padding:8px 12px">Bill Discount (${billDiscPct}%)</td>
           <td style="text-align:right;color:#16a34a;font-weight:700;padding:8px 12px">−${billDiscAmt.toLocaleString()}</td>
         </tr>
       ` : "";
@@ -567,8 +566,10 @@ function BillModal({
             <thead>
               <tr>
                 <th>Product</th>
-                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Sales Price</th>
+                <th style="text-align:center">Disc</th>
                 <th style="text-align:right">Disc. Price</th>
+                <th style="text-align:center">Qty</th>
                 <th style="text-align:right">Total</th>
               </tr>
             </thead>
@@ -579,7 +580,7 @@ function BillModal({
               ${subtotalRow}
               ${billDiscRow}
               <tr class="total-row">
-                <td colspan="3">Grand Total</td>
+                <td colspan="5">Grand Total</td>
                 <td style="text-align:right">Rs. ${grandTotal.toLocaleString()}</td>
               </tr>
             </tfoot>
@@ -676,8 +677,10 @@ function BillModal({
             <View>
               <View style={billStyles.tableHeader}>
                 <Text style={[billStyles.th, { flex: 3 }]}>PRODUCT</Text>
+                <Text style={[billStyles.th, billStyles.thRight, { flex: 2 }]}>S.PRICE</Text>
+                <Text style={[billStyles.th, billStyles.thCenter, { flex: 1 }]}>DISC</Text>
+                <Text style={[billStyles.th, billStyles.thRight, { flex: 2 }]}>D.PRICE</Text>
                 <Text style={[billStyles.th, billStyles.thCenter, { flex: 1 }]}>QTY</Text>
-                <Text style={[billStyles.th, billStyles.thRight, { flex: 2 }]}>DISC. PRICE</Text>
                 <Text style={[billStyles.th, billStyles.thRight, { flex: 2 }]}>TOTAL</Text>
               </View>
               <View style={billStyles.tableDivider} />
@@ -700,11 +703,17 @@ function BillModal({
                       ]}
                     >
                       <Text style={[billStyles.td, { flex: 3 }]} numberOfLines={2}>{item.productName || "—"}</Text>
-                      <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1 }]}>{item.quantity}</Text>
-                      <Text style={[billStyles.td, billStyles.tdRight, { flex: 2, color: discPct > 0 ? "#16a34a" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                      <Text style={[billStyles.td, billStyles.tdRight, { flex: 2 }]}>
+                        {item.unitPrice.toLocaleString()}
+                      </Text>
+                      <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1, color: discPct > 0 ? "#16a34a" : Colors.textLight }]}>
+                        {discPct > 0 ? `${discPct}%` : "—"}
+                      </Text>
+                      <Text style={[billStyles.td, billStyles.tdRight, { flex: 2, color: discPct > 0 ? "#16a34a" : undefined, fontFamily: discPct > 0 ? "Inter_700Bold" : "Inter_400Regular" }]}>
                         {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
                       </Text>
-                      <Text style={[billStyles.td, billStyles.tdRight, billStyles.tdTotal, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                      <Text style={[billStyles.td, billStyles.tdCenter, { flex: 1 }]}>{item.quantity}</Text>
+                      <Text style={[billStyles.td, billStyles.tdRight, billStyles.tdTotal, { flex: 2 }]}>
                         {lineTotal.toLocaleString()}
                       </Text>
                     </View>
@@ -823,8 +832,10 @@ function OrderCard({
           <View style={styles.table}>
             <View style={styles.tableRow}>
               <Text style={[styles.colHead, { flex: 3 }]}>PRODUCT</Text>
+              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>S.PRICE</Text>
+              <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>DISC</Text>
+              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>D.PRICE</Text>
               <Text style={[styles.colHead, styles.colCenter, { flex: 1 }]}>QTY</Text>
-              <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>DISC. PRICE</Text>
               <Text style={[styles.colHead, styles.colRight, { flex: 2 }]}>TOTAL</Text>
             </View>
             <View style={styles.tableDivider} />
@@ -843,11 +854,17 @@ function OrderCard({
                     <View style={{ flex: 3 }}>
                       <Text style={styles.colVal} numberOfLines={2}>{item.productName || "—"}</Text>
                     </View>
-                    <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                    <Text style={[styles.colVal, styles.colRight, { flex: 2 }]}>
+                      {item.unitPrice.toLocaleString()}
+                    </Text>
+                    <Text style={[styles.colVal, styles.colCenter, { flex: 1, color: discPct > 0 ? "#16a34a" : Colors.textLight }]}>
+                      {discPct > 0 ? `${discPct}%` : "—"}
+                    </Text>
                     <Text style={[styles.colVal, styles.colRight, { flex: 2, color: discPct > 0 ? "#16a34a" : undefined, fontWeight: discPct > 0 ? "700" : "400" }]}>
                       {discUnitPrice > 0 ? discUnitPrice.toLocaleString() : "—"}
                     </Text>
-                    <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2, fontWeight: discPct > 0 ? "700" : "400" }]}>
+                    <Text style={[styles.colVal, styles.colCenter, { flex: 1 }]}>{item.quantity}</Text>
+                    <Text style={[styles.colVal, styles.colRight, styles.colTotal, { flex: 2 }]}>
                       {lineTotal > 0 ? lineTotal.toLocaleString() : "—"}
                     </Text>
                   </View>
