@@ -59,21 +59,39 @@ export default function CreateQRScreen() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const handleDownload = async () => {
-    if (!qrCardRef.current) return;
+    if (!qrCardRef.current) {
+      Alert.alert("Not ready", "Please wait a moment and try again.");
+      return;
+    }
     setDownloading(true);
     try {
+      // Request permission
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Required", "Allow Tashi to save photos to download QR codes.");
+        Alert.alert("Permission Required", "Go to Settings → Tashi → Photos and allow access to save QR codes.");
         return;
       }
+
+      // Capture QR card as image
       const uri: string = await (qrCardRef.current as any).capture();
+      if (!uri) throw new Error("Capture returned empty URI");
+
+      // Save to media library
       const asset = await MediaLibrary.createAssetAsync(uri);
-      await MediaLibrary.createAlbumAsync("Tashi", asset, false);
+
+      // Add to "Tashi" album — create if it doesn't exist yet, add to it if it does
+      const existing = await MediaLibrary.getAlbumAsync("Tashi");
+      if (existing === null) {
+        await MediaLibrary.createAlbumAsync("Tashi", asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], existing, false);
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Saved!", "QR code saved to Photos › Tashi folder.");
+      Alert.alert("Saved!", "QR code saved to your gallery in the Tashi album.");
     } catch (e: any) {
-      Alert.alert("Error", "Could not save QR code. Please try again.");
+      console.error("QR download error:", e);
+      Alert.alert("Save Failed", e?.message || "Could not save QR code. Please try again.");
     } finally {
       setDownloading(false);
     }
