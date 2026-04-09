@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { VideoView, useVideoPlayer } from "expo-video";
 import {
   ActivityIndicator,
   Animated,
@@ -46,7 +47,24 @@ interface ClaimRecord {
 interface AdBanner {
   id: number;
   imageBase64: string;
+  mediaType?: string;
   title: string | null;
+}
+
+function BannerVideo({ uri, width }: { uri: string; width: number }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ width, height: 140, borderRadius: 18 }}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
 }
 
 interface TickerItem {
@@ -382,10 +400,14 @@ export default function UserHomeScreen() {
           }}
         >
           {adBanners.length > 0
-            ? adBanners.map((ad) => (
-                <Image key={ad.id} source={{ uri: ad.imageBase64 }}
-                  style={[styles.bannerImage, { width: BANNER_WIDTH }]} resizeMode="cover" />
-              ))
+            ? adBanners.map((ad) =>
+                ad.mediaType === "video" ? (
+                  <BannerVideo key={ad.id} uri={ad.imageBase64} width={BANNER_WIDTH} />
+                ) : (
+                  <Image key={ad.id} source={{ uri: ad.imageBase64 }}
+                    style={[styles.bannerImage, { width: BANNER_WIDTH }]} resizeMode="cover" />
+                )
+              )
             : FALLBACK_BANNERS.map((b, i) => (
                 <LinearGradient
                   key={i}

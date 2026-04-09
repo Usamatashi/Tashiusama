@@ -93,6 +93,7 @@ export type Claim = typeof claimsTable.$inferSelect;
 export const adsTable = pgTable("ads", {
   id: serial("id").primaryKey(),
   imageBase64: text("image_base64").notNull(),
+  mediaType: text("media_type").notNull().default("image"),
   title: text("title"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

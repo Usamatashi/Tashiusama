@@ -12,14 +12,14 @@ router.get("/", requireAuth, async (_req, res) => {
 });
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
-  const { imageBase64, title } = req.body;
+  const { imageBase64, title, mediaType } = req.body;
   if (!imageBase64) {
     res.status(400).json({ error: "imageBase64 is required" });
     return;
   }
   const [ad] = await db
     .insert(adsTable)
-    .values({ imageBase64, title: title ?? null })
+    .values({ imageBase64, title: title ?? null, mediaType: mediaType ?? "image" })
     .returning();
   res.status(201).json(ad);
 });
