@@ -145,29 +145,31 @@ export default function CreateAdsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Upload button */}
-        <Text style={styles.sectionLabel}>ADD NEW MEDIA</Text>
         <TouchableOpacity
-          style={[styles.uploadCard, uploadingImage && { opacity: 0.7 }]}
+          style={[styles.uploadBtn, uploadingImage && { opacity: 0.65 }]}
           onPress={uploadImage}
           disabled={uploadingImage}
-          activeOpacity={0.82}
+          activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#E87722", "#C5611A"]}
+            colors={["#F09540", "#E87722", "#C5611A"]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.uploadCardGradient}
+            end={{ x: 1, y: 0 }}
+            style={styles.uploadBtnGradient}
           >
-            <View style={styles.uploadIconCircle}>
+            <View style={styles.uploadBtnIcon}>
               {uploadingImage
                 ? <ActivityIndicator color="#E87722" size="small" />
-                : <Feather name="image" size={24} color="#E87722" />
+                : <Feather name="upload" size={15} color="#E87722" />
               }
             </View>
-            <Text style={styles.uploadCardTitle}>
-              {uploadingImage ? "Uploading…" : "Upload Banner"}
-            </Text>
-            <Text style={styles.uploadCardSub}>16:7 ratio · JPG / PNG</Text>
+            <View style={styles.uploadBtnText}>
+              <Text style={styles.uploadBtnTitle}>
+                {uploadingImage ? "Uploading…" : "Upload Banner"}
+              </Text>
+              <Text style={styles.uploadBtnSub}>JPG · PNG · 16:7</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.5)" />
           </LinearGradient>
         </TouchableOpacity>
 
@@ -232,31 +234,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
 
-  uploadCard: {
-    flex: 1,
-    borderRadius: 18,
+  uploadBtn: {
+    borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: "#E87722",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 6,
   },
-  uploadCardGradient: {
-    padding: 20,
+  uploadBtnGradient: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    minHeight: 140,
-    justifyContent: "center",
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    gap: 12,
   },
-  uploadIconCircle: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: "#FFF7F0",
+  uploadBtnIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: "#fff",
     alignItems: "center", justifyContent: "center",
-    marginBottom: 4,
   },
-  uploadCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff", textAlign: "center" },
-  uploadCardSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", textAlign: "center" },
+  uploadBtnText: { flex: 1, gap: 2 },
+  uploadBtnTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
+  uploadBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.65)" },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   sectionDot: { width: 8, height: 8, borderRadius: 4 },
