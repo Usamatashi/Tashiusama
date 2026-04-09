@@ -46,7 +46,8 @@ interface ClaimRecord {
 
 interface AdBanner {
   id: number;
-  imageBase64: string;
+  imageBase64?: string;
+  mediaUrl?: string;
   mediaType?: string;
   title: string | null;
 }
@@ -401,12 +402,12 @@ export default function UserHomeScreen() {
         >
           {adBanners.length > 0
             ? adBanners.map((ad) =>
-                ad.mediaType === "video" ? (
-                  <BannerVideo key={ad.id} uri={ad.imageBase64} width={BANNER_WIDTH} />
-                ) : (
+                ad.mediaType === "video" && ad.mediaUrl ? (
+                  <BannerVideo key={ad.id} uri={ad.mediaUrl} width={BANNER_WIDTH} />
+                ) : ad.imageBase64 ? (
                   <Image key={ad.id} source={{ uri: ad.imageBase64 }}
                     style={[styles.bannerImage, { width: BANNER_WIDTH }]} resizeMode="cover" />
-                )
+                ) : null
               )
             : FALLBACK_BANNERS.map((b, i) => (
                 <LinearGradient

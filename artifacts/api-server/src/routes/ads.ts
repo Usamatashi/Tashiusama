@@ -8,14 +8,41 @@ import { requireAuth, requireAdmin } from "../lib/auth.js";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
-router.get("/", requireAuth, async (_req, res) => {
+// List ads — returns imageBase64 for images, mediaUrl for videos (no heavy base64 blob in list)
+router.get("/", requireAuth, async (req, res) => {
   const ads = await db.select().from(adsTable).orderBy(adsTable.createdAt);
-  res.json(ads);
+  const host = `${req.protocol}://${req.get("host")}`;
+  res.json(
+    ads.map((ad) => {
+      if (ad.mediaType === "video") {
+        return { id: ad.id, mediaType: ad.mediaType, title: ad.title, createdAt: ad.createdAt, mediaUrl: `${host}/api/ads/${ad.id}/media` };
+      }
+      return { id: ad.id, mediaType: ad.mediaType ?? "image", title: ad.title, createdAt: ad.createdAt, imageBase64: ad.imageBase64 };
+    }),
+  );
 });
 
-// Supports two upload modes:
-//  1. JSON body: { imageBase64, mediaType?, title? }  — used for image banners
-//  2. Multipart form: file field + mediaType + title  — used for video uploads
+// Stream a single ad's media (video or image) by id
+router.get("/:id/media", requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const rows = await db.select().from(adsTable).where(eq(adsTable.id, id));
+  const ad = rows[0];
+  if (!ad) { res.status(404).json({ error: "Not found" }); return; }
+
+  const dataUrl = ad.imageBase64;
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+  if (!match) { res.status(500).json({ error: "Invalid media data" }); return; }
+
+  const mime = match[1];
+  const buf = Buffer.from(match[2], "base64");
+  res.setHeader("Content-Type", mime);
+  res.setHeader("Content-Length", buf.length);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(buf);
+});
+
+// Upload — supports JSON (images) and multipart FormData (videos)
 router.post(
   "/",
   requireAuth,
@@ -35,7 +62,6 @@ router.post(
       let title: string | null = null;
 
       if ((req as any).file) {
-        // Multipart upload (video)
         const file = (req as any).file as Express.Multer.File;
         const b64 = file.buffer.toString("base64");
         const mime = file.mimetype || "video/mp4";
@@ -43,22 +69,21 @@ router.post(
         mediaType = (req.body.mediaType as string) || "video";
         title = (req.body.title as string) || null;
       } else {
-        // JSON upload (image)
         imageBase64 = req.body.imageBase64;
-        if (!imageBase64) {
-          res.status(400).json({ error: "No file or imageBase64 provided" });
-          return;
-        }
+        if (!imageBase64) { res.status(400).json({ error: "No file or imageBase64 provided" }); return; }
         mediaType = req.body.mediaType || "image";
         title = req.body.title || null;
       }
 
-      const [ad] = await db
-        .insert(adsTable)
-        .values({ imageBase64, title, mediaType })
-        .returning();
+      const [ad] = await db.insert(adsTable).values({ imageBase64, title, mediaType }).returning();
 
-      res.status(201).json(ad);
+      // Return same shape as GET list
+      const host = `${req.protocol}://${req.get("host")}`;
+      if (mediaType === "video") {
+        res.status(201).json({ id: ad.id, mediaType: ad.mediaType, title: ad.title, createdAt: ad.createdAt, mediaUrl: `${host}/api/ads/${ad.id}/media` });
+      } else {
+        res.status(201).json({ id: ad.id, mediaType: ad.mediaType, title: ad.title, createdAt: ad.createdAt, imageBase64: ad.imageBase64 });
+      }
     } catch (err) {
       req.log.error(err);
       res.status(500).json({ error: "Upload failed" });
@@ -68,10 +93,7 @@ router.post(
 
 router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid id" });
-    return;
-  }
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(adsTable).where(eq(adsTable.id, id));
   res.json({ success: true });
 });

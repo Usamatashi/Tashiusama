@@ -24,7 +24,8 @@ const CARD_WIDTH = (width - 48) / 2;
 
 interface Ad {
   id: number;
-  imageBase64: string;
+  imageBase64?: string;
+  mediaUrl?: string;
   mediaType: string;
   title: string | null;
   createdAt: string;
@@ -51,6 +52,12 @@ function VideoCard({ uri }: { uri: string }) {
       nativeControls={false}
     />
   );
+}
+
+// Build absolute media URL for the streaming endpoint
+function getMediaUrl(ad: Ad): string | null {
+  if (ad.mediaType === "video") return ad.mediaUrl ?? null;
+  return ad.imageBase64 ?? null;
 }
 
 export default function CreateAdsScreen() {
@@ -265,7 +272,7 @@ export default function CreateAdsScreen() {
               <View style={styles.grid}>
                 {imageAds.map((ad) => (
                   <View key={ad.id} style={styles.card}>
-                    <Image source={{ uri: ad.imageBase64 }} style={styles.cardImage} resizeMode="cover" />
+                    {ad.imageBase64 ? <Image source={{ uri: ad.imageBase64 }} style={styles.cardImage} resizeMode="cover" /> : <View style={styles.cardImage} />}
                     <TouchableOpacity
                       style={styles.deleteBtn}
                       onPress={() => deleteAd(ad.id)}
@@ -298,7 +305,7 @@ export default function CreateAdsScreen() {
               <View style={styles.grid}>
                 {videoAds.map((ad) => (
                   <View key={ad.id} style={styles.card}>
-                    <VideoCard uri={ad.imageBase64} />
+                    {ad.mediaUrl ? <VideoCard uri={ad.mediaUrl} /> : <View style={[styles.cardImage, { backgroundColor: "#1a1a2e" }]} />}
                     <View style={styles.videoBadge}>
                       <Feather name="film" size={10} color="#fff" />
                       <Text style={styles.videoBadgeText}>VIDEO</Text>
