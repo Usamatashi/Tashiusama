@@ -99,13 +99,13 @@ interface ShareReceiptData {
   notes: string;
   date: string;
   salesmanName: string;
+  outstandingBalance: number;
 }
 
 // ─── Receipt card (captured as image for WhatsApp) ─────────────────────────────
 function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React.RefObject<ViewShot | null> }) {
   const logoUri = `data:image/png;base64,${TASHI_LOGO_BASE64}`;
   const dateStr = new Date(data.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
-  const timeStr = new Date(data.date).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <ViewShot ref={cardRef as any} options={{ format: "png", quality: 1 }}>
@@ -151,11 +151,6 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
             <Text style={rcStyles.rowValue}>{dateStr}</Text>
           </View>
           <View style={rcStyles.row}>
-            <Feather name="clock" size={13} color={Colors.primary} />
-            <Text style={rcStyles.rowLabel}>Time</Text>
-            <Text style={rcStyles.rowValue}>{timeStr}</Text>
-          </View>
-          <View style={rcStyles.row}>
             <Feather name="briefcase" size={13} color={Colors.primary} />
             <Text style={rcStyles.rowLabel}>Collected By</Text>
             <Text style={rcStyles.rowValue}>{data.salesmanName}</Text>
@@ -167,6 +162,21 @@ function ReceiptCard({ data, cardRef }: { data: ShareReceiptData; cardRef: React
               <Text style={rcStyles.rowValue}>{data.notes}</Text>
             </View>
           ) : null}
+        </View>
+
+        {/* Outstanding balance badge */}
+        <View style={rcStyles.outstandingBadge}>
+          <View style={rcStyles.outstandingInner}>
+            <Feather
+              name={data.outstandingBalance <= 0 ? "check-circle" : "alert-circle"}
+              size={14}
+              color={data.outstandingBalance <= 0 ? "#065F46" : "#92400E"}
+            />
+            <Text style={rcStyles.outstandingLabel}>Outstanding Balance</Text>
+            <Text style={[rcStyles.outstandingAmount, { color: data.outstandingBalance <= 0 ? "#065F46" : "#92400E" }]}>
+              Rs. {Math.abs(data.outstandingBalance).toLocaleString()}
+            </Text>
+          </View>
         </View>
 
         {/* Orange bottom bar */}
@@ -344,6 +354,7 @@ function SalesmanPayments() {
           notes: vars.notes,
           date: new Date().toISOString(),
           salesmanName: user?.name || "Salesman",
+          outstandingBalance: collectTarget.outstanding - vars.amount,
         });
       }
       setCollectTarget(null); setAmount(""); setNotes("");
@@ -919,6 +930,23 @@ const rcStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   rowLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#999", width: 95 },
   rowValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#1A1A1A", flex: 1 },
+  outstandingBadge: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  outstandingInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  outstandingLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#92400E", flex: 1 },
+  outstandingAmount: { fontSize: 13, fontFamily: "Inter_700Bold" },
   bottomBar: { height: 5, backgroundColor: Colors.primary },
 });
 
