@@ -17,7 +17,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
-import { VideoView, useVideoPlayer } from "expo-video";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48) / 2;
@@ -38,34 +37,12 @@ async function getToken() {
 
 const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
-function VideoCard({ uri }: { uri: string }) {
-  const player = useVideoPlayer(uri, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-  return (
-    <VideoView
-      player={player}
-      style={styles.cardImage}
-      contentFit="cover"
-      nativeControls={false}
-    />
-  );
-}
-
-// Build absolute media URL for the streaming endpoint
-function getMediaUrl(ad: Ad): string | null {
-  if (ad.mediaType === "video") return ad.mediaUrl ?? null;
-  return ad.imageBase64 ?? null;
-}
 
 export default function CreateAdsScreen() {
   const insets = useSafeAreaInsets();
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchAds = useCallback(async () => {
@@ -82,7 +59,7 @@ export default function CreateAdsScreen() {
 
   useEffect(() => { fetchAds(); }, [fetchAds]);
 
-  const uploadMedia = async (mediaType: "image" | "video") => {
+  const uploadImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("Permission required", "Please allow photo library access.");
@@ -90,57 +67,33 @@ export default function CreateAdsScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: mediaType === "image"
-        ? ImagePicker.MediaTypeOptions.Images
-        : ImagePicker.MediaTypeOptions.Videos,
-      allowsEditing: mediaType === "image",
-      aspect: mediaType === "image" ? [16, 7] : undefined,
-      quality: mediaType === "image" ? 0.75 : 0.5,
-      base64: mediaType === "image",
-      videoMaxDuration: 30,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 7],
+      quality: 0.75,
+      base64: true,
     });
 
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
-    const ext = asset.uri.split(".").pop()?.toLowerCase() ?? (mediaType === "image" ? "jpeg" : "mp4");
+    const ext = asset.uri.split(".").pop()?.toLowerCase() ?? "jpeg";
 
-    let dataUrl = "";
-
-    if (mediaType === "image") {
-      if (!asset.base64) {
-        Alert.alert("Error", "Could not read image data.");
-        return;
-      }
-      const mime = ext === "png" ? "image/png" : "image/jpeg";
-      dataUrl = `data:${mime};base64,${asset.base64}`;
+    if (!asset.base64) {
+      Alert.alert("Error", "Could not read image data.");
+      return;
     }
+    const mime = ext === "png" ? "image/png" : "image/jpeg";
+    const dataUrl = `data:${mime};base64,${asset.base64}`;
 
-    // ── Upload ──
-    mediaType === "image" ? setUploadingImage(true) : setUploadingVideo(true);
+    setUploadingImage(true);
     try {
       const token = await getToken();
-      let res: Response;
-
-      if (mediaType === "image") {
-        // Images: send as JSON base64 (already encoded above)
-        res = await fetch(`${BASE}/ads`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ imageBase64: dataUrl, mediaType }),
-        });
-      } else {
-        // Videos: send as multipart FormData — React Native handles content:// and ph:// URIs natively
-        const mime = ext === "mov" ? "video/quicktime" : "video/mp4";
-        const form = new FormData();
-        form.append("file", { uri: asset.uri, name: `video.${ext}`, type: mime } as any);
-        form.append("mediaType", "video");
-        res = await fetch(`${BASE}/ads`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: form,
-        });
-      }
+      const res = await fetch(`${BASE}/ads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageBase64: dataUrl, mediaType: "image" }),
+      });
 
       if (res.ok) {
         const ad = await res.json();
@@ -153,7 +106,6 @@ export default function CreateAdsScreen() {
       Alert.alert("Error", "Upload failed. Check your connection and try again.");
     } finally {
       setUploadingImage(false);
-      setUploadingVideo(false);
     }
   };
 
@@ -181,7 +133,6 @@ export default function CreateAdsScreen() {
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const imageAds = ads.filter((a) => a.mediaType !== "video");
-  const videoAds = ads.filter((a) => a.mediaType === "video");
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -193,62 +144,32 @@ export default function CreateAdsScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Upload buttons */}
+        {/* Upload button */}
         <Text style={styles.sectionLabel}>ADD NEW MEDIA</Text>
-        <View style={styles.uploadRow}>
-
-          {/* Image banner button */}
-          <TouchableOpacity
-            style={[styles.uploadCard, uploadingImage && { opacity: 0.7 }]}
-            onPress={() => uploadMedia("image")}
-            disabled={uploadingImage || uploadingVideo}
-            activeOpacity={0.82}
+        <TouchableOpacity
+          style={[styles.uploadCard, uploadingImage && { opacity: 0.7 }]}
+          onPress={uploadImage}
+          disabled={uploadingImage}
+          activeOpacity={0.82}
+        >
+          <LinearGradient
+            colors={["#E87722", "#C5611A"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.uploadCardGradient}
           >
-            <LinearGradient
-              colors={["#E87722", "#C5611A"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.uploadCardGradient}
-            >
-              <View style={styles.uploadIconCircle}>
-                {uploadingImage
-                  ? <ActivityIndicator color="#E87722" size="small" />
-                  : <Feather name="image" size={24} color="#E87722" />
-                }
-              </View>
-              <Text style={styles.uploadCardTitle}>
-                {uploadingImage ? "Uploading…" : "Upload Banner"}
-              </Text>
-              <Text style={styles.uploadCardSub}>16:7 ratio · JPG / PNG</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Video button */}
-          <TouchableOpacity
-            style={[styles.uploadCard, uploadingVideo && { opacity: 0.7 }]}
-            onPress={() => uploadMedia("video")}
-            disabled={uploadingImage || uploadingVideo}
-            activeOpacity={0.82}
-          >
-            <LinearGradient
-              colors={["#2563EB", "#1D4ED8"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.uploadCardGradient}
-            >
-              <View style={[styles.uploadIconCircle, { backgroundColor: "#EFF6FF" }]}>
-                {uploadingVideo
-                  ? <ActivityIndicator color="#2563EB" size="small" />
-                  : <Feather name="video" size={24} color="#2563EB" />
-                }
-              </View>
-              <Text style={styles.uploadCardTitle}>
-                {uploadingVideo ? "Uploading…" : "Upload Video"}
-              </Text>
-              <Text style={styles.uploadCardSub}>Max 30 sec · MP4 / MOV</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.uploadIconCircle}>
+              {uploadingImage
+                ? <ActivityIndicator color="#E87722" size="small" />
+                : <Feather name="image" size={24} color="#E87722" />
+              }
+            </View>
+            <Text style={styles.uploadCardTitle}>
+              {uploadingImage ? "Uploading…" : "Upload Banner"}
+            </Text>
+            <Text style={styles.uploadCardSub}>16:7 ratio · JPG / PNG</Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* Banners section */}
         {loading ? (
@@ -288,42 +209,6 @@ export default function CreateAdsScreen() {
               </View>
             )}
 
-            {/* Video banners */}
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionDot, { backgroundColor: "#2563EB" }]} />
-              <Text style={styles.sectionLabel}>VIDEO BANNERS</Text>
-              <View style={[styles.countPill, { backgroundColor: "#DBEAFE" }]}>
-                <Text style={[styles.countPillText, { color: "#2563EB" }]}>{videoAds.length}</Text>
-              </View>
-            </View>
-            {videoAds.length === 0 ? (
-              <View style={styles.empty}>
-                <Feather name="video" size={28} color={Colors.textLight} />
-                <Text style={styles.emptyText}>No video banners yet</Text>
-              </View>
-            ) : (
-              <View style={styles.grid}>
-                {videoAds.map((ad) => (
-                  <View key={ad.id} style={styles.card}>
-                    {ad.mediaUrl ? <VideoCard uri={ad.mediaUrl} /> : <View style={[styles.cardImage, { backgroundColor: "#1a1a2e" }]} />}
-                    <View style={styles.videoBadge}>
-                      <Feather name="film" size={10} color="#fff" />
-                      <Text style={styles.videoBadgeText}>VIDEO</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => deleteAd(ad.id)}
-                      disabled={deletingId === ad.id}
-                    >
-                      {deletingId === ad.id
-                        ? <ActivityIndicator size="small" color="#fff" />
-                        : <Feather name="trash-2" size={13} color="#fff" />
-                      }
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
           </>
         )}
       </ScrollView>
@@ -347,7 +232,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
 
-  uploadRow: { flexDirection: "row", gap: 12 },
   uploadCard: {
     flex: 1,
     borderRadius: 18,
@@ -392,13 +276,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
   card: { width: CARD_WIDTH, borderRadius: 14, overflow: "hidden", backgroundColor: Colors.adminCard },
   cardImage: { width: "100%", height: CARD_WIDTH * 0.6 },
-  videoBadge: {
-    position: "absolute", top: 6, left: 6,
-    flexDirection: "row", alignItems: "center", gap: 3,
-    backgroundColor: "rgba(37,99,235,0.85)",
-    borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
-  },
-  videoBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.5 },
   deleteBtn: {
     position: "absolute", top: 6, right: 6,
     backgroundColor: "rgba(231,76,60,0.85)",
