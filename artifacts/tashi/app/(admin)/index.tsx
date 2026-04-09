@@ -156,6 +156,7 @@ export default function AdminDashboard() {
   const visibleActions = ACTIONS.filter((a) => {
     if (isSuperAdmin) return true;
     if (a.superAdminOnly) return false;
+    if (a.label === "Create QR Code") return true;
     const key = CARD_KEY_MAP[a.label];
     return key ? settings[key] : true;
   });
