@@ -25,7 +25,9 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_CONTACTS"
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
@@ -44,6 +46,14 @@
       ],
       "expo-font",
       "expo-web-browser",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Tashi to save QR codes to your photo library.",
+          "savePhotosPermission": "Allow Tashi to save QR codes to your photo library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
       [
         "expo-camera",
         {

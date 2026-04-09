@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,6 +19,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
+import * as MediaLibrary from "expo-media-library";
+import ViewShot from "react-native-view-shot";
 
 interface Product {
   id: number;
@@ -51,7 +54,30 @@ export default function CreateQRScreen() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
   const qrRef = useRef<any>(null);
+  const qrCardRef = useRef<ViewShot | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+
+  const handleDownload = async () => {
+    if (!qrCardRef.current) return;
+    setDownloading(true);
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Allow Tashi to save photos to download QR codes.");
+        return;
+      }
+      const uri: string = await (qrCardRef.current as any).capture();
+      const asset = await MediaLibrary.createAssetAsync(uri);
+      await MediaLibrary.createAlbumAsync("Tashi", asset, false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Saved!", "QR code saved to Photos › Tashi folder.");
+    } catch (e: any) {
+      Alert.alert("Error", "Could not save QR code. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -139,15 +165,17 @@ export default function CreateQRScreen() {
         </LinearGradient>
 
         <ScrollView contentContainerStyle={styles.resultScroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.resultQrCard}>
-            <QRCode
-              value={createdQR.qrNumber}
-              size={200}
-              color="#1A1A1A"
-              backgroundColor="#FFFFFF"
-              getRef={(ref) => (qrRef.current = ref)}
-            />
-          </View>
+          <ViewShot ref={qrCardRef as any} options={{ format: "png", quality: 1 }}>
+            <View style={styles.resultQrCard}>
+              <QRCode
+                value={createdQR.qrNumber}
+                size={200}
+                color="#1A1A1A"
+                backgroundColor="#FFFFFF"
+                getRef={(ref) => (qrRef.current = ref)}
+              />
+            </View>
+          </ViewShot>
 
           <View style={styles.resultInfoCard}>
             <View style={styles.resultRow}>
@@ -180,6 +208,19 @@ export default function CreateQRScreen() {
               </View>
             </View>
           </View>
+
+          {/* Download button */}
+          <TouchableOpacity
+            style={[styles.downloadBtn, downloading && { opacity: 0.65 }]}
+            onPress={handleDownload}
+            disabled={downloading}
+            activeOpacity={0.8}
+          >
+            {downloading
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <><Feather name="download" size={18} color="#fff" /><Text style={styles.downloadBtnText}>Save to Phone</Text></>
+            }
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.newBtn} onPress={handleReset} activeOpacity={0.8}>
             <Feather name="plus-circle" size={18} color={Colors.white} />
@@ -571,6 +612,23 @@ const styles = StyleSheet.create({
   resultRowLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textLight, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 },
   resultRowValue: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.adminText },
 
+  downloadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+    width: "100%",
+    justifyContent: "center",
+  },
+  downloadBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
   newBtn: {
     flexDirection: "row",
     alignItems: "center",
