@@ -27,8 +27,8 @@ export default function AnimatedSplash({ onFinish }: Props) {
     logoScale.value = withSpring(1, { damping: 14, stiffness: 110, mass: 0.8 });
 
     screenOpacity.value = withDelay(
-      1800,
-      withTiming(0, { duration: 450, easing: Easing.in(Easing.cubic) }, (finished) => {
+      900,
+      withTiming(0, { duration: 300, easing: Easing.in(Easing.cubic) }, (finished) => {
         if (finished) runOnJS(onFinish)();
       })
     );
