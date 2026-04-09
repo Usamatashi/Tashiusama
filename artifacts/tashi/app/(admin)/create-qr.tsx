@@ -65,8 +65,8 @@ export default function CreateQRScreen() {
     }
     setDownloading(true);
     try {
-      // Request permission
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      // Request write-only permission (avoids requesting AUDIO/VIDEO on Android 13+)
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== "granted") {
         Alert.alert("Permission Required", "Go to Settings → Tashi → Photos and allow access to save QR codes.");
         return;
