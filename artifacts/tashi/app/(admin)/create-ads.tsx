@@ -109,24 +109,36 @@ export default function CreateAdsScreen() {
       const mime = ext === "png" ? "image/png" : "image/jpeg";
       dataUrl = `data:${mime};base64,${asset.base64}`;
     } else {
-      // Videos: ImagePicker never returns base64 for videos — read the file directly
-      mediaType === "video" && setUploadingVideo(true);
+      // Videos: ImagePicker never returns base64 for videos.
+      // The URI may be a ph:// or content:// reference — copy to cache first so
+      // FileSystem can read it as a plain file:// path.
+      setUploadingVideo(true);
+      let cacheUri: string | null = null;
       try {
-        const info = await FileSystem.getInfoAsync(asset.uri);
+        const mime = ext === "mov" ? "video/quicktime" : "video/mp4";
+        cacheUri = `${FileSystem.cacheDirectory}tashi_vid_${Date.now()}.${ext}`;
+
+        await FileSystem.copyAsync({ from: asset.uri, to: cacheUri });
+
+        const info = await FileSystem.getInfoAsync(cacheUri);
         if (info.exists && "size" in info && info.size > 15 * 1024 * 1024) {
           Alert.alert("File too large", "Please choose a video under 15 MB.");
           setUploadingVideo(false);
           return;
         }
-        const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+
+        const b64 = await FileSystem.readAsStringAsync(cacheUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        const mime = ext === "mov" ? "video/quicktime" : "video/mp4";
         dataUrl = `data:${mime};base64,${b64}`;
-      } catch {
-        Alert.alert("Error", "Could not read video file.");
+      } catch (e: any) {
+        Alert.alert("Error", "Could not read video file. Make sure the video is accessible and try again.");
         setUploadingVideo(false);
         return;
+      } finally {
+        if (cacheUri) {
+          FileSystem.deleteAsync(cacheUri, { idempotent: true }).catch(() => {});
+        }
       }
     }
 
