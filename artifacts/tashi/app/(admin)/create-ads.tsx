@@ -12,7 +12,6 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -99,7 +98,7 @@ export default function CreateAdsScreen() {
     const asset = result.assets[0];
     const ext = asset.uri.split(".").pop()?.toLowerCase() ?? (mediaType === "image" ? "jpeg" : "mp4");
 
-    let dataUrl: string;
+    let dataUrl = "";
 
     if (mediaType === "image") {
       if (!asset.base64) {
@@ -108,57 +107,43 @@ export default function CreateAdsScreen() {
       }
       const mime = ext === "png" ? "image/png" : "image/jpeg";
       dataUrl = `data:${mime};base64,${asset.base64}`;
-    } else {
-      // Videos: ImagePicker never returns base64 for videos.
-      // The URI may be a ph:// or content:// reference — copy to cache first so
-      // FileSystem can read it as a plain file:// path.
-      setUploadingVideo(true);
-      let cacheUri: string | null = null;
-      try {
-        const mime = ext === "mov" ? "video/quicktime" : "video/mp4";
-        cacheUri = `${FileSystem.cacheDirectory}tashi_vid_${Date.now()}.${ext}`;
-
-        await FileSystem.copyAsync({ from: asset.uri, to: cacheUri });
-
-        const info = await FileSystem.getInfoAsync(cacheUri);
-        if (info.exists && "size" in info && info.size > 15 * 1024 * 1024) {
-          Alert.alert("File too large", "Please choose a video under 15 MB.");
-          setUploadingVideo(false);
-          return;
-        }
-
-        const b64 = await FileSystem.readAsStringAsync(cacheUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        dataUrl = `data:${mime};base64,${b64}`;
-      } catch (e: any) {
-        Alert.alert("Error", "Could not read video file. Make sure the video is accessible and try again.");
-        setUploadingVideo(false);
-        return;
-      } finally {
-        if (cacheUri) {
-          FileSystem.deleteAsync(cacheUri, { idempotent: true }).catch(() => {});
-        }
-      }
     }
 
+    // ── Upload ──
     mediaType === "image" ? setUploadingImage(true) : setUploadingVideo(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${BASE}/ads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ imageBase64: dataUrl, mediaType }),
-      });
+      let res: Response;
+
+      if (mediaType === "image") {
+        // Images: send as JSON base64 (already encoded above)
+        res = await fetch(`${BASE}/ads`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ imageBase64: dataUrl, mediaType }),
+        });
+      } else {
+        // Videos: send as multipart FormData — React Native handles content:// and ph:// URIs natively
+        const mime = ext === "mov" ? "video/quicktime" : "video/mp4";
+        const form = new FormData();
+        form.append("file", { uri: asset.uri, name: `video.${ext}`, type: mime } as any);
+        form.append("mediaType", "video");
+        res = await fetch(`${BASE}/ads`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+      }
+
       if (res.ok) {
         const ad = await res.json();
         setAds((prev) => [...prev, ad]);
       } else {
-        const err = await res.json().catch(() => ({}));
-        Alert.alert("Upload failed", err.error || "Could not upload. Try a smaller file.");
+        const errBody = await res.json().catch(() => ({}));
+        Alert.alert("Upload failed", errBody.error || "Could not upload. Try a smaller file.");
       }
     } catch {
-      Alert.alert("Error", "Something went wrong.");
+      Alert.alert("Error", "Upload failed. Check your connection and try again.");
     } finally {
       setUploadingImage(false);
       setUploadingVideo(false);
