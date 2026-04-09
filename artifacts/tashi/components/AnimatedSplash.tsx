@@ -27,8 +27,8 @@ export default function AnimatedSplash({ onFinish }: Props) {
     logoScale.value = withSpring(1, { damping: 14, stiffness: 110, mass: 0.8 });
 
     screenOpacity.value = withDelay(
-      900,
-      withTiming(0, { duration: 300, easing: Easing.in(Easing.cubic) }, (finished) => {
+      1200,
+      withTiming(0, { duration: 350, easing: Easing.in(Easing.cubic) }, (finished) => {
         if (finished) runOnJS(onFinish)();
       })
     );
@@ -42,11 +42,13 @@ export default function AnimatedSplash({ onFinish }: Props) {
 
   return (
     <Animated.View style={[styles.container, screenStyle]}>
-      <Animated.Image
-        source={require("@/assets/images/tashi-logo.png")}
-        style={[styles.logo, logoStyle]}
-        resizeMode="contain"
-      />
+      <Animated.View style={logoStyle}>
+        <Image
+          source={require("@/assets/images/tashi-logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </Animated.View>
     </Animated.View>
   );
 }
