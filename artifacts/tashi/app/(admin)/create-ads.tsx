@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -89,28 +90,45 @@ export default function CreateAdsScreen() {
       allowsEditing: mediaType === "image",
       aspect: mediaType === "image" ? [16, 7] : undefined,
       quality: mediaType === "image" ? 0.75 : 0.5,
-      base64: true,
+      base64: mediaType === "image",
       videoMaxDuration: 30,
     });
 
     if (result.canceled || !result.assets[0]) return;
 
     const asset = result.assets[0];
-
-    if (!asset.base64) {
-      Alert.alert("Error", "Could not read file data. Please try a smaller file.");
-      return;
-    }
-
     const ext = asset.uri.split(".").pop()?.toLowerCase() ?? (mediaType === "image" ? "jpeg" : "mp4");
-    let mime: string;
-    if (mediaType === "image") {
-      mime = ext === "png" ? "image/png" : "image/jpeg";
-    } else {
-      mime = ext === "mov" ? "video/quicktime" : "video/mp4";
-    }
 
-    const dataUrl = `data:${mime};base64,${asset.base64}`;
+    let dataUrl: string;
+
+    if (mediaType === "image") {
+      if (!asset.base64) {
+        Alert.alert("Error", "Could not read image data.");
+        return;
+      }
+      const mime = ext === "png" ? "image/png" : "image/jpeg";
+      dataUrl = `data:${mime};base64,${asset.base64}`;
+    } else {
+      // Videos: ImagePicker never returns base64 for videos — read the file directly
+      mediaType === "video" && setUploadingVideo(true);
+      try {
+        const info = await FileSystem.getInfoAsync(asset.uri);
+        if (info.exists && "size" in info && info.size > 15 * 1024 * 1024) {
+          Alert.alert("File too large", "Please choose a video under 15 MB.");
+          setUploadingVideo(false);
+          return;
+        }
+        const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const mime = ext === "mov" ? "video/quicktime" : "video/mp4";
+        dataUrl = `data:${mime};base64,${b64}`;
+      } catch {
+        Alert.alert("Error", "Could not read video file.");
+        setUploadingVideo(false);
+        return;
+      }
+    }
 
     mediaType === "image" ? setUploadingImage(true) : setUploadingVideo(true);
     try {
@@ -124,7 +142,8 @@ export default function CreateAdsScreen() {
         const ad = await res.json();
         setAds((prev) => [...prev, ad]);
       } else {
-        Alert.alert("Upload failed", "Could not upload. Try a smaller file.");
+        const err = await res.json().catch(() => ({}));
+        Alert.alert("Upload failed", err.error || "Could not upload. Try a smaller file.");
       }
     } catch {
       Alert.alert("Error", "Something went wrong.");
