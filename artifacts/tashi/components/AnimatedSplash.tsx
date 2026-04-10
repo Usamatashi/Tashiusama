@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Dimensions, Image, StyleSheet } from "react-native";
 import Animated, {
   Easing,
@@ -11,6 +11,7 @@ import Animated, {
 
 const { width } = Dimensions.get("window");
 const LOGO_SIZE = width * 0.52;
+const MIN_DURATION = 4000;
 
 interface Props {
   onFinish: () => void;
@@ -21,14 +22,21 @@ export default function AnimatedSplash({ onFinish, ready }: Props) {
   const logoScale = useSharedValue(0.3);
   const logoOpacity = useSharedValue(0);
   const screenOpacity = useSharedValue(1);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const dismissed = useRef(false);
 
   useEffect(() => {
     logoOpacity.value = withTiming(1, { duration: 400 });
     logoScale.value = withSpring(1, { damping: 14, stiffness: 110, mass: 0.8 });
+
+    const timer = setTimeout(() => setMinTimeElapsed(true), MIN_DURATION);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!minTimeElapsed || !ready || dismissed.current) return;
+    dismissed.current = true;
+
     screenOpacity.value = withTiming(
       0,
       { duration: 400, easing: Easing.in(Easing.cubic) },
@@ -36,7 +44,7 @@ export default function AnimatedSplash({ onFinish, ready }: Props) {
         if (finished) runOnJS(onFinish)();
       }
     );
-  }, [ready]);
+  }, [minTimeElapsed, ready]);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: screenOpacity.value }));
   const logoStyle = useAnimatedStyle(() => ({
