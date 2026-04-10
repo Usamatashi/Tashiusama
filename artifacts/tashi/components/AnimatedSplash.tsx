@@ -5,7 +5,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -13,14 +12,12 @@ import Animated, {
 const { width } = Dimensions.get("window");
 const LOGO_SIZE = width * 0.52;
 
-const SPLASH_DURATION = 4000;
-const FADE_OUT_DURATION = 400;
-
 interface Props {
   onFinish: () => void;
+  ready: boolean;
 }
 
-export default function AnimatedSplash({ onFinish }: Props) {
+export default function AnimatedSplash({ onFinish, ready }: Props) {
   const logoScale = useSharedValue(0.3);
   const logoOpacity = useSharedValue(0);
   const screenOpacity = useSharedValue(1);
@@ -28,20 +25,18 @@ export default function AnimatedSplash({ onFinish }: Props) {
   useEffect(() => {
     logoOpacity.value = withTiming(1, { duration: 400 });
     logoScale.value = withSpring(1, { damping: 14, stiffness: 110, mass: 0.8 });
-
-    screenOpacity.value = withDelay(
-      SPLASH_DURATION,
-      withTiming(0, { duration: FADE_OUT_DURATION, easing: Easing.in(Easing.cubic) }, (finished) => {
-        if (finished) runOnJS(onFinish)();
-      })
-    );
-
-    const safetyTimer = setTimeout(() => {
-      onFinish();
-    }, SPLASH_DURATION + FADE_OUT_DURATION + 200);
-
-    return () => clearTimeout(safetyTimer);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    screenOpacity.value = withTiming(
+      0,
+      { duration: 400, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(onFinish)();
+      }
+    );
+  }, [ready]);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: screenOpacity.value }));
   const logoStyle = useAnimatedStyle(() => ({

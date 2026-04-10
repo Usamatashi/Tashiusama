@@ -12,13 +12,39 @@ import React, { useCallback, useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminSettingsProvider } from "@/context/AdminSettingsContext";
 import AnimatedSplash from "@/components/AnimatedSplash";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  const { isLoading: authLoading } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  return (
+    <AdminSettingsProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(admin)" />
+        <Stack.Screen name="(user)" />
+      </Stack>
+      {showSplash && (
+        <AnimatedSplash
+          onFinish={handleSplashFinish}
+          ready={!authLoading}
+        />
+      )}
+    </AdminSettingsProvider>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -28,17 +54,11 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  const [showSplash, setShowSplash] = useState(true);
-
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
-
-  const handleSplashFinish = useCallback(() => {
-    setShowSplash(false);
-  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 
@@ -47,15 +67,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <AdminSettingsProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="login" />
-                <Stack.Screen name="(admin)" />
-                <Stack.Screen name="(user)" />
-              </Stack>
-              {showSplash && <AnimatedSplash onFinish={handleSplashFinish} />}
-            </AdminSettingsProvider>
+            <AppContent />
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
