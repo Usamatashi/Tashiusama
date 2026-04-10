@@ -15,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
+      "bundleIdentifier": "com.tashi.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Tashi uses your camera to scan QR codes and earn points.",
         "NSContactsUsageDescription": "Tashi uses your contacts to quickly fill in phone numbers when creating accounts."
