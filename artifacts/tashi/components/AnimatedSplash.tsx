@@ -13,6 +13,9 @@ import Animated, {
 const { width } = Dimensions.get("window");
 const LOGO_SIZE = width * 0.52;
 
+const SPLASH_DURATION = 4000;
+const FADE_OUT_DURATION = 400;
+
 interface Props {
   onFinish: () => void;
 }
@@ -27,11 +30,17 @@ export default function AnimatedSplash({ onFinish }: Props) {
     logoScale.value = withSpring(1, { damping: 14, stiffness: 110, mass: 0.8 });
 
     screenOpacity.value = withDelay(
-      4000,
-      withTiming(0, { duration: 400, easing: Easing.in(Easing.cubic) }, (finished) => {
+      SPLASH_DURATION,
+      withTiming(0, { duration: FADE_OUT_DURATION, easing: Easing.in(Easing.cubic) }, (finished) => {
         if (finished) runOnJS(onFinish)();
       })
     );
+
+    const safetyTimer = setTimeout(() => {
+      onFinish();
+    }, SPLASH_DURATION + FADE_OUT_DURATION + 200);
+
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: screenOpacity.value }));
