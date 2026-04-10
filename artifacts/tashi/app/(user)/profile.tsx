@@ -298,7 +298,7 @@ function PwField({ label, value, onChangeText, show, toggleShow }: {
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={!show}
-          placeholder="••••••••"
+          placeholder="Enter password"
           placeholderTextColor={Colors.textSecondary}
           autoCapitalize="none"
         />

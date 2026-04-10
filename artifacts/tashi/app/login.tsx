@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
@@ -22,6 +23,7 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!phone.trim() || !password.trim()) {
@@ -78,14 +80,28 @@ export default function LoginScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor={Colors.textLight}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordWrap}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter your password"
+                placeholderTextColor={Colors.textLight}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowPassword((v) => !v)}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color={Colors.textLight}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -150,6 +166,26 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.text,
     backgroundColor: Colors.white,
+  },
+  passwordWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    color: Colors.text,
+  },
+  eyeBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   button: {
     backgroundColor: Colors.primary,
