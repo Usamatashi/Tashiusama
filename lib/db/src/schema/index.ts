@@ -191,3 +191,10 @@ export const commissionsTable = pgTable("commissions", {
 export const insertCommissionSchema = createInsertSchema(commissionsTable).omit({ id: true, createdAt: true });
 export type InsertCommission = z.infer<typeof insertCommissionSchema>;
 export type Commission = typeof commissionsTable.$inferSelect;
+
+export const pushTokensTable = pgTable("push_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

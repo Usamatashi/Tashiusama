@@ -3,6 +3,7 @@ import { db, usersTable, ordersTable, orderItemsTable, paymentsTable, commission
 import { eq, and, inArray, sql, gte, lt, sum } from "drizzle-orm";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
+import { sendPushToUsers, sendPushToRole } from "../lib/push";
 
 const router = Router();
 
@@ -322,6 +323,29 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
     }).returning();
 
     const p = inserted[0];
+
+    // Notify retailer that a payment was recorded
+    const formattedAmount = `Rs. ${p.amount.toLocaleString()}`;
+    sendPushToUsers(
+      [p.retailerId],
+      "Payment Recorded",
+      `A payment of ${formattedAmount} has been recorded for your account.`,
+      { paymentId: p.id, type: "payment_recorded" },
+    );
+    // Notify admins that a new payment needs verification
+    sendPushToRole(
+      "admin",
+      "New Payment to Verify",
+      `${retailer[0].name ?? "A retailer"} made a payment of ${formattedAmount}. Tap to verify.`,
+      { paymentId: p.id, type: "payment_pending" },
+    );
+    sendPushToRole(
+      "super_admin",
+      "New Payment to Verify",
+      `${retailer[0].name ?? "A retailer"} made a payment of ${formattedAmount}. Tap to verify.`,
+      { paymentId: p.id, type: "payment_pending" },
+    );
+
     res.status(201).json({
       id: p.id,
       retailerId: p.retailerId,
@@ -370,6 +394,14 @@ router.patch("/:id/verify", requireAuth, requireAdmin, async (req, res) => {
     const users = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
       .from(usersTable).where(inArray(usersTable.id, allIds));
     const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+    // Notify retailer that their payment has been verified
+    sendPushToUsers(
+      [p.retailerId],
+      "Payment Verified",
+      `Your payment of Rs. ${p.amount.toLocaleString()} has been verified and credited to your account.`,
+      { paymentId: p.id, type: "payment_verified" },
+    );
 
     res.json({
       id: p.id,

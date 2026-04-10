@@ -3,6 +3,7 @@ import { db, usersTable, productsTable, ordersTable, orderItemsTable } from "@wo
 import { eq, inArray, and, gte, lt, ne } from "drizzle-orm";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
+import { sendPushToUsers } from "../lib/push";
 
 const router = Router();
 
@@ -366,6 +367,20 @@ router.put("/:id/status", requireAuth, async (req, res) => {
 
     const updated = await db.update(ordersTable).set({ status }).where(eq(ordersTable.id, id)).returning();
     if (!updated.length) { res.status(404).json({ error: "Order not found" }); return; }
+
+    // Push notification on dispatch
+    if (status === "dispatched") {
+      const o = updated[0];
+      const retailerName = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, o.retailerId));
+      const label = retailerName[0]?.name ? `for ${retailerName[0].name}` : "";
+      sendPushToUsers(
+        [o.retailerId, o.salesmanId],
+        "Order Dispatched",
+        `Your order ${label} has been dispatched and is on its way.`.trim(),
+        { orderId: o.id, type: "dispatch" },
+      );
+    }
+
     res.json({ ...updated[0], createdAt: updated[0].createdAt.toISOString() });
   } catch (err) {
     req.log.error(err);

@@ -14,6 +14,7 @@ import adminSettingsRouter from "./admin-settings";
 import adminUserSettingsRouter from "./admin-user-settings";
 import commissionRouter from "./commission";
 import regionsRouter from "./regions";
+import pushTokenRouter from "./push-token";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use("/admin-settings", adminSettingsRouter);
 router.use("/admin-user-settings", adminUserSettingsRouter);
 router.use("/commission", commissionRouter);
 router.use("/regions", regionsRouter);
+router.use("/push-token", pushTokenRouter);
 
 export default router;
