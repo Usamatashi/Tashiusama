@@ -76,19 +76,11 @@ export default function CreateQRScreen() {
       const uri: string = await (qrCardRef.current as any).capture();
       if (!uri) throw new Error("Capture returned empty URI");
 
-      // Save to media library
-      const asset = await MediaLibrary.createAssetAsync(uri);
-
-      // Add to "Tashi" album — create if it doesn't exist yet, add to it if it does
-      const existing = await MediaLibrary.getAlbumAsync("Tashi");
-      if (existing === null) {
-        await MediaLibrary.createAlbumAsync("Tashi", asset, false);
-      } else {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], existing, false);
-      }
+      // Save to media library (camera roll)
+      await MediaLibrary.createAssetAsync(uri);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Saved!", "QR code saved to your gallery in the Tashi album.");
+      Alert.alert("Saved!", "QR code saved to your gallery.");
     } catch (e: any) {
       console.error("QR download error:", e);
       Alert.alert("Save Failed", e?.message || "Could not save QR code. Please try again.");
