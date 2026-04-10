@@ -13,13 +13,20 @@ async function computeOrderValues(orderRows: {
   if (!orderRows.length) return {};
   const ids = orderRows.map(o => o.id);
   const items = await db
-    .select({ orderId: orderItemsTable.orderId, qty: orderItemsTable.quantity, price: orderItemsTable.unitPrice })
+    .select({
+      orderId: orderItemsTable.orderId,
+      qty: orderItemsTable.quantity,
+      price: orderItemsTable.unitPrice,
+      discountPercent: orderItemsTable.discountPercent,
+    })
     .from(orderItemsTable)
     .where(inArray(orderItemsTable.orderId, ids));
 
   const itemMap: Record<number, number> = {};
   for (const r of items) {
-    itemMap[r.orderId] = (itemMap[r.orderId] ?? 0) + r.qty * r.price;
+    const discountPercent = r.discountPercent ?? 0;
+    const discountedValue = Math.round(r.qty * r.price * (1 - discountPercent / 100));
+    itemMap[r.orderId] = (itemMap[r.orderId] ?? 0) + discountedValue;
   }
   for (const o of orderRows) {
     if (!itemMap[o.id] && o.quantity && o.salesPrice) {
@@ -35,7 +42,13 @@ async function getBalances(retailerIds: number[]) {
 
   // Outstanding balance accrues when an order is dispatched (goods delivered)
   const orders = await db
-    .select({ id: ordersTable.id, retailerId: ordersTable.retailerId, productId: ordersTable.productId, quantity: ordersTable.quantity })
+    .select({
+      id: ordersTable.id,
+      retailerId: ordersTable.retailerId,
+      productId: ordersTable.productId,
+      quantity: ordersTable.quantity,
+      billDiscountPercent: ordersTable.billDiscountPercent,
+    })
     .from(ordersTable)
     .where(and(eq(ordersTable.status, "dispatched"), inArray(ordersTable.retailerId, retailerIds)));
 
@@ -48,7 +61,10 @@ async function getBalances(retailerIds: number[]) {
 
   const debtByRetailer: Record<number, number> = {};
   for (const o of orders) {
-    debtByRetailer[o.retailerId] = (debtByRetailer[o.retailerId] ?? 0) + (valueMap[o.id] ?? 0);
+    const itemsTotal = valueMap[o.id] ?? 0;
+    const billDiscountPercent = o.billDiscountPercent ?? 0;
+    const finalValue = Math.round(itemsTotal * (1 - billDiscountPercent / 100));
+    debtByRetailer[o.retailerId] = (debtByRetailer[o.retailerId] ?? 0) + finalValue;
   }
 
   const payments = await db
