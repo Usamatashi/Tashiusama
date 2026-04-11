@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "869846992277",
+    "project_id": "tashi-9512b",
+    "storage_bucket": "tashi-9512b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:869846992277:android:177e7d7b391ec07d71629c",
+        "android_client_info": {
+          "package_name": "com.tashi.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMSR5x9MSeGZv28iIjtNawHymHE9gTcws"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

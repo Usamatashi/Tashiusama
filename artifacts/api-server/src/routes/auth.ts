@@ -1,7 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { fdb, toISOString } from "../lib/firebase";
 import { signToken, requireAuth } from "../lib/auth";
 
 const router = Router();
@@ -13,12 +12,13 @@ router.post("/login", async (req, res) => {
       res.status(400).json({ error: "Phone and password required" });
       return;
     }
-    const users = await db.select().from(usersTable).where(eq(usersTable.phone, phone.trim()));
-    const user = users[0];
-    if (!user) {
+    const snap = await fdb.collection("users").where("phone", "==", phone.trim()).limit(1).get();
+    if (snap.empty) {
       res.status(401).json({ error: "Invalid phone or password" });
       return;
     }
+    const userDoc = snap.docs[0];
+    const user = userDoc.data();
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       res.status(401).json({ error: "Invalid phone or password" });
@@ -30,10 +30,10 @@ router.post("/login", async (req, res) => {
       user: {
         id: user.id,
         phone: user.phone,
-        name: user.name,
+        name: user.name ?? null,
         role: user.role,
         points: user.points,
-        createdAt: user.createdAt.toISOString(),
+        createdAt: toISOString(user.createdAt),
       },
     });
   } catch (err) {
@@ -54,19 +54,20 @@ router.post("/change-password", requireAuth, async (req, res) => {
       res.status(400).json({ error: "New password must be at least 6 characters" });
       return;
     }
-    const users = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-    const user = users[0];
-    if (!user) {
+    const userRef = fdb.collection("users").doc(String(userId));
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
       res.status(404).json({ error: "User not found" });
       return;
     }
+    const user = userDoc.data()!;
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) {
       res.status(401).json({ error: "Current password is incorrect" });
       return;
     }
     const hashed = await bcrypt.hash(newPassword, 10);
-    await db.update(usersTable).set({ passwordHash: hashed }).where(eq(usersTable.id, userId));
+    await userRef.update({ passwordHash: hashed });
     res.json({ success: true });
   } catch (err) {
     req.log.error(err);
@@ -77,19 +78,19 @@ router.post("/change-password", requireAuth, async (req, res) => {
 router.get("/me", requireAuth, async (req, res) => {
   try {
     const { userId } = (req as any).user;
-    const users = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-    const user = users[0];
-    if (!user) {
+    const userDoc = await fdb.collection("users").doc(String(userId)).get();
+    if (!userDoc.exists) {
       res.status(404).json({ error: "User not found" });
       return;
     }
+    const user = userDoc.data()!;
     res.json({
       id: user.id,
       phone: user.phone,
-      name: user.name,
+      name: user.name ?? null,
       role: user.role,
       points: user.points,
-      createdAt: user.createdAt.toISOString(),
+      createdAt: toISOString(user.createdAt),
     });
   } catch (err) {
     req.log.error(err);

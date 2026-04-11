@@ -1,5 +1,4 @@
-import { db, pushTokensTable, usersTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { fdb, chunkArray } from "./firebase";
 import { logger } from "./logger";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -22,17 +21,22 @@ export async function sendPushToUsers(
   if (!userIds.length) return;
 
   try {
-    const tokenRows = await db
-      .select({ token: pushTokensTable.token })
-      .from(pushTokensTable)
-      .where(inArray(pushTokensTable.userId, userIds));
+    const tokens: string[] = [];
+    const batches = chunkArray(userIds, 30);
+    for (const batch of batches) {
+      const snap = await fdb.collection("pushTokens").where("userId", "in", batch).get();
+      snap.forEach((doc) => {
+        const token = doc.data().token as string;
+        if (token) tokens.push(token);
+      });
+    }
 
-    if (!tokenRows.length) return;
+    if (!tokens.length) return;
 
-    const messages: PushMessage[] = tokenRows
-      .filter((r) => r.token.startsWith("ExponentPushToken["))
-      .map((r) => ({
-        to: r.token,
+    const messages: PushMessage[] = tokens
+      .filter((t) => t.startsWith("ExponentPushToken["))
+      .map((t) => ({
+        to: t,
         title,
         body,
         sound: "default",
@@ -67,12 +71,8 @@ export async function sendPushToRole(
   data?: Record<string, unknown>,
 ): Promise<void> {
   try {
-    const users = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(eq(usersTable.role, role));
-
-    const ids = users.map((u) => u.id);
+    const snap = await fdb.collection("users").where("role", "==", role).get();
+    const ids = snap.docs.map((d) => d.data().id as number);
     await sendPushToUsers(ids, title, body, data);
   } catch (err) {
     logger.error({ err }, "Failed to send push to role");

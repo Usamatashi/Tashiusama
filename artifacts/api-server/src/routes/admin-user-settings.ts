@@ -1,7 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { adminUserSettingsTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { fdb } from "../lib/firebase";
 import { requireAuth, requireAdmin, requireSuperAdmin } from "../lib/auth";
 
 const DEFAULT_SETTINGS = {
@@ -20,22 +18,17 @@ const DEFAULT_SETTINGS = {
 
 const router = Router();
 
-// GET /api/admin-user-settings/me — current admin's own settings
 router.get("/me", requireAuth, requireAdmin, async (req, res) => {
   res.set("Cache-Control", "no-store");
   try {
     const userId = (req as any).user.userId;
-    const rows = await db
-      .select()
-      .from(adminUserSettingsTable)
-      .where(eq(adminUserSettingsTable.userId, userId))
-      .limit(1);
-    if (rows.length === 0) {
+    const doc = await fdb.collection("adminUserSettings").doc(String(userId)).get();
+    if (!doc.exists) {
       res.json(DEFAULT_SETTINGS);
       return;
     }
     try {
-      const parsed = JSON.parse(rows[0].settingsJson);
+      const parsed = JSON.parse(doc.data()!.settingsJson);
       res.json({ ...DEFAULT_SETTINGS, ...parsed });
     } catch {
       res.json(DEFAULT_SETTINGS);
@@ -46,50 +39,43 @@ router.get("/me", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/admin-user-settings — list all admins with their settings (super admin only)
 router.get("/", requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const admins = await db
-      .select({
-        id: usersTable.id,
-        name: usersTable.name,
-        phone: usersTable.phone,
-        role: usersTable.role,
-      })
-      .from(usersTable)
-      .where(eq(usersTable.role, "admin"));
-
-    const settingsRows = await db.select().from(adminUserSettingsTable);
-    const settingsMap: Record<number, object> = {};
-    for (const row of settingsRows) {
+    const [adminsSnap, settingsSnap] = await Promise.all([
+      fdb.collection("users").where("role", "==", "admin").get(),
+      fdb.collection("adminUserSettings").get(),
+    ]);
+    const settingsMap: Record<string, object> = {};
+    settingsSnap.forEach((doc) => {
       try {
-        settingsMap[row.userId] = { ...DEFAULT_SETTINGS, ...JSON.parse(row.settingsJson) };
+        settingsMap[doc.id] = { ...DEFAULT_SETTINGS, ...JSON.parse(doc.data().settingsJson) };
       } catch {
-        settingsMap[row.userId] = DEFAULT_SETTINGS;
+        settingsMap[doc.id] = DEFAULT_SETTINGS;
       }
-    }
-
-    const result = admins.map((admin) => ({
-      ...admin,
-      settings: settingsMap[admin.id] ?? DEFAULT_SETTINGS,
-    }));
-
-    res.json(result);
+    });
+    res.json(
+      adminsSnap.docs.map((d) => {
+        const admin = d.data();
+        return {
+          id: admin.id, name: admin.name ?? null, phone: admin.phone, role: admin.role,
+          settings: settingsMap[d.id] ?? DEFAULT_SETTINGS,
+        };
+      }),
+    );
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// GET /api/admin-user-settings/:userId — get a specific admin's settings (super admin only)
 router.get("/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     if (isNaN(userId)) { res.status(400).json({ error: "Invalid user id" }); return; }
-    const rows = await db.select().from(adminUserSettingsTable).where(eq(adminUserSettingsTable.userId, userId)).limit(1);
-    if (rows.length === 0) { res.json(DEFAULT_SETTINGS); return; }
+    const doc = await fdb.collection("adminUserSettings").doc(String(userId)).get();
+    if (!doc.exists) { res.json(DEFAULT_SETTINGS); return; }
     try {
-      res.json({ ...DEFAULT_SETTINGS, ...JSON.parse(rows[0].settingsJson) });
+      res.json({ ...DEFAULT_SETTINGS, ...JSON.parse(doc.data()!.settingsJson) });
     } catch {
       res.json(DEFAULT_SETTINGS);
     }
@@ -99,49 +85,18 @@ router.get("/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/admin-user-settings/:userId — update a specific admin's settings (super admin only)
 router.put("/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
-    if (isNaN(userId)) {
-      res.status(400).json({ error: "Invalid user id" });
-      return;
-    }
-
-    // Verify target is an admin
-    const target = await db
-      .select({ id: usersTable.id, role: usersTable.role })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .limit(1);
-
-    if (!target.length) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-    if (target[0].role !== "admin") {
-      res.status(400).json({ error: "Target user is not an admin" });
-      return;
-    }
-
+    if (isNaN(userId)) { res.status(400).json({ error: "Invalid user id" }); return; }
+    const targetDoc = await fdb.collection("users").doc(String(userId)).get();
+    if (!targetDoc.exists) { res.status(404).json({ error: "User not found" }); return; }
+    if (targetDoc.data()!.role !== "admin") { res.status(400).json({ error: "Target user is not an admin" }); return; }
     const merged = { ...DEFAULT_SETTINGS, ...req.body };
     const settingsJson = JSON.stringify(merged);
-
-    const existing = await db
-      .select()
-      .from(adminUserSettingsTable)
-      .where(eq(adminUserSettingsTable.userId, userId))
-      .limit(1);
-
-    if (existing.length === 0) {
-      await db.insert(adminUserSettingsTable).values({ userId, settingsJson });
-    } else {
-      await db
-        .update(adminUserSettingsTable)
-        .set({ settingsJson, updatedAt: new Date() })
-        .where(eq(adminUserSettingsTable.userId, userId));
-    }
-
+    await fdb.collection("adminUserSettings").doc(String(userId)).set({
+      userId, settingsJson, updatedAt: new Date(),
+    });
     res.json(merged);
   } catch (err) {
     req.log.error(err);

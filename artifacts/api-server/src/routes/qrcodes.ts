@@ -1,25 +1,26 @@
 import { Router } from "express";
-import { db, qrCodesTable, productsTable, usersTable, scansTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { fdb, nextId, toISOString } from "../lib/firebase";
 import { requireAuth, requireAdmin } from "../lib/auth";
 
 const router = Router();
 
 router.get("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const qrs = await db
-      .select({
-        id: qrCodesTable.id,
-        qrNumber: qrCodesTable.qrNumber,
-        productId: qrCodesTable.productId,
-        productName: productsTable.name,
-        points: qrCodesTable.points,
-        status: qrCodesTable.status,
-        createdAt: qrCodesTable.createdAt,
-      })
-      .from(qrCodesTable)
-      .leftJoin(productsTable, eq(qrCodesTable.productId, productsTable.id));
-    res.json(qrs.map(q => ({ ...q, createdAt: q.createdAt!.toISOString(), productName: q.productName || "" })));
+    const snap = await fdb.collection("qrCodes").orderBy("createdAt", "desc").get();
+    res.json(
+      snap.docs.map((d) => {
+        const q = d.data();
+        return {
+          id: q.id,
+          qrNumber: q.qrNumber,
+          productId: q.productId,
+          productName: q.productName || "",
+          points: q.points,
+          status: q.status,
+          createdAt: toISOString(q.createdAt),
+        };
+      }),
+    );
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -33,33 +34,32 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       res.status(400).json({ error: "QR number and product ID are required" });
       return;
     }
-    const products = await db.select().from(productsTable).where(eq(productsTable.id, Number(productId)));
-    const product = products[0];
-    if (!product) {
+    const productDoc = await fdb.collection("products").doc(String(productId)).get();
+    if (!productDoc.exists) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    const inserted = await db.insert(qrCodesTable).values({
-      qrNumber: String(qrNumber),
-      productId: Number(productId),
-      points: product.points,
-      status: "unused",
-    }).returning();
-    const qr = inserted[0];
-    res.status(201).json({
-      id: qr.id,
-      qrNumber: qr.qrNumber,
-      productId: qr.productId,
-      productName: product.name,
-      points: qr.points,
-      status: qr.status,
-      createdAt: qr.createdAt.toISOString(),
-    });
-  } catch (err: any) {
-    if (err.code === "23505") {
+    const product = productDoc.data()!;
+
+    const existingSnap = await fdb.collection("qrCodes").where("qrNumber", "==", String(qrNumber)).limit(1).get();
+    if (!existingSnap.empty) {
       res.status(400).json({ error: "QR number already exists" });
       return;
     }
+
+    const id = await nextId("qrCodes");
+    const qr = {
+      id,
+      qrNumber: String(qrNumber),
+      productId: Number(productId),
+      productName: product.name,
+      points: product.points,
+      status: "unused",
+      createdAt: new Date(),
+    };
+    await fdb.collection("qrCodes").doc(String(qrNumber)).set(qr);
+    res.status(201).json({ ...qr, createdAt: toISOString(qr.createdAt) });
+  } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -73,41 +73,46 @@ router.post("/scan", requireAuth, async (req, res) => {
       res.status(400).json({ error: "QR number required" });
       return;
     }
-    const qrs = await db
-      .select({
-        id: qrCodesTable.id,
-        qrNumber: qrCodesTable.qrNumber,
-        productId: qrCodesTable.productId,
-        productName: productsTable.name,
-        points: qrCodesTable.points,
-        status: qrCodesTable.status,
-      })
-      .from(qrCodesTable)
-      .leftJoin(productsTable, eq(qrCodesTable.productId, productsTable.id))
-      .where(eq(qrCodesTable.qrNumber, String(qrNumber)));
-    const qr = qrs[0];
-    if (!qr) {
+
+    const qrRef = fdb.collection("qrCodes").doc(String(qrNumber));
+    const qrDoc = await qrRef.get();
+    if (!qrDoc.exists) {
       res.status(400).json({ error: "QR code not found" });
       return;
     }
+    const qr = qrDoc.data()!;
     if (qr.status === "used") {
       res.status(400).json({ error: "QR code has already been used" });
       return;
     }
-    await db.update(qrCodesTable).set({ status: "used" }).where(eq(qrCodesTable.id, qr.id));
-    const updatedUsers = await db
-      .update(usersTable)
-      .set({ points: sql`${usersTable.points} + ${qr.points}` })
-      .where(eq(usersTable.id, userId))
-      .returning();
-    await db.insert(scansTable).values({
-      userId,
-      qrId: qr.id,
-      pointsEarned: qr.points,
+
+    const userRef = fdb.collection("users").doc(String(userId));
+    const scanId = await nextId("scans");
+
+    const result = await fdb.runTransaction(async (t) => {
+      const userDoc = await t.get(userRef);
+      if (!userDoc.exists) throw new Error("User not found");
+      const user = userDoc.data()!;
+      const newPoints = (user.points || 0) + qr.points;
+      t.update(qrRef, { status: "used" });
+      t.update(userRef, { points: newPoints });
+      t.set(fdb.collection("scans").doc(String(scanId)), {
+        id: scanId,
+        userId,
+        qrId: qr.id,
+        qrNumber: qr.qrNumber,
+        productName: qr.productName || "",
+        pointsEarned: qr.points,
+        scannedAt: new Date(),
+        claimId: null,
+        adminVerified: null,
+      });
+      return { newPoints };
     });
+
     res.json({
       pointsEarned: qr.points,
-      totalPoints: updatedUsers[0]?.points || 0,
+      totalPoints: result.newPoints,
       productName: qr.productName || "",
       message: `You earned ${qr.points} points for ${qr.productName}!`,
     });

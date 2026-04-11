@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { adminSettingsTable } from "@workspace/db";
+import { fdb } from "../lib/firebase";
 import { requireAuth, requireAdmin, requireSuperAdmin } from "../lib/auth";
 
 const DEFAULT_SETTINGS = {
@@ -16,17 +15,19 @@ const DEFAULT_SETTINGS = {
   card_payments: true,
 };
 
+const SETTINGS_DOC = "adminSettings/global";
+
 const router = Router();
 
 router.get("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const rows = await db.select().from(adminSettingsTable).limit(1);
-    if (rows.length === 0) {
+    const doc = await fdb.doc(SETTINGS_DOC).get();
+    if (!doc.exists) {
       res.json(DEFAULT_SETTINGS);
       return;
     }
     try {
-      const parsed = JSON.parse(rows[0].settingsJson);
+      const parsed = JSON.parse(doc.data()!.settingsJson);
       res.json({ ...DEFAULT_SETTINGS, ...parsed });
     } catch {
       res.json(DEFAULT_SETTINGS);
@@ -39,17 +40,9 @@ router.get("/", requireAuth, requireAdmin, async (req, res) => {
 
 router.put("/", requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const settings = req.body;
-    const merged = { ...DEFAULT_SETTINGS, ...settings };
+    const merged = { ...DEFAULT_SETTINGS, ...req.body };
     const settingsJson = JSON.stringify(merged);
-
-    const rows = await db.select().from(adminSettingsTable).limit(1);
-    if (rows.length === 0) {
-      await db.insert(adminSettingsTable).values({ settingsJson });
-    } else {
-      await db.update(adminSettingsTable).set({ settingsJson });
-    }
-
+    await fdb.doc(SETTINGS_DOC).set({ settingsJson });
     res.json(merged);
   } catch (err) {
     req.log.error(err);

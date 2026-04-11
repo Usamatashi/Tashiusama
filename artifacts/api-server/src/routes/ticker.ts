@@ -1,22 +1,23 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { tickerTable } from "@workspace/db/schema";
-import { desc } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../lib/auth.js";
+import { fdb, nextId, toISOString } from "../lib/firebase";
+import { requireAuth, requireAdmin } from "../lib/auth";
 
 const router = Router();
 
-// GET /api/ticker — public: returns all ticker texts
 router.get("/", requireAuth, async (_req, res, next) => {
   try {
-    const rows = await db.select().from(tickerTable).orderBy(desc(tickerTable.createdAt));
-    res.json(rows);
+    const snap = await fdb.collection("ticker").orderBy("createdAt", "desc").get();
+    res.json(
+      snap.docs.map((d) => {
+        const t = d.data();
+        return { id: t.id, text: t.text, createdAt: toISOString(t.createdAt) };
+      }),
+    );
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/ticker — admin: create a new ticker text
 router.post("/", requireAuth, requireAdmin, async (req, res, next) => {
   try {
     const { text } = req.body as { text: string };
@@ -24,20 +25,23 @@ router.post("/", requireAuth, requireAdmin, async (req, res, next) => {
       res.status(400).json({ error: "text is required" });
       return;
     }
-    const [row] = await db.insert(tickerTable).values({ text: text.trim() }).returning();
-    res.status(201).json(row);
+    const id = await nextId("ticker");
+    const row = { id, text: text.trim(), createdAt: new Date() };
+    await fdb.collection("ticker").doc(String(id)).set(row);
+    res.status(201).json({ ...row, createdAt: toISOString(row.createdAt) });
   } catch (err) {
     next(err);
   }
 });
 
-// DELETE /api/ticker/:id — admin: delete a ticker text
 router.delete("/:id", requireAuth, requireAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    await db.delete(tickerTable).where(
-      (await import("drizzle-orm")).eq(tickerTable.id, id)
-    );
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    await fdb.collection("ticker").doc(String(id)).delete();
     res.json({ success: true });
   } catch (err) {
     next(err);

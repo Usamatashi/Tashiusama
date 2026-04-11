@@ -1,43 +1,28 @@
 import { Router } from "express";
-import { db, pushTokensTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { fdb } from "../lib/firebase";
 import { requireAuth } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 
 const router = Router();
 
-// POST /api/push-token  — register or update a push token for the current user
 router.post("/", requireAuth, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
     const { token } = req.body;
-
     if (!token || typeof token !== "string") {
       res.status(400).json({ error: "token is required" });
       return;
     }
 
-    // Upsert: if this token already exists (possibly for another user), reassign it.
-    // If user already has this token, do nothing.
-    const existing = await db
-      .select()
-      .from(pushTokensTable)
-      .where(eq(pushTokensTable.token, token));
-
-    if (existing.length) {
-      if (existing[0].userId !== caller.userId) {
-        await db
-          .update(pushTokensTable)
-          .set({ userId: caller.userId })
-          .where(eq(pushTokensTable.token, token));
+    const tokenRef = fdb.collection("pushTokens").doc(token);
+    const existing = await tokenRef.get();
+    if (existing.exists) {
+      if (existing.data()!.userId !== caller.userId) {
+        await tokenRef.update({ userId: caller.userId });
       }
     } else {
-      await db.insert(pushTokensTable).values({
-        userId: caller.userId,
-        token,
-      });
+      await tokenRef.set({ userId: caller.userId, token, createdAt: new Date() });
     }
-
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err);

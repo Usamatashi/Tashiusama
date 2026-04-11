@@ -1,64 +1,47 @@
 import { Router } from "express";
-import { db, usersTable, ordersTable, orderItemsTable, paymentsTable, commissionsTable } from "@workspace/db";
-import { eq, and, inArray, sql, gte, lt, sum } from "drizzle-orm";
+import { fdb, nextId, toISOString, chunkArray } from "../lib/firebase";
 import { requireAuth, requireSalesman, requireAdmin } from "../lib/auth";
 import type { JwtPayload } from "../lib/auth";
 import { sendPushToUsers, sendPushToRole } from "../lib/push";
 
 const router = Router();
 
-// ─── Helper: compute totalValue for a set of orders ──────────────────────────
-async function computeOrderValues(orderRows: {
-  id: number; vehicleId: number | null; quantity: number | null; salesPrice: number | null;
-}[]): Promise<Record<number, number>> {
-  if (!orderRows.length) return {};
-  const ids = orderRows.map(o => o.id);
-  const items = await db
-    .select({
-      orderId: orderItemsTable.orderId,
-      qty: orderItemsTable.quantity,
-      price: orderItemsTable.unitPrice,
-      discountPercent: orderItemsTable.discountPercent,
-    })
-    .from(orderItemsTable)
-    .where(inArray(orderItemsTable.orderId, ids));
-
+async function computeOrderValues(orderIds: number[]): Promise<Record<number, number>> {
+  if (!orderIds.length) return {};
   const itemMap: Record<number, number> = {};
-  for (const r of items) {
-    const discountPercent = r.discountPercent ?? 0;
-    const discountedValue = Math.round(r.qty * r.price * (1 - discountPercent / 100));
-    itemMap[r.orderId] = (itemMap[r.orderId] ?? 0) + discountedValue;
-  }
-  for (const o of orderRows) {
-    if (!itemMap[o.id] && o.quantity && o.salesPrice) {
-      itemMap[o.id] = o.quantity * o.salesPrice;
-    }
+  const batches = chunkArray(orderIds, 30);
+  for (const batch of batches) {
+    const itemsSnap = await fdb.collection("orderItems").where("orderId", "in", batch).get();
+    itemsSnap.forEach((doc) => {
+      const item = doc.data();
+      const discountPercent = item.discountPercent ?? 0;
+      const discountedValue = Math.round(item.quantity * item.unitPrice * (1 - discountPercent / 100));
+      itemMap[item.orderId] = (itemMap[item.orderId] ?? 0) + discountedValue;
+    });
   }
   return itemMap;
 }
 
-// ─── Helper: get balance for a list of retailer IDs ──────────────────────────
-async function getBalances(retailerIds: number[]) {
-  if (!retailerIds.length) return {} as Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }>;
+async function getBalances(retailerIds: number[]): Promise<Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }>> {
+  if (!retailerIds.length) return {};
 
-  // Outstanding balance accrues when an order is dispatched (goods delivered)
-  const orders = await db
-    .select({
-      id: ordersTable.id,
-      retailerId: ordersTable.retailerId,
-      productId: ordersTable.productId,
-      quantity: ordersTable.quantity,
-      billDiscountPercent: ordersTable.billDiscountPercent,
-    })
-    .from(ordersTable)
-    .where(and(eq(ordersTable.status, "dispatched"), inArray(ordersTable.retailerId, retailerIds)));
+  const batches = chunkArray(retailerIds, 30);
+  const orders: any[] = [];
+  const payments: any[] = [];
 
-  const valueMap = await computeOrderValues(orders.map(o => ({
-    id: o.id,
-    vehicleId: o.productId,
-    quantity: o.quantity,
-    salesPrice: null,
-  })));
+  for (const batch of batches) {
+    const ordersSnap = await fdb.collection("orders")
+      .where("status", "==", "dispatched")
+      .where("retailerId", "in", batch)
+      .get();
+    ordersSnap.forEach((doc) => orders.push(doc.data()));
+
+    const paymentsSnap = await fdb.collection("payments").where("retailerId", "in", batch).get();
+    paymentsSnap.forEach((doc) => payments.push(doc.data()));
+  }
+
+  const orderIds = orders.map((o) => o.id as number);
+  const valueMap = await computeOrderValues(orderIds);
 
   const debtByRetailer: Record<number, number> = {};
   for (const o of orders) {
@@ -68,14 +51,9 @@ async function getBalances(retailerIds: number[]) {
     debtByRetailer[o.retailerId] = (debtByRetailer[o.retailerId] ?? 0) + finalValue;
   }
 
-  const payments = await db
-    .select({ retailerId: paymentsTable.retailerId, amount: paymentsTable.amount })
-    .from(paymentsTable)
-    .where(inArray(paymentsTable.retailerId, retailerIds));
-
   const paidByRetailer: Record<number, number> = {};
   for (const p of payments) {
-    paidByRetailer[p.retailerId] = (paidByRetailer[p.retailerId] ?? 0) + p.amount;
+    paidByRetailer[p.retailerId] = (paidByRetailer[p.retailerId] ?? 0) + (p.amount as number);
   }
 
   const result: Record<number, { totalOrdered: number; totalPaid: number; outstanding: number }> = {};
@@ -87,22 +65,12 @@ async function getBalances(retailerIds: number[]) {
   return result;
 }
 
-// ─── GET /payments/salesman-summary ──────────────────────────────────────────
-// Returns 3 figures for the salesman accounts summary bar:
-//   totalOutstanding  – sum of outstanding balances for retailers this salesman has orders with
-//   todayCollections  – sum of payments collected by this salesman today
-//   totalCommission   – total commission amount recorded for this salesman
 router.get("/salesman-summary", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
 
-    // ── 1. Total outstanding for retailers this salesman has orders with ───
-    const orderRows = await db
-      .select({ retailerId: ordersTable.retailerId })
-      .from(ordersTable)
-      .where(eq(ordersTable.salesmanId, caller.userId));
-
-    const retailerIds = [...new Set(orderRows.map(r => r.retailerId))];
+    const ordersSnap = await fdb.collection("orders").where("salesmanId", "==", caller.userId).get();
+    const retailerIds = [...new Set(ordersSnap.docs.map((d) => d.data().retailerId as number))];
 
     let totalOutstanding = 0;
     if (retailerIds.length) {
@@ -110,30 +78,19 @@ router.get("/salesman-summary", requireAuth, requireSalesman, async (req, res) =
       totalOutstanding = Object.values(balances).reduce((s, b) => s + Math.max(0, b.outstanding), 0);
     }
 
-    // ── 2. Today's collections by this salesman ────────────────────────────
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrowStart = new Date(todayStart.getTime() + 86400000);
 
-    const todayRows = await db
-      .select({ amount: paymentsTable.amount })
-      .from(paymentsTable)
-      .where(
-        and(
-          eq(paymentsTable.receivedBy, caller.userId),
-          gte(paymentsTable.createdAt, todayStart),
-          lt(paymentsTable.createdAt, tomorrowStart),
-        ),
-      );
-    const todayCollections = todayRows.reduce((s, r) => s + r.amount, 0);
+    const todaySnap = await fdb.collection("payments")
+      .where("receivedBy", "==", caller.userId)
+      .where("createdAt", ">=", todayStart)
+      .where("createdAt", "<", tomorrowStart)
+      .get();
+    const todayCollections = todaySnap.docs.reduce((s, d) => s + (d.data().amount as number), 0);
 
-    // ── 3. Total commission for this salesman ──────────────────────────────
-    const commissionRows = await db
-      .select({ commissionAmount: commissionsTable.commissionAmount })
-      .from(commissionsTable)
-      .where(eq(commissionsTable.salesmanId, caller.userId));
-    const totalCommission = commissionRows.reduce((s, r) => s + r.commissionAmount, 0);
+    const commissionsSnap = await fdb.collection("commissions").where("salesmanId", "==", caller.userId).get();
+    const totalCommission = commissionsSnap.docs.reduce((s, d) => s + (d.data().commissionAmount as number), 0);
 
     res.json({ totalOutstanding, todayCollections, totalCommission });
   } catch (err) {
@@ -142,96 +99,91 @@ router.get("/salesman-summary", requireAuth, requireSalesman, async (req, res) =
   }
 });
 
-// ─── GET /payments/retailer-balances ─────────────────────────────────────────
 router.get("/retailer-balances", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
-
     let retailerIds: number[];
+
     if (caller.role === "admin" || caller.role === "super_admin") {
-      const rows = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "retailer"));
-      retailerIds = rows.map(r => r.id);
+      const snap = await fdb.collection("users").where("role", "==", "retailer").get();
+      retailerIds = snap.docs.map((d) => d.data().id as number);
     } else {
-      const rows = await db
-        .select({ retailerId: ordersTable.retailerId })
-        .from(ordersTable)
-        .where(eq(ordersTable.salesmanId, caller.userId));
-      retailerIds = [...new Set(rows.map(r => r.retailerId))];
+      const snap = await fdb.collection("orders").where("salesmanId", "==", caller.userId).get();
+      retailerIds = [...new Set(snap.docs.map((d) => d.data().retailerId as number))];
     }
 
-    if (!retailerIds.length) { res.json([]); return; }
+    if (!retailerIds.length) {
+      res.json([]);
+      return;
+    }
 
-    const retailers = await db
-      .select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, city: usersTable.city })
-      .from(usersTable)
-      .where(inArray(usersTable.id, retailerIds));
+    const [balances, retailerDocs] = await Promise.all([
+      getBalances(retailerIds),
+      fdb.getAll(...retailerIds.map((id) => fdb.collection("users").doc(String(id)))),
+    ]);
 
-    const balances = await getBalances(retailerIds);
-
-    res.json(retailers.map(r => ({
-      id: r.id,
-      name: r.name,
-      phone: r.phone,
-      city: r.city,
-      ...balances[r.id] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 },
-    })));
+    res.json(
+      retailerDocs
+        .filter((d) => d.exists)
+        .map((d) => {
+          const u = d.data()!;
+          return {
+            id: u.id,
+            name: u.name ?? null,
+            phone: u.phone,
+            city: u.city ?? null,
+            ...(balances[u.id as number] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 }),
+          };
+        }),
+    );
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ─── GET /payments/pending-count ──────────────────────────────────────────────
-// Admin only: count of payments awaiting verification
 router.get("/pending-count", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const rows = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(paymentsTable)
-      .where(eq(paymentsTable.status, "pending"));
-    res.json({ count: Number(rows[0]?.count ?? 0) });
+    const snap = await fdb.collection("payments").where("status", "==", "pending").get();
+    res.json({ count: snap.size });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ─── GET /payments/my-balance ─────────────────────────────────────────────────
 router.get("/my-balance", requireAuth, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
-    if (caller.role !== "retailer") { res.status(403).json({ error: "Retailer access only" }); return; }
+    if (caller.role !== "retailer") {
+      res.status(403).json({ error: "Retailer access only" });
+      return;
+    }
+    const [balances, paymentsSnap] = await Promise.all([
+      getBalances([caller.userId]),
+      fdb.collection("payments").where("retailerId", "==", caller.userId).orderBy("createdAt", "desc").get(),
+    ]);
 
-    const balances = await getBalances([caller.userId]);
     const balance = balances[caller.userId] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 };
-
-    const payments = await db
-      .select({
-        id: paymentsTable.id,
-        amount: paymentsTable.amount,
-        notes: paymentsTable.notes,
-        status: paymentsTable.status,
-        verifiedAt: paymentsTable.verifiedAt,
-        createdAt: paymentsTable.createdAt,
-        collectorName: usersTable.name,
-        collectorPhone: usersTable.phone,
-      })
-      .from(paymentsTable)
-      .leftJoin(usersTable, eq(paymentsTable.receivedBy, usersTable.id))
-      .where(eq(paymentsTable.retailerId, caller.userId));
+    const collectorIds = [...new Set(paymentsSnap.docs.map((d) => d.data().receivedBy as number))];
+    const collectorDocs = collectorIds.length
+      ? await fdb.getAll(...collectorIds.map((id) => fdb.collection("users").doc(String(id))))
+      : [];
+    const collectorMap = new Map<number, any>();
+    collectorDocs.forEach((d) => { if (d.exists) collectorMap.set(parseInt(d.id), d.data()); });
 
     res.json({
       ...balance,
-      payments: payments.map(p => ({
-        id: p.id,
-        amount: p.amount,
-        notes: p.notes,
-        status: p.status,
-        verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
-        createdAt: p.createdAt.toISOString(),
-        collectorName: p.collectorName,
-        collectorPhone: p.collectorPhone,
-      })),
+      payments: paymentsSnap.docs.map((d) => {
+        const p = d.data();
+        const collector = collectorMap.get(p.receivedBy as number);
+        return {
+          id: p.id, amount: p.amount, notes: p.notes ?? null, status: p.status,
+          verifiedAt: p.verifiedAt ? toISOString(p.verifiedAt) : null,
+          createdAt: toISOString(p.createdAt),
+          collectorName: collector?.name ?? null, collectorPhone: collector?.phone ?? null,
+        };
+      }),
     });
   } catch (err) {
     req.log.error(err);
@@ -239,125 +191,86 @@ router.get("/my-balance", requireAuth, async (req, res) => {
   }
 });
 
-// ─── GET /payments ─────────────────────────────────────────────────────────────
 router.get("/", requireAuth, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
-
-    const rows = await db
-      .select({
-        id: paymentsTable.id,
-        amount: paymentsTable.amount,
-        notes: paymentsTable.notes,
-        status: paymentsTable.status,
-        verifiedBy: paymentsTable.verifiedBy,
-        verifiedAt: paymentsTable.verifiedAt,
-        createdAt: paymentsTable.createdAt,
-        retailerId: paymentsTable.retailerId,
-        receivedBy: paymentsTable.receivedBy,
-      })
-      .from(paymentsTable);
-
-    const filtered = rows.filter(p => {
+    const snap = await fdb.collection("payments").orderBy("createdAt", "desc").get();
+    const all = snap.docs.map((d) => d.data());
+    const filtered = all.filter((p) => {
       if (caller.role === "admin" || caller.role === "super_admin") return true;
       if (caller.role === "salesman") return p.receivedBy === caller.userId;
       if (caller.role === "retailer") return p.retailerId === caller.userId;
       return false;
     });
-
-    if (!filtered.length) { res.json([]); return; }
-
+    if (!filtered.length) {
+      res.json([]);
+      return;
+    }
     const allUserIds = [...new Set([
-      ...filtered.map(p => p.retailerId),
-      ...filtered.map(p => p.receivedBy),
-      ...filtered.filter(p => p.verifiedBy).map(p => p.verifiedBy!),
+      ...filtered.map((p) => p.retailerId as number),
+      ...filtered.map((p) => p.receivedBy as number),
+      ...filtered.filter((p) => p.verifiedBy).map((p) => p.verifiedBy as number),
     ])];
-    const users = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
-      .from(usersTable).where(inArray(usersTable.id, allUserIds));
-    const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+    const userDocs = await fdb.getAll(...allUserIds.map((id) => fdb.collection("users").doc(String(id))));
+    const userMap = new Map<number, any>();
+    userDocs.forEach((d) => { if (d.exists) userMap.set(parseInt(d.id), d.data()); });
 
-    res.json(filtered.map(p => ({
-      id: p.id,
-      amount: p.amount,
-      notes: p.notes,
-      status: p.status,
-      verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
-      verifiedByName: p.verifiedBy ? (userMap[p.verifiedBy]?.name ?? null) : null,
-      createdAt: p.createdAt.toISOString(),
-      retailerId: p.retailerId,
-      retailerName: userMap[p.retailerId]?.name ?? null,
-      retailerPhone: userMap[p.retailerId]?.phone ?? null,
-      receivedBy: p.receivedBy,
-      collectorName: userMap[p.receivedBy]?.name ?? null,
-      collectorPhone: userMap[p.receivedBy]?.phone ?? null,
-    })));
+    res.json(
+      filtered.map((p) => ({
+        id: p.id, amount: p.amount, notes: p.notes ?? null, status: p.status,
+        verifiedAt: p.verifiedAt ? toISOString(p.verifiedAt) : null,
+        verifiedByName: p.verifiedBy ? (userMap.get(p.verifiedBy as number)?.name ?? null) : null,
+        createdAt: toISOString(p.createdAt),
+        retailerId: p.retailerId, retailerName: userMap.get(p.retailerId as number)?.name ?? null,
+        retailerPhone: userMap.get(p.retailerId as number)?.phone ?? null,
+        receivedBy: p.receivedBy, collectorName: userMap.get(p.receivedBy as number)?.name ?? null,
+        collectorPhone: userMap.get(p.receivedBy as number)?.phone ?? null,
+      })),
+    );
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ─── POST /payments ────────────────────────────────────────────────────────────
 router.post("/", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
     const { retailerId, amount, notes } = req.body;
-
     if (!retailerId || !amount || Number(amount) <= 0) {
       res.status(400).json({ error: "retailerId and a positive amount are required" });
       return;
     }
-
-    const retailer = await db.select().from(usersTable).where(eq(usersTable.id, Number(retailerId)));
-    if (!retailer.length || retailer[0].role !== "retailer") {
+    const retailerDoc = await fdb.collection("users").doc(String(retailerId)).get();
+    if (!retailerDoc.exists || retailerDoc.data()!.role !== "retailer") {
       res.status(400).json({ error: "Retailer not found" });
       return;
     }
+    const retailer = retailerDoc.data()!;
+    const id = await nextId("payments");
+    const payment = {
+      id, retailerId: Number(retailerId), receivedBy: caller.userId,
+      amount: Math.round(Number(amount)), notes: notes ?? null,
+      status: "pending", verifiedBy: null, verifiedAt: null, createdAt: new Date(),
+    };
+    await fdb.collection("payments").doc(String(id)).set(payment);
 
-    const inserted = await db.insert(paymentsTable).values({
-      retailerId: Number(retailerId),
-      receivedBy: caller.userId,
-      amount: Math.round(Number(amount)),
-      notes: notes ?? null,
-      status: "pending",
-    }).returning();
-
-    const p = inserted[0];
-
-    // Notify retailer that a payment was recorded
-    const formattedAmount = `Rs. ${p.amount.toLocaleString()}`;
-    sendPushToUsers(
-      [p.retailerId],
-      "Payment Recorded",
+    const formattedAmount = `Rs. ${payment.amount.toLocaleString()}`;
+    sendPushToUsers([payment.retailerId], "Payment Recorded",
       `A payment of ${formattedAmount} has been recorded for your account.`,
-      { paymentId: p.id, type: "payment_recorded" },
-    );
-    // Notify admins that a new payment needs verification
-    sendPushToRole(
-      "admin",
-      "New Payment to Verify",
-      `${retailer[0].name ?? "A retailer"} made a payment of ${formattedAmount}. Tap to verify.`,
-      { paymentId: p.id, type: "payment_pending" },
-    );
-    sendPushToRole(
-      "super_admin",
-      "New Payment to Verify",
-      `${retailer[0].name ?? "A retailer"} made a payment of ${formattedAmount}. Tap to verify.`,
-      { paymentId: p.id, type: "payment_pending" },
-    );
+      { paymentId: id, type: "payment_recorded" });
+    sendPushToRole("admin", "New Payment to Verify",
+      `${retailer.name ?? "A retailer"} made a payment of ${formattedAmount}. Tap to verify.`,
+      { paymentId: id, type: "payment_pending" });
+    sendPushToRole("super_admin", "New Payment to Verify",
+      `${retailer.name ?? "A retailer"} made a payment of ${formattedAmount}. Tap to verify.`,
+      { paymentId: id, type: "payment_pending" });
 
     res.status(201).json({
-      id: p.id,
-      retailerId: p.retailerId,
-      retailerName: retailer[0].name,
-      retailerPhone: retailer[0].phone,
-      receivedBy: p.receivedBy,
-      amount: p.amount,
-      notes: p.notes,
-      status: p.status,
-      verifiedAt: null,
-      verifiedByName: null,
-      createdAt: p.createdAt.toISOString(),
+      id: payment.id, retailerId: payment.retailerId, retailerName: retailer.name ?? null,
+      retailerPhone: retailer.phone ?? null, receivedBy: payment.receivedBy,
+      amount: payment.amount, notes: payment.notes, status: payment.status,
+      verifiedAt: null, verifiedByName: null, createdAt: toISOString(payment.createdAt),
     });
   } catch (err) {
     req.log.error(err);
@@ -365,57 +278,41 @@ router.post("/", requireAuth, requireSalesman, async (req, res) => {
   }
 });
 
-// ─── PATCH /payments/:id/verify ───────────────────────────────────────────────
-// Admin only: verify (approve) a pending payment
 router.patch("/:id/verify", requireAuth, requireAdmin, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
     const paymentId = Number(req.params.id);
-
-    const existing = await db.select().from(paymentsTable).where(eq(paymentsTable.id, paymentId));
-    if (!existing.length) {
+    const paymentRef = fdb.collection("payments").doc(String(paymentId));
+    const paymentDoc = await paymentRef.get();
+    if (!paymentDoc.exists) {
       res.status(404).json({ error: "Payment not found" });
       return;
     }
-    if (existing[0].status === "verified") {
+    const existing = paymentDoc.data()!;
+    if (existing.status === "verified") {
       res.status(400).json({ error: "Payment already verified" });
       return;
     }
+    const verifiedAt = new Date();
+    await paymentRef.update({ status: "verified", verifiedBy: caller.userId, verifiedAt });
+    const p = { ...existing, status: "verified", verifiedBy: caller.userId, verifiedAt };
 
-    const updated = await db
-      .update(paymentsTable)
-      .set({ status: "verified", verifiedBy: caller.userId, verifiedAt: new Date() })
-      .where(eq(paymentsTable.id, paymentId))
-      .returning();
+    const allIds = [...new Set([p.retailerId as number, p.receivedBy as number, caller.userId])];
+    const userDocs = await fdb.getAll(...allIds.map((id) => fdb.collection("users").doc(String(id))));
+    const userMap = new Map<number, any>();
+    userDocs.forEach((d) => { if (d.exists) userMap.set(parseInt(d.id), d.data()); });
 
-    const p = updated[0];
-
-    const allIds = [p.retailerId, p.receivedBy, caller.userId];
-    const users = await db.select({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone })
-      .from(usersTable).where(inArray(usersTable.id, allIds));
-    const userMap = Object.fromEntries(users.map(u => [u.id, u]));
-
-    // Notify retailer that their payment has been verified
-    sendPushToUsers(
-      [p.retailerId],
-      "Payment Verified",
-      `Your payment of Rs. ${p.amount.toLocaleString()} has been verified and credited to your account.`,
-      { paymentId: p.id, type: "payment_verified" },
-    );
+    sendPushToUsers([p.retailerId as number], "Payment Verified",
+      `Your payment of Rs. ${(p.amount as number).toLocaleString()} has been verified and credited to your account.`,
+      { paymentId, type: "payment_verified" });
 
     res.json({
-      id: p.id,
-      amount: p.amount,
-      notes: p.notes,
-      status: p.status,
-      verifiedAt: p.verifiedAt ? p.verifiedAt.toISOString() : null,
-      verifiedByName: userMap[caller.userId]?.name ?? null,
-      createdAt: p.createdAt.toISOString(),
-      retailerId: p.retailerId,
-      retailerName: userMap[p.retailerId]?.name ?? null,
-      retailerPhone: userMap[p.retailerId]?.phone ?? null,
-      receivedBy: p.receivedBy,
-      collectorName: userMap[p.receivedBy]?.name ?? null,
+      id: p.id, amount: p.amount, notes: p.notes ?? null, status: p.status,
+      verifiedAt: toISOString(p.verifiedAt), verifiedByName: userMap.get(caller.userId)?.name ?? null,
+      createdAt: toISOString(p.createdAt), retailerId: p.retailerId,
+      retailerName: userMap.get(p.retailerId as number)?.name ?? null,
+      retailerPhone: userMap.get(p.retailerId as number)?.phone ?? null,
+      receivedBy: p.receivedBy, collectorName: userMap.get(p.receivedBy as number)?.name ?? null,
     });
   } catch (err) {
     req.log.error(err);
