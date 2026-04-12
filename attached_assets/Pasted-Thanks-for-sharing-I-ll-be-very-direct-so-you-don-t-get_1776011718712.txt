@@ -1,0 +1,124 @@
+Thanks for sharing 👍
+I’ll be **very direct** so you don’t get stuck.
+
+---
+
+## ❌ Current Status: **NOT deployable to Google App Engine**
+
+Your `package.json` is **NOT ready** for App Engine allowing Node.js / Express.
+
+### ❗ Major Problems
+
+1. ❌ **No `start` script**
+2. ❌ **Forces pnpm** (App Engine uses **npm**, not pnpm)
+3. ❌ **No runtime dependencies** (no Express, etc.)
+4. ❌ Looks like a **monorepo / workspace root**, not an API server
+5. ❌ No indication of which file starts the server
+
+If you deploy this **as-is**, App Engine will **fail immediately**.
+
+---
+
+## ✅ What Google App Engine REQUIRES (Minimum)
+
+App Engine expects:
+
+* `npm install`
+* `npm start`
+* A Node file that listens on `process.env.PORT`
+
+---
+
+## ✅ Fix Option 1 (RECOMMENDED): Create a backend `package.json`
+
+If your **Express API lives in a subfolder** (example: `/backend`), then:
+
+### 📁 Structure (CORRECT)
+
+```
+backend/
+ ├── app.yaml
+ ├── package.json   ← NEW (server package.json)
+ ├── index.js
+```
+
+### ✅ `backend/package.json`
+
+```json
+{
+  "name": "tashi-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+```
+
+👉 Deploy **from inside `backend/` folder**:
+
+```bash
+gcloud app deploy
+```
+
+---
+
+## ❌ DO NOT deploy this workspace `package.json`
+
+This file is:
+
+* A **build/typecheck workspace**
+* Not a runtime server
+* Not compatible with App Engine
+
+---
+
+## ✅ Fix Option 2 (If this IS your server – rare case)
+
+If this same folder contains your Express app (unlikely):
+
+### 🔧 REQUIRED CHANGES
+
+1. ❌ Remove `preinstall` (pnpm restriction)
+2. ✅ Add `start`
+3. ✅ Add `dependencies`
+4. ✅ Add `engines`
+
+Example (only if server is here):
+
+```json
+"scripts": {
+  "start": "node index.js"
+}
+```
+
+But ⚠️ **this breaks your monorepo logic**, so I don’t recommend it.
+
+---
+
+## 🔍 I need ONE confirmation from you
+
+Answer **only one line**:
+
+👉 **Where is your Express server file?**
+
+* `index.js` in root?
+* `apps/api`
+* `backend`
+* `server`
+
+Once you tell me the folder name, I’ll give you:
+
+* ✅ Exact `package.json`
+* ✅ Exact `app.yaml`
+* ✅ Exact deploy command
+
+No guessing. No trial & error.
