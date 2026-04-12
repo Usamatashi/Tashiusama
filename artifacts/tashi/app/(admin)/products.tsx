@@ -37,7 +37,7 @@ interface Product {
   points: number;
   salesPrice: number;
   category: ProductCategory;
-  imageBase64: string | null;
+  imageUrl: string | null;
   createdAt: string;
 }
 
@@ -73,9 +73,9 @@ function ImageLightbox({ product, onClose }: { product: Product; onClose: () => 
         >
           <Feather name="x" size={20} color="#fff" />
         </TouchableOpacity>
-        {product.imageBase64 ? (
+        {product.imageUrl ? (
           <Image
-            source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
+            source={{ uri: product.imageUrl }}
             style={lbStyles.image}
             resizeMode="contain"
           />
@@ -210,8 +210,8 @@ export default function ProductsScreen() {
     setName(p.name);
     setPoints(String(p.points));
     setSalesPrice(String(p.salesPrice ?? 0));
-    setImageUri(p.imageBase64 ? `data:image/jpeg;base64,${p.imageBase64}` : null);
-    setImageBase64(p.imageBase64 ?? null);
+    setImageUri(p.imageUrl ?? null);
+    setImageBase64(null);
     setModalVisible(true);
   };
 
@@ -245,16 +245,25 @@ export default function ProductsScreen() {
     try {
       const url = editProduct ? `${BASE}/products/${editProduct.id}` : `${BASE}/products`;
       const method = editProduct ? "PUT" : "POST";
+      const body: Record<string, unknown> = {
+        name: name.trim(),
+        points: Number(points),
+        salesPrice: Number(salesPrice) || 0,
+        category,
+      };
+      // Only include imageBase64 if a new image was picked or if image was explicitly removed
+      if (imageBase64 !== null) {
+        body.imageBase64 = imageBase64;
+      } else if (imageUri === null) {
+        // User explicitly removed the image
+        body.imageBase64 = null;
+      }
+      // If imageBase64 is null but imageUri is set, the user kept the existing image — omit imageBase64
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          name: name.trim(),
-          points: Number(points),
-          salesPrice: Number(salesPrice) || 0,
-          category,
-          imageBase64,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) { setErrorMsg(data.error || "Failed to save product"); return; }
@@ -313,9 +322,9 @@ export default function ProductsScreen() {
           onPress={(e) => { e.stopPropagation(); setLightboxProduct(item); }}
           activeOpacity={0.8}
         >
-          {item.imageBase64 ? (
+          {item.imageUrl ? (
             <Image
-              source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }}
+              source={{ uri: item.imageUrl }}
               style={styles.productImage}
             />
           ) : (

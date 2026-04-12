@@ -16,9 +16,9 @@ export async function uploadBase64ToStorage(
   filePath: string,
 ): Promise<string> {
   const match = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/s);
-  if (!match) throw new Error("Invalid base64 data URL format");
-  const mimeType = match[1];
-  const buffer = Buffer.from(match[2], "base64");
+  const mimeType = match ? match[1] : "image/jpeg";
+  const base64Data = match ? match[2] : base64DataUrl;
+  const buffer = Buffer.from(base64Data, "base64");
   return uploadBufferToStorage(buffer, mimeType, filePath);
 }
 
@@ -27,7 +27,6 @@ export async function uploadBufferToStorage(
   mimeType: string,
   filePath: string,
 ): Promise<string> {
-  const downloadToken = randomUUID();
   const accessToken = await getAccessToken();
   const encodedPath = encodeURIComponent(filePath);
 
@@ -46,15 +45,8 @@ export async function uploadBufferToStorage(
     throw new Error(`Firebase Storage upload failed: ${uploadRes.status} ${text}`);
   }
 
-  const patchUrl = `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodedPath}`;
-  await fetch(patchUrl, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ metadata: { firebaseStorageDownloadTokens: downloadToken } }),
-  });
+  const responseData = await uploadRes.json() as { downloadTokens?: string };
+  const downloadToken = responseData.downloadTokens ?? randomUUID();
 
   return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodedPath}?alt=media&token=${downloadToken}`;
 }

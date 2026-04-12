@@ -31,7 +31,7 @@ interface Product {
   salesPrice: number;
   points: number;
   category: ProductCategory;
-  imageBase64: string | null;
+  imageUrl: string | null;
 }
 
 const CATEGORY_META: Record<ProductCategory, { label: string; icon: React.ComponentProps<typeof Feather>["name"]; color: string; bg: string }> = {
@@ -55,9 +55,9 @@ function ProductRow({ product, onPress }: { product: Product; onPress: (p: Produ
   const meta = CATEGORY_META[product.category ?? "other"];
   return (
     <TouchableOpacity style={styles.row} onPress={() => onPress(product)} activeOpacity={0.75}>
-      {product.imageBase64 ? (
+      {product.imageUrl ? (
         <Image
-          source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
+          source={{ uri: product.imageUrl }}
           style={styles.productImage}
         />
       ) : (
@@ -73,7 +73,7 @@ function ProductRow({ product, onPress }: { product: Product; onPress: (p: Produ
         <Text style={styles.priceLabel}>Rs.</Text>
         <Text style={styles.priceValue}>{product.salesPrice.toLocaleString()}</Text>
       </View>
-      {product.imageBase64 && (
+      {product.imageUrl && (
         <Feather name="maximize-2" size={14} color="#C0C0C0" style={{ marginLeft: 4 }} />
       )}
     </TouchableOpacity>
@@ -98,9 +98,9 @@ function ImageLightbox({ product, onClose }: { product: Product; onClose: () => 
         </TouchableOpacity>
 
         {/* Image */}
-        {product.imageBase64 ? (
+        {product.imageUrl ? (
           <Image
-            source={{ uri: `data:image/jpeg;base64,${product.imageBase64}` }}
+            source={{ uri: product.imageUrl }}
             style={styles.lightboxImage}
             resizeMode="contain"
           />
