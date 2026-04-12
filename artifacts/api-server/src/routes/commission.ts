@@ -293,6 +293,9 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
 
     const orders = ordersSnap.docs.map((d) => d.data()).filter((o) => o.status !== "cancelled");
 
+    const orderIds = orders.map((o) => o.id as number);
+    const valueMap = orderIds.length > 0 ? await computeFinalAmounts(orderIds) : {};
+
     const statsMap: Record<number, {
       totalOrders: number; confirmedOrders: number;
       totalSalesValue: number; confirmedSalesValue: number;
@@ -306,7 +309,7 @@ router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) 
         statsMap[smId] = { totalOrders: 0, confirmedOrders: 0, totalSalesValue: 0, confirmedSalesValue: 0, totalBonus: 0, confirmedBonus: 0, currentMonthOrders: 0, currentMonthSalesValue: 0 };
       }
       const s = statsMap[smId];
-      const val = (order.totalValue as number) ?? 0;
+      const val = valueMap[order.id as number] ?? 0;
       const bonus = (order.bonusPoints as number) ?? 0;
 
       s.totalOrders += 1;
