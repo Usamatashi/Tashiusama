@@ -1,0 +1,11 @@
+runtime: nodejs22
+entrypoint: node --enable-source-maps ./dist/index.mjs
+
+env_variables:
+  NODE_ENV: "production"
+  PORT: "8080"
+
+# All secrets (FIREBASE_SERVICE_ACCOUNT, JWT_SECRET) must be set
+# in Google Cloud App Engine environment variables via Cloud Console:
+# App Engine → Versions → Edit → Environment Variables
+# OR via app.yaml env_variables above (not recommended for secrets)

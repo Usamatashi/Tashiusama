@@ -1,0 +1,9 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+src
+tsconfig.json
+build.mjs
+*.map
+.replit-artifact
