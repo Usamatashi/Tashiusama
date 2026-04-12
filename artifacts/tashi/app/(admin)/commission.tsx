@@ -268,7 +268,7 @@ export default function CommissionScreen() {
     queryKey: ["salesman-commissions"],
     queryFn: async () => {
       const token = await getToken();
-      const res = await fetch(`${BASE}/orders/salesman-commissions`, {
+      const res = await fetch(`${BASE}/commission/salesman-commissions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to fetch commissions");

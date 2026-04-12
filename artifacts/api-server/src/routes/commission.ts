@@ -280,6 +280,65 @@ router.get("/salesman-months/:salesmanId", requireAuth, requireAdmin, async (req
   }
 });
 
+router.get("/salesman-commissions", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [salesmenSnap, ordersSnap] = await Promise.all([
+      fdb.collection("users").where("role", "==", "salesman").get(),
+      fdb.collection("orders").get(),
+    ]);
+
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+
+    const orders = ordersSnap.docs.map((d) => d.data()).filter((o) => o.status !== "cancelled");
+
+    const statsMap: Record<number, {
+      totalOrders: number; confirmedOrders: number;
+      totalSalesValue: number; confirmedSalesValue: number;
+      totalBonus: number; confirmedBonus: number;
+      currentMonthOrders: number; currentMonthSalesValue: number;
+    }> = {};
+
+    for (const order of orders) {
+      const smId = order.salesmanId as number;
+      if (!statsMap[smId]) {
+        statsMap[smId] = { totalOrders: 0, confirmedOrders: 0, totalSalesValue: 0, confirmedSalesValue: 0, totalBonus: 0, confirmedBonus: 0, currentMonthOrders: 0, currentMonthSalesValue: 0 };
+      }
+      const s = statsMap[smId];
+      const val = (order.totalValue as number) ?? 0;
+      const bonus = (order.bonusPoints as number) ?? 0;
+
+      s.totalOrders += 1;
+      s.totalSalesValue += val;
+      s.totalBonus += bonus;
+
+      if (order.status === "confirmed") {
+        s.confirmedOrders += 1;
+        s.confirmedSalesValue += val;
+        s.confirmedBonus += bonus;
+      }
+
+      const d = new Date(typeof order.createdAt?.toDate === "function" ? order.createdAt.toDate() : order.createdAt);
+      if (d.getFullYear() === curYear && (d.getMonth() + 1) === curMonth) {
+        s.currentMonthOrders += 1;
+        s.currentMonthSalesValue += val;
+      }
+    }
+
+    const result = salesmenSnap.docs.map((doc) => {
+      const u = doc.data();
+      const s = statsMap[u.id as number] ?? { totalOrders: 0, confirmedOrders: 0, totalSalesValue: 0, confirmedSalesValue: 0, totalBonus: 0, confirmedBonus: 0, currentMonthOrders: 0, currentMonthSalesValue: 0 };
+      return { salesmanId: u.id as number, name: u.name ?? null, phone: u.phone as string, ...s };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/my-commissions", requireAuth, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
