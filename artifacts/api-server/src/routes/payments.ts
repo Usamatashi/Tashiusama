@@ -161,11 +161,16 @@ router.get("/my-balance", requireAuth, async (req, res) => {
     }
     const [balances, paymentsSnap] = await Promise.all([
       getBalances([caller.userId]),
-      fdb.collection("payments").where("retailerId", "==", caller.userId).orderBy("createdAt", "desc").get(),
+      fdb.collection("payments").where("retailerId", "==", caller.userId).get(),
     ]);
 
     const balance = balances[caller.userId] ?? { totalOrdered: 0, totalPaid: 0, outstanding: 0 };
-    const collectorIds = [...new Set(paymentsSnap.docs.map((d) => d.data().receivedBy as number))];
+    const paymentDocs = paymentsSnap.docs.map((d) => d.data()).sort((a, b) => {
+      const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+      const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+      return tb - ta;
+    });
+    const collectorIds = [...new Set(paymentDocs.map((p) => p.receivedBy as number))];
     const collectorDocs = collectorIds.length
       ? await fdb.getAll(...collectorIds.map((id) => fdb.collection("users").doc(String(id))))
       : [];
@@ -174,8 +179,7 @@ router.get("/my-balance", requireAuth, async (req, res) => {
 
     res.json({
       ...balance,
-      payments: paymentsSnap.docs.map((d) => {
-        const p = d.data();
+      payments: paymentDocs.map((p) => {
         const collector = collectorMap.get(p.receivedBy as number);
         return {
           id: p.id, amount: p.amount, notes: p.notes ?? null, status: p.status,

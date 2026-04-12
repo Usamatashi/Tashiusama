@@ -290,15 +290,19 @@ router.get("/my-commissions", requireAuth, async (req, res) => {
     const salesmanId = caller.role === "salesman" ? caller.userId : Number((req.query as any).salesmanId);
     if (!salesmanId) { res.status(400).json({ error: "salesmanId required" }); return; }
 
-    const snap = await fdb.collection("commissions").where("salesmanId", "==", salesmanId).orderBy("createdAt", "desc").get();
-    const adminIds = [...new Set(snap.docs.map((d) => d.data().adminId as number))];
+    const snap = await fdb.collection("commissions").where("salesmanId", "==", salesmanId).get();
+    const commissions = snap.docs.map((d) => d.data()).sort((a, b) => {
+      const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+      const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+      return tb - ta;
+    });
+    const adminIds = [...new Set(commissions.map((c) => c.adminId as number))];
     const adminDocs = adminIds.length ? await fdb.getAll(...adminIds.map((id) => fdb.collection("users").doc(String(id)))) : [];
     const adminMap = new Map<number, any>();
     adminDocs.forEach((d) => { if (d.exists) adminMap.set(parseInt(d.id), d.data()); });
 
     res.json(
-      snap.docs.map((d) => {
-        const c = d.data();
+      commissions.map((c) => {
         const adm = adminMap.get(c.adminId as number);
         return {
           id: c.id, salesmanId: c.salesmanId, adminId: c.adminId,

@@ -100,10 +100,15 @@ router.get("/", requireAuth, requireSalesman, async (req, res) => {
     if (isAdmin) {
       ordersSnap = await fdb.collection("orders").orderBy("createdAt", "desc").get();
     } else {
-      ordersSnap = await fdb.collection("orders").where("salesmanId", "==", caller.userId).orderBy("createdAt", "desc").get();
+      ordersSnap = await fdb.collection("orders").where("salesmanId", "==", caller.userId).get();
     }
 
-    const orders = ordersSnap.docs.map((d) => d.data());
+    const orders = ordersSnap.docs.map((d) => d.data())
+      .sort((a, b) => {
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+        return tb - ta;
+      });
     if (!orders.length) {
       res.json([]);
       return;
@@ -464,8 +469,13 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Retailer access required" });
       return;
     }
-    const snap = await fdb.collection("orders").where("retailerId", "==", caller.userId).orderBy("createdAt", "desc").get();
-    const orders = snap.docs.map((d) => d.data());
+    const snap = await fdb.collection("orders").where("retailerId", "==", caller.userId).get();
+    const orders = snap.docs.map((d) => d.data())
+      .sort((a, b) => {
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+        return tb - ta;
+      });
     const orderIds = orders.map((o) => o.id as number);
     const itemsMap = await getItemsForOrders(orderIds);
 
@@ -490,8 +500,13 @@ router.get("/my-retail-orders", requireAuth, async (req, res) => {
 router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
   try {
     const caller = (req as any).user as JwtPayload;
-    const snap = await fdb.collection("orders").where("salesmanId", "==", caller.userId).orderBy("createdAt", "desc").get();
-    const orders = snap.docs.map((d) => d.data());
+    const snap = await fdb.collection("orders").where("salesmanId", "==", caller.userId).get();
+    const orders = snap.docs.map((d) => d.data())
+      .sort((a, b) => {
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+        return tb - ta;
+      });
     const orderIds = orders.map((o) => o.id as number);
     const retailerIds = [...new Set(orders.map((o) => o.retailerId as number))];
 
@@ -500,20 +515,40 @@ router.get("/my-bonus", requireAuth, requireSalesman, async (req, res) => {
       getUsersMap(retailerIds),
     ]);
 
-    res.json(
-      orders.map((r) => {
-        const retailer = usersMap.get(r.retailerId as number);
-        const items = buildOrderItems(r as any, itemsMap, r.id as number);
-        const billDiscountPercent = (r.billDiscountPercent as number) ?? 0;
-        const { originalTotal, subtotal, billDiscountAmount, finalAmount } = computeOrderTotals(items, billDiscountPercent);
-        return {
-          id: r.id, status: r.status, createdAt: toISOString(r.createdAt),
-          totalPoints: r.totalPoints, bonusPoints: r.bonusPoints, billDiscountPercent,
-          retailerName: retailer?.name ?? null, retailerPhone: retailer?.phone ?? null,
-          totalValue: originalTotal, subtotal, billDiscountAmount, finalAmount, items,
-        };
-      }),
-    );
+    const enrichedOrders = orders.map((r) => {
+      const retailer = usersMap.get(r.retailerId as number);
+      const items = buildOrderItems(r as any, itemsMap, r.id as number);
+      const billDiscountPercent = (r.billDiscountPercent as number) ?? 0;
+      const { originalTotal } = computeOrderTotals(items, billDiscountPercent);
+      return {
+        id: r.id as number,
+        status: r.status as string,
+        createdAt: toISOString(r.createdAt),
+        totalPoints: r.totalPoints as number,
+        bonusPoints: r.bonusPoints as number,
+        totalValue: originalTotal,
+        retailerName: retailer?.name ?? null,
+        retailerPhone: retailer?.phone ?? null,
+        items: items.map((i) => ({
+          productName: i.productName,
+          quantity: i.quantity,
+          bonusPoints: i.bonusPoints,
+          totalValue: i.totalValue,
+        })),
+      };
+    });
+
+    const activeOrders = enrichedOrders.filter((o) => o.status !== "cancelled");
+    const confirmedOrders = enrichedOrders.filter((o) => o.status === "confirmed");
+
+    res.json({
+      totalBonus: enrichedOrders.reduce((s, o) => s + o.bonusPoints, 0),
+      confirmedBonus: confirmedOrders.reduce((s, o) => s + o.bonusPoints, 0),
+      totalSalesValue: activeOrders.reduce((s, o) => s + o.totalValue, 0),
+      confirmedSalesValue: confirmedOrders.reduce((s, o) => s + o.totalValue, 0),
+      totalOrders: activeOrders.length,
+      orders: enrichedOrders,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
