@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { storageBucket } from "./firebase";
 
 export async function uploadBase64ToStorage(
@@ -17,13 +18,19 @@ export async function uploadBufferToStorage(
   mimeType: string,
   filePath: string,
 ): Promise<string> {
+  const token = randomUUID();
   const file = storageBucket.file(filePath);
   await file.save(buffer, {
     contentType: mimeType,
-    metadata: { cacheControl: "public, max-age=31536000" },
+    metadata: {
+      cacheControl: "public, max-age=31536000",
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      },
+    },
   });
-  await file.makePublic();
-  return `https://storage.googleapis.com/${storageBucket.name}/${filePath}`;
+  const encodedPath = encodeURIComponent(filePath);
+  return `https://firebasestorage.googleapis.com/v0/b/${storageBucket.name}/o/${encodedPath}?alt=media&token=${token}`;
 }
 
 export async function deleteFromStorage(filePath: string): Promise<void> {
