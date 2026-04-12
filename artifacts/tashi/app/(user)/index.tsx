@@ -404,8 +404,8 @@ export default function UserHomeScreen() {
             ? adBanners.map((ad) =>
                 ad.mediaType === "video" && ad.mediaUrl ? (
                   <BannerVideo key={ad.id} uri={ad.mediaUrl} width={BANNER_WIDTH} />
-                ) : ad.imageBase64 ? (
-                  <Image key={ad.id} source={{ uri: ad.imageBase64 }}
+                ) : ad.mediaUrl ? (
+                  <Image key={ad.id} source={{ uri: ad.mediaUrl }}
                     style={[styles.bannerImage, { width: BANNER_WIDTH }]} resizeMode="cover" />
                 ) : null
               )
