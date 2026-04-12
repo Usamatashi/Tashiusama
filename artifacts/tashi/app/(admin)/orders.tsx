@@ -112,8 +112,42 @@ const CATEGORY_META: Record<ProductCategory, { label: string; color: string; bg:
   other:       { label: "Other Products", color: "#7B2FBE", bg: "#F5F0FF" },
 };
 const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-type FilterTab = "all" | "pending" | "confirmed" | "dispatched" | "cancelled";
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatCalendarLabel(key: string | null) {
+  if (!key) return "All dates";
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getCalendarDays(monthDate: Date) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const first = new Date(year, month, 1);
+  const start = new Date(year, month, 1 - first.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      key: toDateKey(date),
+      date,
+      inMonth: date.getMonth() === month,
+      label: String(date.getDate()),
+    };
+  });
+}
 
 // ─── Edit Order Modal ─────────────────────────────────────────────────────────
 function EditOrderModal({
@@ -970,7 +1004,9 @@ function OrderCard({
 export default function AdminOrdersScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<FilterTab>("all");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [dispatchingId, setDispatchingId] = useState<number | null>(null);
@@ -1020,38 +1056,45 @@ export default function AdminOrdersScreen() {
     ]);
   }, [updateStatus]);
 
-  const FILTERS: FilterTab[] = ["all", "pending", "confirmed", "dispatched", "cancelled"];
-  const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
-  const pendingCount = orders.filter(o => o.status === "pending").length;
+  const filtered = selectedDate
+    ? orders.filter(o => toDateKey(new Date(o.createdAt)) === selectedDate)
+    : orders;
+  const calendarDays = getCalendarDays(calendarMonth);
+  const monthTitle = calendarMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
-      {/* Header */}
       <View style={styles.header}>
         <BackButton color={Colors.adminAccent} fallback="/(admin)" />
         <Text style={styles.headerTitle}>Orders</Text>
-        {pendingCount > 0 ? (
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
-          </View>
-        ) : (
-          <View style={{ width: 36 }} />
-        )}
+        <TouchableOpacity
+          style={styles.calendarIconBtn}
+          onPress={() => setShowCalendar(true)}
+          activeOpacity={0.8}
+        >
+          <Feather name="calendar" size={18} color={Colors.adminAccent} />
+        </TouchableOpacity>
       </View>
 
-      {/* Filter tabs */}
-      <View style={styles.filterRow}>
-        {FILTERS.map(f => (
-          <Pressable
-            key={f}
-            style={[styles.filterTab, filter === f && styles.filterTabActive]}
-            onPress={() => setFilter(f)}
+      <View style={styles.dateFilterRow}>
+        <TouchableOpacity
+          style={styles.dateFilterBtn}
+          onPress={() => setShowCalendar(true)}
+          activeOpacity={0.82}
+        >
+          <Feather name="calendar" size={16} color={Colors.primary} />
+          <Text style={styles.dateFilterText}>{formatCalendarLabel(selectedDate)}</Text>
+        </TouchableOpacity>
+        {selectedDate ? (
+          <TouchableOpacity
+            style={styles.clearDateBtn}
+            onPress={() => setSelectedDate(null)}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Text>
-          </Pressable>
-        ))}
+            <Feather name="x" size={14} color={Colors.textSecondary} />
+            <Text style={styles.clearDateText}>Clear</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {isLoading ? (
@@ -1061,8 +1104,10 @@ export default function AdminOrdersScreen() {
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
           <Feather name="clipboard" size={52} color={Colors.border} />
-          <Text style={styles.emptyTitle}>No {filter === "all" ? "" : filter} orders</Text>
-          <Text style={styles.emptyText}>Orders will appear here once placed</Text>
+          <Text style={styles.emptyTitle}>No orders found</Text>
+          <Text style={styles.emptyText}>
+            {selectedDate ? "Try another date or clear the date filter" : "Orders will appear here once placed"}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -1102,6 +1147,89 @@ export default function AdminOrdersScreen() {
         visible={billOrder !== null}
         onClose={() => setBillOrder(null)}
       />
+
+      <Modal visible={showCalendar} transparent animationType="fade" onRequestClose={() => setShowCalendar(false)}>
+        <Pressable style={styles.calendarOverlay} onPress={() => setShowCalendar(false)}>
+          <Pressable style={styles.calendarSheet}>
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity
+                style={styles.calendarNavBtn}
+                onPress={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+              >
+                <Feather name="chevron-left" size={20} color={Colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.calendarTitle}>{monthTitle}</Text>
+              <TouchableOpacity
+                style={styles.calendarNavBtn}
+                onPress={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+              >
+                <Feather name="chevron-right" size={20} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.weekdayRow}>
+              {WEEKDAYS.map(day => (
+                <Text key={day} style={styles.weekdayText}>{day}</Text>
+              ))}
+            </View>
+
+            <View style={styles.calendarGrid}>
+              {calendarDays.map(day => {
+                const isSelected = selectedDate === day.key;
+                const isToday = toDateKey(new Date()) === day.key;
+                return (
+                  <TouchableOpacity
+                    key={day.key}
+                    style={[
+                      styles.calendarDay,
+                      isSelected && styles.calendarDaySelected,
+                      !isSelected && isToday && styles.calendarDayToday,
+                    ]}
+                    onPress={() => {
+                      setSelectedDate(day.key);
+                      setShowCalendar(false);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.calendarDayText,
+                        !day.inMonth && styles.calendarDayMuted,
+                        isSelected && styles.calendarDayTextSelected,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.calendarActions}>
+              <TouchableOpacity
+                style={styles.calendarActionBtn}
+                onPress={() => {
+                  const today = new Date();
+                  setCalendarMonth(today);
+                  setSelectedDate(toDateKey(today));
+                  setShowCalendar(false);
+                }}
+              >
+                <Text style={styles.calendarActionText}>Today</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.calendarActionBtn, styles.calendarActionBtnSecondary]}
+                onPress={() => {
+                  setSelectedDate(null);
+                  setShowCalendar(false);
+                }}
+              >
+                <Text style={[styles.calendarActionText, styles.calendarActionTextSecondary]}>All dates</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -1121,25 +1249,52 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
-  pendingBadge: {
-    minWidth: 28, height: 28, borderRadius: 14,
-    backgroundColor: "#FBBF24",
-    alignItems: "center", justifyContent: "center",
-    paddingHorizontal: 8,
+  calendarIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${Colors.adminAccent}14`,
+    borderWidth: 1,
+    borderColor: `${Colors.adminAccent}25`,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  pendingBadgeText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
 
-  filterRow: {
-    flexDirection: "row", gap: 8, padding: 12, paddingHorizontal: 16,
+  dateFilterRow: {
+    flexDirection: "row", alignItems: "center", gap: 10, padding: 12, paddingHorizontal: 16,
     backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  filterTab: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: "#F0F0F0",
+  dateFilterBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: `${Colors.primary}10`,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}25`,
   },
-  filterTabActive: { backgroundColor: Colors.primary },
-  filterTabText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
-  filterTabTextActive: { color: "#fff" },
+  dateFilterText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: Colors.primary,
+  },
+  clearDateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "#F3F4F6",
+  },
+  clearDateText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textSecondary,
+  },
 
   card: {
     backgroundColor: "#fff",
@@ -1208,6 +1363,106 @@ const styles = StyleSheet.create({
 
   emptyTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.text },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+  calendarOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  calendarSheet: {
+    backgroundColor: "#fff",
+    borderRadius: 22,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  calendarNavBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: Colors.text,
+  },
+  weekdayRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  weekdayText: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: Colors.textLight,
+  },
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  calendarDay: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  },
+  calendarDaySelected: {
+    backgroundColor: Colors.primary,
+  },
+  calendarDayToday: {
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  calendarDayText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+  },
+  calendarDayMuted: {
+    color: Colors.textLight,
+    opacity: 0.45,
+  },
+  calendarDayTextSelected: {
+    color: "#fff",
+  },
+  calendarActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  calendarActionBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+  },
+  calendarActionBtnSecondary: {
+    backgroundColor: "#F3F4F6",
+  },
+  calendarActionText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  calendarActionTextSecondary: {
+    color: Colors.textSecondary,
+  },
 });
 
 // ─── Bill Styles ──────────────────────────────────────────────────────────────
