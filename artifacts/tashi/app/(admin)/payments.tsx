@@ -51,8 +51,18 @@ interface Payment {
 }
 
 type Tab = "balances" | "history" | "pending";
+type DateFilter = "all" | "today" | "week" | "month";
 
 function fmt(n: number) { return n.toLocaleString(); }
+
+function fmtLac(n: number) {
+  if (n >= 100000) {
+    const lac = n / 100000;
+    return `${parseFloat(lac.toFixed(1))} lac`;
+  }
+  return n.toLocaleString();
+}
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -85,7 +95,7 @@ function BalanceCard({ item }: { item: RetailerBalance }) {
         <View style={styles.dueBox}>
           <Text style={styles.dueBoxLabel}>{isCredit ? "Credit" : "Due"}</Text>
           <Text style={styles.dueBoxAmount}>
-            Rs. {fmt(Math.abs(item.outstanding))}
+            Rs. {fmtLac(Math.abs(item.outstanding))}
           </Text>
         </View>
       </View>
@@ -137,11 +147,18 @@ export default function AdminPaymentsScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  const [tab, setTab] = useState<Tab>("balances"); // balances=Outstanding, history=Collected, pending=Awaiting
+  const [tab, setTab] = useState<Tab>("history");
   const [collectTarget, setCollectTarget] = useState<RetailerBalance | null>(null);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
+
+  // Outstanding filters
+  const [outstandingSearch, setOutstandingSearch] = useState("");
+
+  // Collections filters
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
+  const [collectionSearch, setCollectionSearch] = useState("");
 
   const { data: balances = [], isLoading: loadingBalances, refetch: refetchBalances, isRefetching: refetchingBalances } = useQuery<RetailerBalance[]>({
     queryKey: ["admin-retailer-balances"],
@@ -186,6 +203,40 @@ export default function AdminPaymentsScreen() {
   const totalOutstanding = balances.reduce((s, b) => s + Math.max(0, b.outstanding), 0);
   const totalPaidAll = balances.reduce((s, b) => s + b.totalPaid, 0);
 
+  // Filtered outstanding
+  const oq = outstandingSearch.trim().toLowerCase();
+  const filteredBalances = oq
+    ? balances.filter(b =>
+        (b.name ?? "").toLowerCase().includes(oq) ||
+        b.phone.toLowerCase().includes(oq) ||
+        (b.city ?? "").toLowerCase().includes(oq),
+      )
+    : balances;
+
+  // Filtered collections
+  const now = new Date();
+  const filteredPayments = payments.filter(p => {
+    const d = new Date(p.createdAt);
+    if (dateFilter === "today") {
+      const s = new Date(now); s.setHours(0, 0, 0, 0);
+      if (d < s) return false;
+    } else if (dateFilter === "week") {
+      const s = new Date(now); s.setDate(s.getDate() - 6); s.setHours(0, 0, 0, 0);
+      if (d < s) return false;
+    } else if (dateFilter === "month") {
+      const s = new Date(now); s.setDate(s.getDate() - 29); s.setHours(0, 0, 0, 0);
+      if (d < s) return false;
+    }
+    if (collectionSearch.trim()) {
+      const cs = collectionSearch.trim().toLowerCase();
+      if (
+        !(p.retailerName ?? "").toLowerCase().includes(cs) &&
+        !(p.retailerPhone ?? "").toLowerCase().includes(cs)
+      ) return false;
+    }
+    return true;
+  });
+
   if (user?.role !== "super_admin" && !settings.tab_payments) return <Redirect href="/(admin)" />;
 
   return (
@@ -196,7 +247,7 @@ export default function AdminPaymentsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Summary banner — each cell is a nav button */}
+      {/* Summary banner */}
       <View style={styles.summaryBar}>
         {/* Outstanding */}
         <TouchableOpacity
@@ -206,7 +257,7 @@ export default function AdminPaymentsScreen() {
         >
           <View style={[styles.summaryDot, { backgroundColor: tab === "balances" ? "#EF4444" : "#FECACA" }]} />
           <Text style={[styles.summaryCellValue, { color: "#EF4444" }]} numberOfLines={1} adjustsFontSizeToFit>
-            Rs. {fmt(totalOutstanding)}
+            Rs. {fmtLac(totalOutstanding)}
           </Text>
           <Text style={[styles.summaryCellLabel, tab === "balances" && { color: "#EF4444", fontFamily: "Inter_700Bold" }]}>
             Outstanding
@@ -224,7 +275,7 @@ export default function AdminPaymentsScreen() {
         >
           <View style={[styles.summaryDot, { backgroundColor: tab === "history" ? "#10B981" : "#A7F3D0" }]} />
           <Text style={[styles.summaryCellValue, { color: "#059669" }]} numberOfLines={1} adjustsFontSizeToFit>
-            Rs. {fmt(totalPaidAll)}
+            Rs. {fmtLac(totalPaidAll)}
           </Text>
           <Text style={[styles.summaryCellLabel, tab === "history" && { color: "#059669", fontFamily: "Inter_700Bold" }]}>
             Collected
@@ -234,7 +285,7 @@ export default function AdminPaymentsScreen() {
 
         <View style={styles.summaryDivider} />
 
-        {/* Awaiting — smaller */}
+        {/* Awaiting */}
         <TouchableOpacity
           style={[styles.summaryCellSmall, tab === "pending" && styles.summaryCellAmberActive]}
           onPress={() => setTab("pending")}
@@ -258,17 +309,77 @@ export default function AdminPaymentsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Outstanding search filter */}
+      {tab === "balances" && (
+        <View style={styles.filterBlock}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={15} color={Colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              value={outstandingSearch}
+              onChangeText={setOutstandingSearch}
+              placeholder="Search by name, phone or city…"
+              placeholderTextColor={Colors.textLight}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {outstandingSearch.length > 0 && (
+              <Pressable onPress={() => setOutstandingSearch("")}>
+                <Feather name="x-circle" size={15} color={Colors.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Collections search + date filter */}
+      {tab === "history" && (
+        <View style={styles.filterBlock}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={15} color={Colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              value={collectionSearch}
+              onChangeText={setCollectionSearch}
+              placeholder="Search by retailer name or phone…"
+              placeholderTextColor={Colors.textLight}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {collectionSearch.length > 0 && (
+              <Pressable onPress={() => setCollectionSearch("")}>
+                <Feather name="x-circle" size={15} color={Colors.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+          <View style={styles.filterChips}>
+            {(["all", "today", "week", "month"] as DateFilter[]).map(f => (
+              <Pressable
+                key={f}
+                style={[styles.chip, dateFilter === f && styles.chipActive]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDateFilter(f); }}
+              >
+                <Text style={[styles.chipText, dateFilter === f && styles.chipTextActive]}>
+                  {f === "all" ? "All" : f === "today" ? "Today" : f === "week" ? "Last 7 Days" : "Last 30 Days"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
       {tab === "balances" ? (
         loadingBalances ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
-        ) : balances.length === 0 ? (
+        ) : filteredBalances.length === 0 ? (
           <View style={styles.center}>
-            <Feather name="users" size={48} color={Colors.border} />
-            <Text style={styles.emptyTitle}>No retailers yet</Text>
+            <Feather name={outstandingSearch ? "search" : "users"} size={48} color={Colors.border} />
+            <Text style={styles.emptyTitle}>{outstandingSearch ? "No results found" : "No retailers yet"}</Text>
+            {outstandingSearch ? <Text style={styles.emptyText}>Try a different name, phone or city</Text> : null}
           </View>
         ) : (
           <FlatList
-            data={balances}
+            data={filteredBalances}
             keyExtractor={i => String(i.id)}
             renderItem={({ item }) => <BalanceCard item={item} />}
             contentContainerStyle={{ padding: 16, paddingBottom: botPad + 20 }}
@@ -279,15 +390,19 @@ export default function AdminPaymentsScreen() {
       ) : tab === "history" ? (
         loadingHistory ? (
           <View style={styles.center}><ActivityIndicator color={Colors.primary} size="large" /></View>
-        ) : payments.length === 0 ? (
+        ) : filteredPayments.length === 0 ? (
           <View style={styles.center}>
-            <Feather name="credit-card" size={48} color={Colors.border} />
-            <Text style={styles.emptyTitle}>No payments yet</Text>
-            <Text style={styles.emptyText}>Payments will appear here once collected</Text>
+            <Feather name={collectionSearch || dateFilter !== "all" ? "search" : "credit-card"} size={48} color={Colors.border} />
+            <Text style={styles.emptyTitle}>
+              {collectionSearch ? "No results found" : dateFilter === "today" ? "No collections today" : "No payments yet"}
+            </Text>
+            <Text style={styles.emptyText}>
+              {collectionSearch ? "Try a different name or phone" : dateFilter === "today" ? "Collections made today will appear here" : "Payments will appear here once collected"}
+            </Text>
           </View>
         ) : (
           <FlatList
-            data={payments}
+            data={filteredPayments}
             keyExtractor={i => String(i.id)}
             renderItem={({ item }) => (
               <PaymentHistoryCard
@@ -345,7 +460,7 @@ export default function AdminPaymentsScreen() {
                 <View style={styles.modalRetailerRow}>
                   <Feather name="user" size={15} color={Colors.primary} />
                   <Text style={styles.modalRetailerName}>{collectTarget.name || collectTarget.phone}</Text>
-                  <Text style={styles.modalRetailerBalance}>Balance Due: Rs. {fmt(collectTarget.outstanding)}</Text>
+                  <Text style={styles.modalRetailerBalance}>Balance Due: Rs. {fmtLac(collectTarget.outstanding)}</Text>
                 </View>
                 <Text style={styles.fieldLabel}>Amount Received (Rs.)</Text>
                 <TextInput
@@ -394,7 +509,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "#fff",
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: `${Colors.adminAccent}18`, justifyContent: "center", alignItems: "center" },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryBar: {
     flexDirection: "row", backgroundColor: "#fff",
@@ -416,23 +530,30 @@ const styles = StyleSheet.create({
   summaryCellRedActive: { backgroundColor: "#FFF5F5" },
   summaryCellGreenActive: { backgroundColor: "#F0FDF9" },
   summaryCellAmberActive: { backgroundColor: "#FFFBEB" },
-  summaryDot: {
-    width: 7, height: 7, borderRadius: 4, marginBottom: 2,
-  },
+  summaryDot: { width: 7, height: 7, borderRadius: 4, marginBottom: 2 },
   summaryCellLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.4 },
   summaryCellLabelSmall: { fontSize: 9, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.4 },
   summaryCellValue: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryCellValueSmall: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text },
   summaryDivider: { width: 1, backgroundColor: "#F0F0F0", marginVertical: 14 },
-  summaryActiveLine: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    height: 3, borderRadius: 0,
-  },
-  awaitingBadge: {
-    width: 16, height: 16, borderRadius: 8,
-    backgroundColor: "#D97706", alignItems: "center", justifyContent: "center",
-  },
+  summaryActiveLine: { position: "absolute", bottom: 0, left: 0, right: 0, height: 3, borderRadius: 0 },
+  awaitingBadge: { width: 16, height: 16, borderRadius: 8, backgroundColor: "#D97706", alignItems: "center", justifyContent: "center" },
   awaitingBadgeText: { fontSize: 9, fontFamily: "Inter_800ExtraBold", color: "#fff" },
+  filterBlock: { paddingHorizontal: 14, paddingTop: 10, gap: 8 },
+  searchBar: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  searchInput: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.text, padding: 0 },
+  filterChips: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0",
+  },
+  chipActive: { backgroundColor: Colors.adminAccent, borderColor: Colors.adminAccent },
+  chipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  chipTextActive: { color: "#fff", fontFamily: "Inter_600SemiBold" },
   card: {
     backgroundColor: "#fff", borderRadius: 16, marginBottom: 12,
     borderWidth: 1, borderColor: "#F0F0F0",
@@ -494,11 +615,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.text,
-    backgroundColor: "#FAFAFA",
   },
   confirmBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    backgroundColor: "#10B981", borderRadius: 14, paddingVertical: 15,
+    backgroundColor: Colors.primary, borderRadius: 14,
+    paddingVertical: 14, marginTop: 4,
   },
   confirmBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 });
