@@ -15,6 +15,7 @@ import adminUserSettingsRouter from "./admin-user-settings";
 import commissionRouter from "./commission";
 import regionsRouter from "./regions";
 import pushTokenRouter from "./push-token";
+import whatsappContactsRouter from "./whatsapp-contacts";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use("/admin-user-settings", adminUserSettingsRouter);
 router.use("/commission", commissionRouter);
 router.use("/regions", regionsRouter);
 router.use("/push-token", pushTokenRouter);
+router.use("/whatsapp-contacts", whatsappContactsRouter);
 
 export default router;

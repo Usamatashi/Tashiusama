@@ -35,7 +35,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
-const WHATSAPP_NUMBER = "923055198651";
+const DEFAULT_WHATSAPP = "923055198651";
 
 interface ClaimRecord {
   id: number;
@@ -127,6 +127,22 @@ export default function UserHomeScreen() {
   const [pendingOrderCount, setPendingOrderCount] = useState<number>(0);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(DEFAULT_WHATSAPP);
+
+  const fetchWhatsappNumber = useCallback(async () => {
+    if (!user?.role) return;
+    try {
+      const token = await getToken();
+      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/whatsapp-contacts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const role = user.role as "mechanic" | "salesman" | "retailer";
+        setWhatsappNumber(data[role] || DEFAULT_WHATSAPP);
+      }
+    } catch {}
+  }, [user?.role]);
 
   const fetchAdsTickers = useCallback(async () => {
     try {
@@ -182,6 +198,7 @@ export default function UserHomeScreen() {
   }, [user?.role]);
 
   useEffect(() => { fetchAdsTickers(); }, [fetchAdsTickers]);
+  useEffect(() => { fetchWhatsappNumber(); }, [fetchWhatsappNumber]);
   useEffect(() => { refreshUser(); }, []);
   useEffect(() => {
     if (!user?.id) return;
@@ -315,7 +332,7 @@ export default function UserHomeScreen() {
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => Linking.openURL(`whatsapp://send?phone=${WHATSAPP_NUMBER}`)}
+          onPress={() => Linking.openURL(`whatsapp://send?phone=${whatsappNumber}`)}
           style={styles.waBtn}
         >
           <FontAwesome name="whatsapp" size={22} color="#25D366" />
