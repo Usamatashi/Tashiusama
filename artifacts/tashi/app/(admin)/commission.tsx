@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -148,7 +148,7 @@ function MonthlyTotalsModal({ visible, onClose }: { visible: boolean; onClose: (
 }
 
 // ─── Summary Banner ────────────────────────────────────────────────────────────
-function SummaryBanner({ entries, onPressSales }: { entries: CommissionEntry[]; onPressSales: () => void }) {
+function SummaryBanner({ entries }: { entries: CommissionEntry[] }) {
   const now = new Date();
   const curMonthLabel = now.toLocaleDateString("en-GB", { month: "long" });
   const totalSalesmen = entries.length;
@@ -179,8 +179,8 @@ function SummaryBanner({ entries, onPressSales }: { entries: CommissionEntry[]; 
 
       <View style={banner.divider} />
 
-      {/* Current-month sales — tappable */}
-      <TouchableOpacity style={banner.item} onPress={onPressSales} activeOpacity={0.75}>
+      {/* Current-month sales */}
+      <View style={banner.item}>
         <View style={[banner.iconWrap, { backgroundColor: "#FEF3C7" }]}>
           <Feather name="trending-up" size={14} color={Colors.adminAccent} />
         </View>
@@ -189,9 +189,8 @@ function SummaryBanner({ entries, onPressSales }: { entries: CommissionEntry[]; 
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
           <Text style={[banner.lbl, { color: Colors.adminAccent }]}>{curMonthLabel} Sales</Text>
-          <Feather name="chevron-right" size={10} color={Colors.adminAccent} />
         </View>
-      </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -262,7 +261,6 @@ export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
-  const [showTotals, setShowTotals] = useState(false);
 
   const { data, isLoading, refetch, isFetching } = useQuery<CommissionEntry[]>({
     queryKey: ["salesman-commissions"],
@@ -294,7 +292,7 @@ export default function CommissionScreen() {
   const renderHeader = useCallback(() => (
     <>
       {entries.length > 0 && (
-        <SummaryBanner entries={entries} onPressSales={() => setShowTotals(true)} />
+        <SummaryBanner entries={entries} />
       )}
       {entries.length > 0 && (
         <View style={styles.sectionLabel}>
@@ -350,8 +348,6 @@ export default function CommissionScreen() {
           }
         />
       )}
-
-      <MonthlyTotalsModal visible={showTotals} onClose={() => setShowTotals(false)} />
     </View>
   );
 }
