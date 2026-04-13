@@ -206,25 +206,18 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <View style={styles.actionSep} />
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={logout}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.actionIconBox, { backgroundColor: "#FEE2E2" }]}>
-              <Feather name="log-out" size={18} color="#EF4444" />
-            </View>
-            <View style={styles.actionTextWrap}>
-              <Text style={[styles.actionTitle, { color: "#EF4444" }]}>Sign Out</Text>
-              <Text style={styles.actionSub}>Log out of your account</Text>
-            </View>
-            <View style={styles.actionChevron}>
-              <Feather name="chevron-right" size={18} color="#EF4444" />
-            </View>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={styles.signOutBtn}
+          onPress={logout}
+          activeOpacity={0.82}
+        >
+          <View style={styles.signOutIconWrap}>
+            <Feather name="log-out" size={18} color="#EF4444" />
+          </View>
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
 
       </ScrollView>
 
@@ -402,6 +395,34 @@ const styles = StyleSheet.create({
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: "#F5F5F5",
     alignItems: "center", justifyContent: "center",
+  },
+
+  signOutBtn: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#EF4444",
+    shadowColor: "#EF4444",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  signOutIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center", justifyContent: "center",
+  },
+  signOutText: {
+    fontSize: 16, fontFamily: "Inter_700Bold",
+    color: "#EF4444", letterSpacing: 0.3,
   },
 
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
