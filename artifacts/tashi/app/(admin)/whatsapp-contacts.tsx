@@ -233,6 +233,7 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
