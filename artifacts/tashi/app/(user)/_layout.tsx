@@ -20,16 +20,11 @@ type TabItemProps = {
 
 function TabItem({ icon, label, active, onPress }: TabItemProps) {
   return (
-    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.tabPill, active && styles.tabPillActive]}>
-        <Feather name={icon} size={19} color={active ? "#fff" : "#ABABAB"} />
-        {active && (
-          <Text style={styles.tabPillLabel}>{label}</Text>
-        )}
+    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.75}>
+      <View style={[styles.iconBubble, active && styles.iconBubbleActive]}>
+        <Feather name={icon} size={20} color={active ? "#fff" : "#AAAAAA"} />
       </View>
-      {!active && (
-        <Text style={styles.tabLabel}>{label}</Text>
-      )}
+      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -42,19 +37,19 @@ type FABProps = {
 
 function OrderFAB({ icon, label, onPress }: FABProps) {
   return (
-    <TouchableOpacity style={styles.fabWrap} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.fabInner}>
+    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.fabBubble}>
         <Feather name={icon} size={22} color="#fff" />
       </View>
-      <Text style={styles.fabLabel}>{label}</Text>
+      <Text style={[styles.tabLabel, styles.tabLabelActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 function TabBar({ children, bottomPad }: { children: React.ReactNode; bottomPad: number }) {
   return (
-    <View style={[styles.tabBarOuter, { paddingBottom: bottomPad }]}>
-      <View style={styles.tabBarInner}>
+    <View style={styles.tabBarOuter}>
+      <View style={[styles.tabBarInner, { paddingBottom: bottomPad > 0 ? bottomPad : 10 }]}>
         {children}
       </View>
     </View>
@@ -129,86 +124,78 @@ export default function UserLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F4F1" },
+  container: { flex: 1, backgroundColor: "#F5F6FA" },
 
   tabBarOuter: {
-    backgroundColor: "transparent",
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    backgroundColor: "#F5F6FA",
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
   tabBarInner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1A1A",
-    borderRadius: 36,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    paddingTop: 10,
     paddingHorizontal: 8,
-    paddingVertical: 8,
     shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 18,
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
 
   tabItem: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 2,
+    gap: 5,
+    paddingBottom: 4,
   },
-  tabPill: {
-    flexDirection: "row",
+
+  iconBubble: {
+    width: 48,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 24,
+    backgroundColor: "transparent",
   },
-  tabPillActive: {
+  iconBubbleActive: {
     backgroundColor: Colors.primary,
     shadowColor: Colors.primary,
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.38,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  tabPillLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    letterSpacing: 0.2,
+
+  fabBubble: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.42,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+    marginTop: -20,
+    borderWidth: 3,
+    borderColor: "#fff",
   },
+
   tabLabel: {
     fontSize: 10,
     fontFamily: "Inter_500Medium",
-    color: "#777",
+    color: "#BBBBBB",
     letterSpacing: 0.2,
   },
-
-  fabWrap: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 2,
-  },
-  fabInner: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
-  },
-  fabLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
+  tabLabelActive: {
     color: Colors.primary,
-    letterSpacing: 0.3,
+    fontFamily: "Inter_700Bold",
   },
 });
