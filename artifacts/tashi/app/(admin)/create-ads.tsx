@@ -30,6 +30,10 @@ interface Ad {
   createdAt: string;
 }
 
+function getAdImageUri(ad: Ad) {
+  return ad.mediaUrl || ad.imageBase64 || null;
+}
+
 async function getToken() {
   const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
   return (await AsyncStorage.getItem("tashi_token")) || "";
@@ -193,9 +197,11 @@ export default function CreateAdsScreen() {
               </View>
             ) : (
               <View style={styles.grid}>
-                {imageAds.map((ad) => (
+                {imageAds.map((ad) => {
+                  const imageUri = getAdImageUri(ad);
+                  return (
                   <View key={ad.id} style={styles.card}>
-                    {ad.imageBase64 ? <Image source={{ uri: ad.imageBase64 }} style={styles.cardImage} resizeMode="cover" /> : <View style={styles.cardImage} />}
+                    {imageUri ? <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" /> : <View style={styles.cardImage} />}
                     <TouchableOpacity
                       style={styles.deleteBtn}
                       onPress={() => deleteAd(ad.id)}
@@ -207,7 +213,8 @@ export default function CreateAdsScreen() {
                       }
                     </TouchableOpacity>
                   </View>
-                ))}
+                );
+                })}
               </View>
             )}
 
