@@ -20,12 +20,16 @@ type TabItemProps = {
 
 function TabItem({ icon, label, active, onPress }: TabItemProps) {
   return (
-    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.tabIconWrap}>
-        <Feather name={icon} size={20} color={active ? Colors.primary : "#B0B0B0"} />
-        {active && <View style={styles.activeDot} />}
+    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.8}>
+      <View style={[styles.tabPill, active && styles.tabPillActive]}>
+        <Feather name={icon} size={19} color={active ? "#fff" : "#ABABAB"} />
+        {active && (
+          <Text style={styles.tabPillLabel}>{label}</Text>
+        )}
       </View>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+      {!active && (
+        <Text style={styles.tabLabel}>{label}</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -38,15 +42,24 @@ type FABProps = {
 
 function OrderFAB({ icon, label, onPress }: FABProps) {
   return (
-    <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity style={styles.fabWrap} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.fabInner}>
-        <Feather name={icon} size={22} color={Colors.white} />
+        <Feather name={icon} size={22} color="#fff" />
       </View>
       <Text style={styles.fabLabel}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
+function TabBar({ children, bottomPad }: { children: React.ReactNode; bottomPad: number }) {
+  return (
+    <View style={[styles.tabBarOuter, { paddingBottom: bottomPad }]}>
+      <View style={styles.tabBarInner}>
+        {children}
+      </View>
+    </View>
+  );
+}
 
 function SalesmanTabBar() {
   const insets = useSafeAreaInsets();
@@ -57,11 +70,11 @@ function SalesmanTabBar() {
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 10 : 0);
 
   return (
-    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
+    <TabBar bottomPad={bottomPad}>
       <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
       <TabItem icon="credit-card" label="Accounts" active={isPayments} onPress={() => router.replace("/(user)/payments")} />
       <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
-    </View>
+    </TabBar>
   );
 }
 
@@ -74,11 +87,11 @@ function RetailerTabBar() {
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 10 : 0);
 
   return (
-    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
+    <TabBar bottomPad={bottomPad}>
       <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
       <TabItem icon="credit-card" label="Account" active={isPayments} onPress={() => router.replace("/(user)/payments")} />
       <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
-    </View>
+    </TabBar>
   );
 }
 
@@ -90,13 +103,11 @@ function DefaultTabBar() {
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 10 : 0);
 
   return (
-    <View style={styles.navWrapper}>
-      <View style={[styles.tabBarWrapper, { paddingBottom: bottomPad }]}>
-        <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
-        <OrderFAB icon="maximize" label="Scan QR" onPress={() => router.push("/(user)/scan")} />
-        <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
-      </View>
-    </View>
+    <TabBar bottomPad={bottomPad}>
+      <TabItem icon="home" label="Home" active={isHome} onPress={() => router.replace("/(user)/")} />
+      <OrderFAB icon="maximize" label="Scan QR" onPress={() => router.push("/(user)/scan")} />
+      <TabItem icon="user" label="Profile" active={isProfile} onPress={() => router.replace("/(user)/profile")} />
+    </TabBar>
   );
 }
 
@@ -120,20 +131,71 @@ export default function UserLayout() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4F1" },
 
-  navWrapper: {
+  tabBarOuter: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  tabBarInner: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 36,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 18,
   },
 
-  fab: {
+  tabItem: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 6,
+    gap: 4,
+    paddingVertical: 2,
+  },
+  tabPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 24,
+  },
+  tabPillActive: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  tabPillLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: 0.2,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    color: "#777",
+    letterSpacing: 0.2,
+  },
+
+  fabWrap: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 2,
   },
   fabInner: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
@@ -142,64 +204,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 10,
-    borderWidth: 3,
-    borderColor: Colors.white,
-    marginBottom: 2,
   },
   fabLabel: {
     fontSize: 10,
     fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
     letterSpacing: 0.3,
-  },
-
-
-  tabBarWrapper: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderTopWidth: 2.5,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderTopColor: Colors.primary,
-    borderLeftColor: `${Colors.primary}30`,
-    borderRightColor: `${Colors.primary}30`,
-    paddingTop: 8,
-    paddingHorizontal: 12,
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: -6 },
-    elevation: 20,
-  },
-
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 6,
-  },
-  tabIconWrap: {
-    alignItems: "center",
-    marginBottom: 3,
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-    marginTop: 3,
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "#B0B0B0",
-    letterSpacing: 0.2,
-  },
-  tabLabelActive: {
-    color: Colors.primary,
-    fontFamily: "Inter_700Bold",
   },
 });
