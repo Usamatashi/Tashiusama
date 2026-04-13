@@ -155,6 +155,19 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          <View style={styles.heroStats}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>
+                {user?.phone || "-"}
+              </Text>
+              <Text style={styles.heroStatLabel}>Phone</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{memberSince.split(" ")[1] || "-"}</Text>
+              <Text style={styles.heroStatLabel}>Member Since</Text>
+            </View>
+          </View>
         </View>
 
         {/* Change Password button */}
