@@ -155,46 +155,6 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <View style={styles.heroStats}>
-            {isRetailer ? (
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>
-                  {user?.phone || "-"}
-                </Text>
-                <Text style={styles.heroStatLabel}>Phone</Text>
-              </View>
-            ) : isSalesman ? (
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>
-                  {user?.city || "-"}
-                </Text>
-                <Text style={styles.heroStatLabel}>City</Text>
-              </View>
-            ) : (
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatValue}>{user?.points ?? 0}</Text>
-                <Text style={styles.heroStatLabel}>Points</Text>
-              </View>
-            )}
-            <View style={styles.heroStatDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{memberSince.split(" ")[1] || "-"}</Text>
-              <Text style={styles.heroStatLabel}>Member Since</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Info rows */}
-        <View style={styles.infoCard}>
-          <InfoRow label="Name" value={user?.name || "-"} />
-          <InfoRow label="Phone" value={user?.phone || "-"} />
-          {!isRetailer && !isSalesman && !isMechanic && (
-            <InfoRow label="Role" value={roleLabel} valueColor={roleColor} />
-          )}
-          {!isRetailer && !isSalesman && !isMechanic && (
-            <InfoRow label="Total Points" value={`${user?.points ?? 0} pts`} valueColor={Colors.primary} />
-          )}
-          <InfoRow label="Member Since" value={memberSince} last />
         </View>
 
         {/* Change Password button */}
