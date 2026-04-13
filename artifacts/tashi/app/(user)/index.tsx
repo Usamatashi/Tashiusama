@@ -334,37 +334,55 @@ export default function UserHomeScreen() {
 
         {/* ── Points Hero Card — mechanics only ─────────────── */}
         {isMechanic && (
-          <View style={styles.heroWrapper}>
-            <LinearGradient
-              colors={["#F09135", "#E87722", "#C5611A"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroCard}
-            >
-              <View style={styles.decCircle1} />
-              <View style={styles.decCircle2} />
-              <View style={styles.decCircle3} />
-              <Text style={styles.heroLabel}>Available Points</Text>
-              <Text style={styles.heroValue}>{displayPoints}</Text>
-              <Text style={styles.heroUnit}>points</Text>
-            </LinearGradient>
+          <LinearGradient
+            colors={["#FF9A3C", "#E87722", "#C5611A"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            {/* Decorative circles */}
+            <View style={styles.decCircle1} />
+            <View style={styles.decCircle2} />
+            <View style={styles.decCircle3} />
+            <View style={styles.decCircle4} />
 
-            {displayPoints > 0 && (
-              <Animated.View style={{ opacity: blinkAnim, transform: [{ scale: pulseAnim }] }}>
-                <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimTabOuter}>
-                  <LinearGradient
-                    colors={["#C5611A", "#A84E14"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={styles.claimTabInner}
-                  >
-                    <Text style={styles.claimTabIcon}>🎁</Text>
-                    <Text style={styles.claimTabText}>Claim{"\n"}Rewards</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
-            )}
-          </View>
+            {/* Top row: label + badge */}
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroBadge}>
+                <Text style={styles.heroBadgeText}>🏅 Loyalty Points</Text>
+              </View>
+            </View>
+
+            {/* Points value */}
+            <View style={styles.heroPointsRow}>
+              <Text style={styles.heroValue}>{displayPoints}</Text>
+              <Text style={styles.heroUnit}>pts</Text>
+            </View>
+
+            <Text style={styles.heroSub}>Your available balance</Text>
+
+            {/* Divider */}
+            <View style={styles.heroDivider} />
+
+            {/* Claim button row */}
+            <View style={styles.heroBottom}>
+              <View style={styles.heroBottomLeft}>
+                <Text style={styles.heroBottomLabel}>Ready to redeem</Text>
+                <Text style={styles.heroBottomSub}>Claim your points anytime</Text>
+              </View>
+              {displayPoints > 0 ? (
+                <Animated.View style={{ opacity: blinkAnim, transform: [{ scale: pulseAnim }] }}>
+                  <TouchableOpacity onPress={openClaimModal} activeOpacity={0.85} style={styles.claimChip}>
+                    <Text style={styles.claimChipText}>🎁  Claim</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              ) : (
+                <View style={styles.claimChipDisabled}>
+                  <Text style={styles.claimChipDisabledText}>No points yet</Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
         )}
 
         {/* ── Sales Financial Hero Card — salesman only ─────────────── */}
@@ -634,59 +652,62 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, gap: 18, paddingBottom: 32 },
 
   /* ── Hero Points Card ─────────────────────────────────────────── */
-  heroWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   heroCard: {
-    flex: 1,
-    aspectRatio: undefined,
-    minHeight: 170,
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 22,
-    justifyContent: "flex-end",
     overflow: "hidden",
-    zIndex: 1,
     shadowColor: Colors.primary,
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
   },
   decCircle1: {
-    position: "absolute", width: 120, height: 120, borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    top: -30, right: -30,
+    position: "absolute", width: 160, height: 160, borderRadius: 80,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    top: -50, right: -40,
   },
   decCircle2: {
-    position: "absolute", width: 80, height: 80, borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    top: 20, right: 10,
+    position: "absolute", width: 100, height: 100, borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    top: 30, right: 30,
   },
   decCircle3: {
-    position: "absolute", width: 60, height: 60, borderRadius: 30,
+    position: "absolute", width: 70, height: 70, borderRadius: 35,
     backgroundColor: "rgba(0,0,0,0.08)",
-    bottom: -15, left: -15,
+    bottom: -20, left: -20,
   },
-  heroLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.75)",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 4,
+  decCircle4: {
+    position: "absolute", width: 50, height: 50, borderRadius: 25,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    bottom: 20, right: 90,
+  },
+  heroTopRow: {
+    flexDirection: "row", alignItems: "center", marginBottom: 16,
+  },
+  heroBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.3)",
+  },
+  heroBadgeText: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff", letterSpacing: 0.3,
+  },
+  heroPointsRow: {
+    flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 4,
   },
   heroValue: {
-    fontSize: 48,
+    fontSize: 64,
     fontFamily: "Inter_700Bold",
     color: Colors.white,
-    lineHeight: 52,
+    lineHeight: 68,
     includeFontPadding: false,
+    letterSpacing: -1,
   },
   heroUnit: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontSize: 20, fontFamily: "Inter_700Bold",
     color: "rgba(255,255,255,0.7)",
+    marginBottom: 10,
     marginTop: 2,
   },
 
@@ -757,30 +778,37 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  /* Claim tab — protrudes from the right edge of the hero card */
-  claimTabOuter: {
-    marginLeft: -2,
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#8B3A0A",
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 4, height: 4 },
-    elevation: 6,
+  heroSub: {
+    fontSize: 13, fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.65)", marginBottom: 18,
   },
-  claimTabInner: {
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    gap: 6,
+  heroDivider: {
+    height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginBottom: 16,
   },
-  claimTabIcon: { fontSize: 20 },
-  claimTabText: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: Colors.white,
-    textAlign: "center",
-    lineHeight: 16,
+  heroBottom: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  heroBottomLeft: { flex: 1 },
+  heroBottomLabel: {
+    fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff",
+  },
+  heroBottomSub: {
+    fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", marginTop: 2,
+  },
+  claimChip: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 24, paddingHorizontal: 18, paddingVertical: 10,
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.5)",
+  },
+  claimChipText: {
+    fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.3,
+  },
+  claimChipDisabled: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 24, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  claimChipDisabledText: {
+    fontSize: 11, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.5)",
   },
 
   bannerScroll: { borderRadius: 18, zIndex: 5, elevation: 5 },
