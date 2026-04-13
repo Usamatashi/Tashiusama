@@ -1026,7 +1026,7 @@ export default function SuperConfigScreen() {
         </View>
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Admin Control Panel</Text>
-          <Text style={styles.headerSubtitle}>Manage what regular admins can see</Text>
+          <Text style={styles.headerSubtitle}>Manage regions and regular admin access</Text>
         </View>
       </View>
 
@@ -1034,14 +1034,6 @@ export default function SuperConfigScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Security Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Security</Text>
-          </View>
-          <ChangePasswordPanel />
-        </View>
-
         {/* Regions Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
