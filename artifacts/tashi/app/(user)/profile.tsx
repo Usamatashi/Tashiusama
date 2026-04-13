@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
@@ -50,9 +51,7 @@ export default function ProfileScreen() {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
 
-  useEffect(() => {
-    refreshUser();
-  }, []);
+  useEffect(() => { refreshUser(); }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -62,8 +61,6 @@ export default function ProfileScreen() {
   }, [user?.id]);
 
   const isRetailer = user?.role === "retailer";
-  const isSalesman = user?.role === "salesman";
-  const isMechanic = user?.role === "mechanic";
   const roleColor = ROLE_COLORS[user?.role || ""] || Colors.primary;
   const roleLabel = ROLE_LABELS[user?.role || ""] || user?.role || "-";
   const initial = user?.name?.[0]?.toUpperCase() || user?.phone?.[0]?.toUpperCase() || "U";
@@ -79,16 +76,13 @@ export default function ProfileScreen() {
 
   const handleChangePassword = async () => {
     if (!currentPw || !newPw || !confirmPw) {
-      Alert.alert("Missing fields", "Please fill in all fields.");
-      return;
+      Alert.alert("Missing fields", "Please fill in all fields."); return;
     }
     if (newPw.length < 6) {
-      Alert.alert("Too short", "New password must be at least 6 characters.");
-      return;
+      Alert.alert("Too short", "New password must be at least 6 characters."); return;
     }
     if (newPw !== confirmPw) {
-      Alert.alert("Mismatch", "New passwords do not match.");
-      return;
+      Alert.alert("Mismatch", "New passwords do not match."); return;
     }
     setChangingPw(true);
     try {
@@ -109,10 +103,7 @@ export default function ProfileScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
@@ -121,102 +112,141 @@ export default function ProfileScreen() {
     }
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
-      <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={{ width: 40 }} />
-      </View>
+  const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Avatar hero */}
-        <View style={styles.heroCard}>
+  return (
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 32 }}>
+
+        {/* ── Gradient Hero ── */}
+        <LinearGradient
+          colors={[roleColor, `${roleColor}CC`, `${roleColor}88`]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, { paddingTop: topPad + 16 }]}
+        >
+          {/* Decorative circles */}
+          <View style={[styles.decCircle, { width: 180, height: 180, top: -40, right: -40, opacity: 0.12 }]} />
+          <View style={[styles.decCircle, { width: 100, height: 100, top: 20, left: -20, opacity: 0.1 }]} />
+          <View style={[styles.decCircle, { width: 60, height: 60, bottom: 20, right: 60, opacity: 0.15 }]} />
+
+          {/* Back button */}
+          <View style={[styles.heroBack, { top: topPad + 8 }]}>
+            <BackButton dark />
+          </View>
+
+          {/* Avatar */}
           <TouchableOpacity onPress={pickImage} activeOpacity={0.85} style={styles.avatarWrap}>
-            <View style={[styles.avatarOuter, { borderColor: `${roleColor}40` }]}>
-              {profilePic ? (
-                <Image source={{ uri: profilePic }} style={styles.avatarImage} />
-              ) : (
-                <View style={[styles.avatarInner, { backgroundColor: roleColor }]}>
-                  <Text style={styles.avatarText}>{initial}</Text>
-                </View>
-              )}
+            <View style={styles.avatarGlow}>
+              <View style={styles.avatarRing}>
+                {profilePic ? (
+                  <Image source={{ uri: profilePic }} style={styles.avatarImage} />
+                ) : (
+                  <View style={[styles.avatarInner, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
+                    <Text style={styles.avatarText}>{initial}</Text>
+                  </View>
+                )}
+              </View>
             </View>
-            <View style={[styles.cameraBtn, { backgroundColor: roleColor }]}>
-              <Feather name="camera" size={13} color="#fff" />
+            <View style={styles.cameraBtn}>
+              <Feather name="camera" size={14} color={roleColor} />
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.heroEmail}>{user?.name || user?.phone}</Text>
+          <Text style={styles.heroName}>{user?.name || user?.phone || "User"}</Text>
+
           {!isRetailer && (
-            <View style={[styles.rolePill, { backgroundColor: `${roleColor}18` }]}>
-              <View style={[styles.roleDot, { backgroundColor: roleColor }]} />
-              <Text style={[styles.rolePillText, { color: roleColor }]}>{roleLabel}</Text>
+            <View style={styles.roleBadge}>
+              <Text style={[styles.roleBadgeText, { color: roleColor }]}>{roleLabel}</Text>
             </View>
           )}
 
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>
+          <View style={{ height: 50 }} />
+        </LinearGradient>
+
+        {/* ── Floating Stats Card ── */}
+        <View style={styles.statsCardWrap}>
+          <View style={styles.statsCard}>
+            <View style={styles.statItem}>
+              <View style={styles.statIconWrap}>
+                <Feather name="phone" size={15} color={roleColor} />
+              </View>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
                 {user?.phone || "-"}
               </Text>
-              <Text style={styles.heroStatLabel}>Phone</Text>
+              <Text style={styles.statLabel}>Phone</Text>
             </View>
-            <View style={styles.heroStatDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{memberSince.split(" ")[1] || "-"}</Text>
-              <Text style={styles.heroStatLabel}>Member Since</Text>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <View style={styles.statIconWrap}>
+                <Feather name="calendar" size={15} color={roleColor} />
+              </View>
+              <Text style={styles.statValue}>{memberSince.split(" ")[1] || "-"}</Text>
+              <Text style={styles.statLabel}>Member Since</Text>
             </View>
           </View>
         </View>
 
-        {/* Change Password button */}
-        <TouchableOpacity style={styles.changePwBtn} onPress={() => setShowChangePw(true)} activeOpacity={0.82}>
-          <View style={styles.changePwBtnInner}>
-            <Feather name="lock" size={18} color={Colors.primary} />
-            <Text style={styles.changePwBtnText}>Change Password</Text>
-            <Feather name="chevron-right" size={16} color={Colors.primary} style={{ marginLeft: "auto" }} />
-          </View>
-        </TouchableOpacity>
+        {/* ── Action Section ── */}
+        <View style={styles.actionsWrap}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => setShowChangePw(true)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconBox, { backgroundColor: `${Colors.primary}15` }]}>
+              <Feather name="lock" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.actionTextWrap}>
+              <Text style={styles.actionTitle}>Change Password</Text>
+              <Text style={styles.actionSub}>Update your account password</Text>
+            </View>
+            <View style={styles.actionChevron}>
+              <Feather name="chevron-right" size={18} color={Colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.82}>
-          <View style={styles.logoutBtnInner}>
-            <Feather name="log-out" size={18} color="#fff" />
-            <Text style={styles.logoutBtnText}>Sign Out</Text>
-          </View>
-        </TouchableOpacity>
+          <View style={styles.actionSep} />
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={logout}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.actionIconBox, { backgroundColor: "#FEE2E2" }]}>
+              <Feather name="log-out" size={18} color="#EF4444" />
+            </View>
+            <View style={styles.actionTextWrap}>
+              <Text style={[styles.actionTitle, { color: "#EF4444" }]}>Sign Out</Text>
+              <Text style={styles.actionSub}>Log out of your account</Text>
+            </View>
+            <View style={styles.actionChevron}>
+              <Feather name="chevron-right" size={18} color="#EF4444" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
-      {/* Change Password Modal */}
+      {/* ── Change Password Modal ── */}
       <Modal visible={showChangePw} transparent animationType="slide" onRequestClose={closeChangePw}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeChangePw} />
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <Text style={styles.modalSubtitle}>Enter your current password then choose a new one</Text>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.actionIconBox, { backgroundColor: `${Colors.primary}15` }]}>
+                <Feather name="lock" size={20} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Change Password</Text>
+                <Text style={styles.modalSubtitle}>Enter your current then new password</Text>
+              </View>
+            </View>
 
-            <PwField
-              label="Current Password"
-              value={currentPw}
-              onChangeText={setCurrentPw}
-              show={showCurrentPw}
-              toggleShow={() => setShowCurrentPw((v) => !v)}
-            />
-            <PwField
-              label="New Password"
-              value={newPw}
-              onChangeText={setNewPw}
-              show={showNewPw}
-              toggleShow={() => setShowNewPw((v) => !v)}
-            />
-            <PwField
-              label="Confirm New Password"
-              value={confirmPw}
-              onChangeText={setConfirmPw}
-              show={showConfirmPw}
-              toggleShow={() => setShowConfirmPw((v) => !v)}
-            />
+            <PwField label="Current Password" value={currentPw} onChangeText={setCurrentPw} show={showCurrentPw} toggleShow={() => setShowCurrentPw(v => !v)} />
+            <PwField label="New Password" value={newPw} onChangeText={setNewPw} show={showNewPw} toggleShow={() => setShowNewPw(v => !v)} />
+            <PwField label="Confirm New Password" value={confirmPw} onChangeText={setConfirmPw} show={showConfirmPw} toggleShow={() => setShowConfirmPw(v => !v)} />
 
             <TouchableOpacity
               style={[styles.submitBtn, changingPw && { opacity: 0.7 }]}
@@ -224,11 +254,10 @@ export default function ProfileScreen() {
               disabled={changingPw}
               activeOpacity={0.82}
             >
-              {changingPw ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitBtnText}>Update Password</Text>
-              )}
+              {changingPw
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.submitBtnText}>Update Password</Text>
+              }
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.cancelBtn} onPress={closeChangePw} activeOpacity={0.7}>
@@ -241,26 +270,10 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoRow({ label, value, valueColor, last }: {
-  label: string;
-  value: string;
-  valueColor?: string;
-  last?: boolean;
-}) {
-  return (
-    <View style={[styles.row, !last && styles.rowBorder]}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, valueColor ? { color: valueColor } : {}]}>{value}</Text>
-    </View>
-  );
-}
-
 function PwField({ label, value, onChangeText, show, toggleShow }: {
-  label: string;
-  value: string;
+  label: string; value: string;
   onChangeText: (v: string) => void;
-  show: boolean;
-  toggleShow: () => void;
+  show: boolean; toggleShow: () => void;
 }) {
   return (
     <View style={styles.pwFieldWrap}>
@@ -272,7 +285,7 @@ function PwField({ label, value, onChangeText, show, toggleShow }: {
           onChangeText={onChangeText}
           secureTextEntry={!show}
           placeholder="Enter password"
-          placeholderTextColor={Colors.textSecondary}
+          placeholderTextColor={Colors.textLight}
           autoCapitalize="none"
         />
         <TouchableOpacity onPress={toggleShow} style={styles.pwEyeBtn}>
@@ -284,98 +297,112 @@ function PwField({ label, value, onChangeText, show, toggleShow }: {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F4F1" },
-  header: {
-    backgroundColor: Colors.white,
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-  },
-  headerTitle: { flex: 1, fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
-  scroll: { padding: 16, gap: 14, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: "#F5F6FA" },
 
-  heroCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 24, padding: 24,
-    alignItems: "center", gap: 10,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  avatarWrap: {
+  hero: {
+    alignItems: "center",
+    paddingBottom: 0,
+    overflow: "hidden",
     position: "relative",
+    paddingHorizontal: 24,
+  },
+  heroBack: {
+    position: "absolute",
+    left: 12,
+  },
+  decCircle: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "#fff",
+  },
+
+  avatarWrap: { position: "relative", marginBottom: 14 },
+  avatarGlow: {
+    width: 112, height: 112, borderRadius: 56,
+    shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 20, shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  avatarRing: {
+    width: 112, height: 112, borderRadius: 56,
+    borderWidth: 3, borderColor: "rgba(255,255,255,0.7)",
+    overflow: "hidden", justifyContent: "center", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  avatarImage: { width: 106, height: 106, borderRadius: 53 },
+  avatarInner: {
+    width: 106, height: 106, borderRadius: 53,
+    justifyContent: "center", alignItems: "center",
+  },
+  avatarText: { fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff" },
+  cameraBtn: {
+    position: "absolute", bottom: 2, right: 2,
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: "#fff",
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.9)",
+  },
+  heroName: {
+    fontSize: 24, fontFamily: "Inter_700Bold", color: "#fff",
+    textAlign: "center", letterSpacing: 0.3,
+    textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  roleBadge: {
+    marginTop: 6, marginBottom: 4,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 5,
+  },
+  roleBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+
+  statsCardWrap: {
+    marginHorizontal: 20,
+    marginTop: -28,
+    marginBottom: 20,
+  },
+  statsCard: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    paddingVertical: 20,
+    shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  statItem: { flex: 1, alignItems: "center", gap: 4 },
+  statIconWrap: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: `${Colors.primary}12`,
+    alignItems: "center", justifyContent: "center",
     marginBottom: 4,
   },
-  avatarOuter: {
-    width: 96, height: 96, borderRadius: 48,
-    borderWidth: 3, justifyContent: "center", alignItems: "center",
-    overflow: "hidden",
-  },
-  avatarImage: {
-    width: 90, height: 90, borderRadius: 45,
-  },
-  avatarInner: {
-    width: 90, height: 90, borderRadius: 45,
-    justifyContent: "center", alignItems: "center",
-  },
-  avatarText: { fontSize: 34, fontFamily: "Inter_700Bold", color: Colors.white },
-  cameraBtn: {
-    position: "absolute",
-    bottom: 0, right: 0,
-    width: 26, height: 26, borderRadius: 13,
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 2, borderColor: Colors.white,
-  },
-  heroEmail: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.text, textAlign: "center" },
-  rolePill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
-  },
-  roleDot: { width: 7, height: 7, borderRadius: 4 },
-  rolePillText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  heroStats: {
-    flexDirection: "row", alignItems: "center",
-    marginTop: 8, paddingTop: 16,
-    borderTopWidth: 1, borderTopColor: Colors.border, width: "100%",
-    justifyContent: "center", gap: 32,
-  },
-  heroStat: { alignItems: "center", gap: 2, flex: 1 },
-  heroStatValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
-  heroStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  heroStatDivider: { width: 1, height: 32, backgroundColor: Colors.border },
+  statValue: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
+  statLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  statDivider: { width: 1, backgroundColor: "#F0F0F0", marginVertical: 8 },
 
-  infoCard: {
-    backgroundColor: Colors.white, borderRadius: 20,
-    borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
-  },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 15 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  rowLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  rowValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
-
-  logoutBtn: {
-    backgroundColor: "#EF4444",
-    borderRadius: 16,
+  actionsWrap: {
+    marginHorizontal: 20,
+    backgroundColor: "#fff",
+    borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#EF4444",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  logoutBtnInner: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, paddingVertical: 16,
+  actionCard: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    paddingHorizontal: 18, paddingVertical: 16,
   },
-  logoutBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.3 },
-
-  changePwBtn: {
-    backgroundColor: Colors.white,
-    borderRadius: 16, borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
+  actionSep: { height: 1, backgroundColor: "#F5F5F5", marginHorizontal: 18 },
+  actionIconBox: {
+    width: 42, height: 42, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
   },
-  changePwBtnInner: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    paddingHorizontal: 20, paddingVertical: 16,
+  actionTextWrap: { flex: 1 },
+  actionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
+  actionSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
+  actionChevron: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center", justifyContent: "center",
   },
-  changePwBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.primary, flex: 1 },
 
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
   modalSheet: {
@@ -386,30 +413,32 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   modalHandle: {
-    width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    width: 40, height: 4, borderRadius: 2, backgroundColor: "#E5E5E5",
     alignSelf: "center", marginBottom: 20,
   },
-  modalTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text, marginBottom: 6 },
-  modalSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginBottom: 24 },
+  modalHeaderRow: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 24 },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.text },
+  modalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
 
-  pwFieldWrap: { marginBottom: 16 },
-  pwFieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  pwFieldWrap: { marginBottom: 14 },
+  pwFieldLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
   pwInputRow: {
     flexDirection: "row", alignItems: "center",
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    backgroundColor: "#F9F9F9",
+    borderWidth: 1.5, borderColor: "#E5E5E5", borderRadius: 12,
+    backgroundColor: "#FAFAFA",
   },
   pwInput: {
-    flex: 1, paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 16, fontFamily: "Inter_400Regular", color: Colors.text,
+    flex: 1, paddingHorizontal: 14, paddingVertical: 13,
+    fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.text,
   },
-  pwEyeBtn: { paddingHorizontal: 14, paddingVertical: 14 },
+  pwEyeBtn: { paddingHorizontal: 14, paddingVertical: 13 },
 
   submitBtn: {
     backgroundColor: Colors.primary, borderRadius: 14,
-    paddingVertical: 16, alignItems: "center", marginTop: 8, marginBottom: 12,
+    paddingVertical: 15, alignItems: "center", marginTop: 8, marginBottom: 10,
+    shadowColor: Colors.primary, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   cancelBtn: { alignItems: "center", paddingVertical: 8 },
-  cancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  cancelBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
 });
