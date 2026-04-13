@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     elevation: 16,
     borderWidth: 1.5,
-    borderColor: `${Colors.primary}35`,
+    borderColor: Colors.primary,
   },
 
   tabItem: {
