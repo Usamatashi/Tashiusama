@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     shadowOffset: { width: 0, height: -2 },
     elevation: 16,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderWidth: 1.5,
+    borderColor: `${Colors.primary}35`,
   },
 
   tabItem: {
