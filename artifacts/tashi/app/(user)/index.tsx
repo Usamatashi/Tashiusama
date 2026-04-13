@@ -489,29 +489,28 @@ export default function UserHomeScreen() {
 
         {/* Quick actions — mechanics only */}
         {!isRetailer && !isSalesman && (
-          <>
-            <Text style={styles.sectionLabel}>Quick Actions</Text>
-            <View style={styles.quickGrid}>
-              {quickActions.map((action, i) => (
-                <TouchableOpacity
-                  key={action.label}
-                  style={[
-                    styles.gridCard,
-                    { backgroundColor: action.accent },
-                    i === 0 ? { borderBottomRightRadius: 36 } : { borderBottomLeftRadius: 36 },
-                  ]}
-                  onPress={() => router.push(action.route as any)}
-                  activeOpacity={0.82}
-                >
-                  <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
-                    <Text style={styles.gridIconText}>{action.icon}</Text>
-                  </View>
+          <View style={styles.quickGrid}>
+            {quickActions.map((action, i) => (
+              <TouchableOpacity
+                key={action.label}
+                style={[
+                  styles.gridCard,
+                  { backgroundColor: action.accent },
+                  i === 0 ? { borderBottomRightRadius: 28 } : { borderBottomLeftRadius: 28 },
+                ]}
+                onPress={() => router.push(action.route as any)}
+                activeOpacity={0.82}
+              >
+                <View style={[styles.gridIcon, { backgroundColor: action.iconBg }]}>
+                  <Text style={styles.gridIconText}>{action.icon}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.gridCardTitle}>{action.label}</Text>
                   <Text style={styles.gridCardDesc}>{action.desc}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -825,21 +824,22 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary, letterSpacing: 0.5,
     textTransform: "uppercase", marginBottom: -4,
   },
-  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   gridCard: {
     width: "47%",
-    borderRadius: 20, padding: 16,
-    gap: 8,
+    borderRadius: 16, padding: 10,
+    flexDirection: "row",
+    gap: 10,
     alignItems: "center",
   },
   gridIcon: {
-    width: 44, height: 44, borderRadius: 14,
+    width: 36, height: 36, borderRadius: 10,
     justifyContent: "center", alignItems: "center",
-    marginBottom: 2,
+    flexShrink: 0,
   },
-  gridIconText: { fontSize: 22 },
-  gridCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
-  gridCardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center" },
+  gridIconText: { fontSize: 18 },
+  gridCardTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.text },
+  gridCardDesc: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
 
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
