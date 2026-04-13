@@ -151,23 +151,11 @@ function MonthlyTotalsModal({ visible, onClose }: { visible: boolean; onClose: (
 function SummaryBanner({ entries }: { entries: CommissionEntry[] }) {
   const now = new Date();
   const curMonthLabel = now.toLocaleDateString("en-GB", { month: "long" });
-  const totalSalesmen = entries.length;
   const curMonthOrders = entries.reduce((s, e) => s + e.currentMonthOrders, 0);
   const curMonthSales = entries.reduce((s, e) => s + e.currentMonthSalesValue, 0);
 
   return (
     <View style={banner.wrap}>
-      {/* Salesmen */}
-      <View style={banner.item}>
-        <View style={[banner.iconWrap, { backgroundColor: "#EFF6FF" }]}>
-          <Feather name="users" size={14} color="#1D4ED8" />
-        </View>
-        <Text style={banner.val}>{totalSalesmen}</Text>
-        <Text style={banner.lbl}>Salesmen</Text>
-      </View>
-
-      <View style={banner.divider} />
-
       {/* Current-month orders */}
       <View style={banner.item}>
         <View style={[banner.iconWrap, { backgroundColor: "#DCFCE7" }]}>
