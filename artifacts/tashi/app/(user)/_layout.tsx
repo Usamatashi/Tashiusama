@@ -22,7 +22,7 @@ function TabItem({ icon, label, active, onPress }: TabItemProps) {
   return (
     <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.75}>
       <View style={[styles.iconBubble, active && styles.iconBubbleActive]}>
-        <Feather name={icon} size={20} color={active ? "#fff" : "#AAAAAA"} />
+        <Feather name={icon} size={20} color={active ? "#fff" : "#1A1A1A"} />
       </View>
       <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
     </TouchableOpacity>
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
     fontFamily: "Inter_500Medium",
-    color: "#BBBBBB",
+    color: "#1A1A1A",
     letterSpacing: 0.2,
   },
   tabLabelActive: {
