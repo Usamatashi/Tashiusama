@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -645,11 +646,125 @@ function SalesmanPayments() {
   );
 }
 
+// ─── Date Picker Modal ──────────────────────────────────────────────────────────
+function DatePickerModal({
+  visible, value, title, onConfirm, onClose,
+}: {
+  visible: boolean; value: Date | null; title: string;
+  onConfirm: (d: Date) => void; onClose: () => void;
+}) {
+  const today = new Date();
+  const [year, setYear] = useState((value ?? today).getFullYear());
+  const [month, setMonth] = useState((value ?? today).getMonth());
+  const [day, setDay] = useState((value ?? today).getDate());
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const clampedDay = Math.min(day, daysInMonth);
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() - i);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={dpStyles.overlay} onPress={onClose}>
+        <Pressable style={dpStyles.sheet} onPress={e => e.stopPropagation()}>
+          <Text style={dpStyles.title}>{title}</Text>
+
+          <View style={dpStyles.row}>
+            <View style={dpStyles.col}>
+              <Text style={dpStyles.colLabel}>Day</Text>
+              <ScrollView style={dpStyles.picker} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                  <Pressable
+                    key={d}
+                    style={[dpStyles.pickerItem, clampedDay === d && dpStyles.pickerItemActive]}
+                    onPress={() => setDay(d)}
+                  >
+                    <Text style={[dpStyles.pickerItemText, clampedDay === d && dpStyles.pickerItemTextActive]}>
+                      {String(d).padStart(2, "0")}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={dpStyles.col}>
+              <Text style={dpStyles.colLabel}>Month</Text>
+              <ScrollView style={dpStyles.picker} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                {MONTHS.map((m, i) => (
+                  <Pressable
+                    key={m}
+                    style={[dpStyles.pickerItem, month === i && dpStyles.pickerItemActive]}
+                    onPress={() => setMonth(i)}
+                  >
+                    <Text style={[dpStyles.pickerItemText, month === i && dpStyles.pickerItemTextActive]}>{m}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={dpStyles.col}>
+              <Text style={dpStyles.colLabel}>Year</Text>
+              <ScrollView style={dpStyles.picker} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                {years.map(y => (
+                  <Pressable
+                    key={y}
+                    style={[dpStyles.pickerItem, year === y && dpStyles.pickerItemActive]}
+                    onPress={() => setYear(y)}
+                  >
+                    <Text style={[dpStyles.pickerItemText, year === y && dpStyles.pickerItemTextActive]}>{y}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={dpStyles.confirmBtn}
+            onPress={() => { onConfirm(new Date(year, month, clampedDay)); onClose(); }}
+          >
+            <Feather name="check" size={16} color="#fff" />
+            <Text style={dpStyles.confirmBtnText}>Confirm</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const dpStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center" },
+  sheet: {
+    backgroundColor: "#fff", borderRadius: 20, padding: 20, width: "88%",
+    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
+  },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#1A1A1A", textAlign: "center", marginBottom: 16 },
+  row: { flexDirection: "row", gap: 8 },
+  col: { flex: 1 },
+  colLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#999", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
+  picker: { maxHeight: 180, borderWidth: 1, borderColor: "#F0F0F0", borderRadius: 12, overflow: "hidden" },
+  pickerItem: { paddingVertical: 9, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#F5F5F5" },
+  pickerItemActive: { backgroundColor: Colors.primary },
+  pickerItemText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#333" },
+  pickerItemTextActive: { color: "#fff", fontFamily: "Inter_700Bold" },
+  confirmBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 13, marginTop: 16,
+  },
+  confirmBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+});
+
 // ─── Retailer view ─────────────────────────────────────────────────────────────
 function RetailerPayments() {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
+
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery<MyBalance>({
     queryKey: ["my-balance"],
@@ -657,10 +772,22 @@ function RetailerPayments() {
   });
 
   const outstanding = data?.outstanding ?? 0;
-  const totalOrdered = data?.totalOrdered ?? 0;
-  const totalPaid = data?.totalPaid ?? 0;
-  const payments = data?.payments ?? [];
-  const pendingCount = payments.filter(p => p.status === "pending").length;
+  const allPayments = data?.payments ?? [];
+  const pendingCount = allPayments.filter(p => p.status === "pending").length;
+
+  const payments = allPayments.filter(p => {
+    const d = new Date(p.createdAt);
+    if (startDate) { const s = new Date(startDate); s.setHours(0,0,0,0); if (d < s) return false; }
+    if (endDate) { const e = new Date(endDate); e.setHours(23,59,59,999); if (d > e) return false; }
+    return true;
+  });
+
+  const hasDateFilter = startDate !== null || endDate !== null;
+
+  const clearDates = () => { setStartDate(null); setEndDate(null); };
+
+  const fmtShort = (d: Date) =>
+    d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -678,23 +805,32 @@ function RetailerPayments() {
           keyExtractor={i => String(i.id)}
           ListHeaderComponent={
             <>
-              <View style={styles.balanceSummaryCard}>
-                <Text style={styles.balanceSummaryLabel}>Outstanding Balance</Text>
-                <Text style={[styles.balanceSummaryAmount, { color: outstanding > 0 ? "#EF4444" : "#10B981" }]}>
-                  Rs. {fmt(Math.abs(outstanding))}
-                </Text>
-                {outstanding < 0 && <Text style={styles.creditNote}>You have a credit of Rs. {fmt(Math.abs(outstanding))}</Text>}
-                {outstanding === 0 && <Text style={[styles.creditNote, { color: "#10B981" }]}>Account is clear</Text>}
-                <View style={styles.balanceSummaryRow}>
-                  <View style={styles.summaryCell}>
-                    <Text style={styles.summaryCellLabel}>Total Ordered</Text>
-                    <Text style={styles.summaryCellValue}>Rs. {fmt(totalOrdered)}</Text>
+              {/* ── Beautiful Outstanding Balance Card ── */}
+              <View style={retailerStyles.balanceCard}>
+                <View style={retailerStyles.balanceCardInner}>
+                  <View style={retailerStyles.balanceIconWrap}>
+                    <Feather name="credit-card" size={20} color={Colors.primary} />
                   </View>
-                  <View style={styles.summaryDivider} />
-                  <View style={styles.summaryCell}>
-                    <Text style={styles.summaryCellLabel}>Total Paid</Text>
-                    <Text style={[styles.summaryCellValue, { color: "#10B981" }]}>Rs. {fmt(totalPaid)}</Text>
-                  </View>
+                  <Text style={retailerStyles.balanceCardLabel}>Outstanding Balance</Text>
+                  <Text style={[retailerStyles.balanceCardAmount, { color: outstanding > 0 ? "#EF4444" : "#10B981" }]}>
+                    Rs. {fmt(Math.abs(outstanding))}
+                  </Text>
+                  {outstanding < 0 ? (
+                    <View style={retailerStyles.statusPill}>
+                      <Feather name="trending-up" size={12} color="#065F46" />
+                      <Text style={[retailerStyles.statusPillText, { color: "#065F46" }]}>Credit — Rs. {fmt(Math.abs(outstanding))}</Text>
+                    </View>
+                  ) : outstanding === 0 ? (
+                    <View style={[retailerStyles.statusPill, { backgroundColor: "#D1FAE5" }]}>
+                      <Feather name="check-circle" size={12} color="#065F46" />
+                      <Text style={[retailerStyles.statusPillText, { color: "#065F46" }]}>Account is clear</Text>
+                    </View>
+                  ) : (
+                    <View style={[retailerStyles.statusPill, { backgroundColor: "#FEE2E2" }]}>
+                      <Feather name="alert-circle" size={12} color="#B91C1C" />
+                      <Text style={[retailerStyles.statusPillText, { color: "#B91C1C" }]}>Amount due</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -705,12 +841,44 @@ function RetailerPayments() {
                 </View>
               )}
 
+              {/* ── Payment History Header + Date Filter ── */}
               <Text style={styles.sectionHeading}>Payment History</Text>
-              {payments.length === 0 && (
+
+              <View style={retailerStyles.dateFilterRow}>
+                <Pressable style={retailerStyles.dateBtn} onPress={() => setShowStartPicker(true)}>
+                  <Feather name="calendar" size={13} color={startDate ? Colors.primary : "#999"} />
+                  <Text style={[retailerStyles.dateBtnText, startDate && { color: Colors.primary }]}>
+                    {startDate ? fmtShort(startDate) : "Start Date"}
+                  </Text>
+                </Pressable>
+                <View style={retailerStyles.dateBtnArrow}>
+                  <Feather name="arrow-right" size={14} color="#ccc" />
+                </View>
+                <Pressable style={retailerStyles.dateBtn} onPress={() => setShowEndPicker(true)}>
+                  <Feather name="calendar" size={13} color={endDate ? Colors.primary : "#999"} />
+                  <Text style={[retailerStyles.dateBtnText, endDate && { color: Colors.primary }]}>
+                    {endDate ? fmtShort(endDate) : "End Date"}
+                  </Text>
+                </Pressable>
+                {hasDateFilter && (
+                  <Pressable style={retailerStyles.clearBtn} onPress={clearDates}>
+                    <Feather name="x" size={13} color="#fff" />
+                  </Pressable>
+                )}
+              </View>
+
+              {allPayments.length === 0 && (
                 <View style={[styles.center, { paddingVertical: 40 }]}>
                   <Feather name="credit-card" size={44} color={Colors.border} />
                   <Text style={styles.emptyTitle}>No payments recorded yet</Text>
                   <Text style={styles.emptyText}>Your payment history will appear here</Text>
+                </View>
+              )}
+              {allPayments.length > 0 && payments.length === 0 && (
+                <View style={[styles.center, { paddingVertical: 40 }]}>
+                  <Feather name="search" size={44} color={Colors.border} />
+                  <Text style={styles.emptyTitle}>No results</Text>
+                  <Text style={styles.emptyText}>No payments found for the selected dates</Text>
                 </View>
               )}
             </>
@@ -738,9 +906,72 @@ function RetailerPayments() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
         />
       )}
+
+      <DatePickerModal
+        visible={showStartPicker}
+        value={startDate}
+        title="Select Start Date"
+        onConfirm={d => setStartDate(d)}
+        onClose={() => setShowStartPicker(false)}
+      />
+      <DatePickerModal
+        visible={showEndPicker}
+        value={endDate}
+        title="Select End Date"
+        onConfirm={d => setEndDate(d)}
+        onClose={() => setShowEndPicker(false)}
+      />
     </View>
   );
 }
+
+const retailerStyles = StyleSheet.create({
+  balanceCard: {
+    borderRadius: 20, marginBottom: 16, overflow: "hidden",
+    shadowColor: Colors.primary, shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 6,
+  },
+  balanceCardInner: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: `${Colors.primary}30`,
+    padding: 24,
+    alignItems: "center",
+    gap: 6,
+  },
+  balanceIconWrap: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: `${Colors.primary}15`,
+    alignItems: "center", justifyContent: "center", marginBottom: 4,
+  },
+  balanceCardLabel: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#999",
+    textTransform: "uppercase", letterSpacing: 1,
+  },
+  balanceCardAmount: {
+    fontSize: 40, fontFamily: "Inter_700Bold", letterSpacing: -1,
+  },
+  statusPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "#ECFDF5", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 4,
+  },
+  statusPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  dateFilterRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14,
+  },
+  dateBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  dateBtnText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#999", flex: 1 },
+  dateBtnArrow: { alignItems: "center", justifyContent: "center" },
+  clearBtn: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: "#EF4444",
+    alignItems: "center", justifyContent: "center",
+  },
+});
 
 // ─── Entry point — role-based ──────────────────────────────────────────────────
 export default function PaymentsScreen() {
