@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Tashi",
-    "slug": "tashi",
+    "slug": "tashiapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
