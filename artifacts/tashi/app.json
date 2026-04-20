@@ -4,7 +4,7 @@
     "slug": "tashi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/adaptive-icon.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "tashi",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -40,8 +40,8 @@
         "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#E87722"
       }
     },
     "web": {
@@ -59,7 +59,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/adaptive-icon.png",
+          "icon": "./assets/images/icon.png",
           "color": "#E87722",
           "androidMode": "default",
           "androidCollapsedTitle": "Tashi"
