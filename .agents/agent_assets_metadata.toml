@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Kuv682GaLEE4OAjTT-xUi"
+uri = "file://artifacts/tashi/assets/images/blank-splash.png"
+type = "image"
+title = "blank-splash.png"
