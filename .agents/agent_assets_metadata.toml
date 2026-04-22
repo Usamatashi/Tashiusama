@@ -6,3 +6,21 @@ id = "Kuv682GaLEE4OAjTT-xUi"
 uri = "file://artifacts/tashi/assets/images/blank-splash.png"
 type = "image"
 title = "blank-splash.png"
+
+[[outputs]]
+id = "eJ522u0BP2dIblye-5y9A"
+uri = "file://.local/downloads/admin-products.tsx.txt"
+type = "text"
+title = "admin/products.tsx"
+
+[[outputs]]
+id = "p7X0EYpPYu3xAff8BKqGs"
+uri = "file://.local/downloads/user-products.tsx.txt"
+type = "text"
+title = "user/products.tsx"
+
+[[outputs]]
+id = "5YZ69-o0n4-zGQUr2jzB8"
+uri = "file://.local/downloads/api-products.ts.txt"
+type = "text"
+title = "api-server/routes/products.ts"
