@@ -24,3 +24,9 @@ id = "5YZ69-o0n4-zGQUr2jzB8"
 uri = "file://.local/downloads/api-products.ts.txt"
 type = "text"
 title = "api-server/routes/products.ts"
+
+[[outputs]]
+id = "bbOqybUbWZVfeAG2eJCJ7"
+uri = "file://.local/downloads/pnpm-lock.yaml.txt"
+type = "text"
+title = "pnpm-lock.yaml (place at monorepo root)"
