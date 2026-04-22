@@ -37,6 +37,8 @@ interface Product {
   points: number;
   salesPrice: number;
   category: ProductCategory;
+  productNumber: string | null;
+  vehicleManufacturer: string | null;
   imageUrl: string | null;
   createdAt: string;
 }
@@ -90,6 +92,12 @@ function ImageLightbox({ product, onClose }: { product: Product; onClose: () => 
             <Text style={[lbStyles.badgeText, { color: meta.color }]}>{meta.label}</Text>
           </View>
           <Text style={lbStyles.name}>{product.name}</Text>
+          {product.category !== "other" && product.productNumber ? (
+            <Text style={lbStyles.lbProductNumber}>#{product.productNumber}</Text>
+          ) : null}
+          {product.vehicleManufacturer ? (
+            <Text style={lbStyles.lbManufacturer}>{product.vehicleManufacturer}</Text>
+          ) : null}
           <View style={lbStyles.priceRow}>
             <Text style={lbStyles.priceLabel}>Price</Text>
             <Text style={lbStyles.price}>Rs. {product.salesPrice.toLocaleString()}</Text>
@@ -115,6 +123,8 @@ const lbStyles = StyleSheet.create({
   badge: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   name: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  lbProductNumber: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#E87722", letterSpacing: 0.5 },
+  lbManufacturer: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#bbb" },
   priceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   priceLabel: { fontSize: 13, color: "#999", fontFamily: "Inter_400Regular" },
   price: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#E87722" },
@@ -142,6 +152,8 @@ export default function ProductsScreen() {
   // Field state
   const [category, setCategory] = useState<ProductCategory>("disc_pad");
   const [name, setName] = useState("");
+  const [productNumber, setProductNumber] = useState("");
+  const [vehicleManufacturer, setVehicleManufacturer] = useState("");
   const [points, setPoints] = useState("");
   const [salesPrice, setSalesPrice] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -198,6 +210,7 @@ export default function ProductsScreen() {
     setStep("category");
     setCategory("disc_pad");
     setName(""); setPoints(""); setSalesPrice("");
+    setProductNumber(""); setVehicleManufacturer("");
     setImageUri(null); setImageBase64(null);
     setModalVisible(true);
   };
@@ -208,6 +221,8 @@ export default function ProductsScreen() {
     setStep("category");
     setCategory(p.category ?? "other");
     setName(p.name);
+    setProductNumber(p.productNumber ?? "");
+    setVehicleManufacturer(p.vehicleManufacturer ?? "");
     setPoints(String(p.points));
     setSalesPrice(String(p.salesPrice ?? 0));
     setImageUri(p.imageUrl ?? null);
@@ -250,6 +265,8 @@ export default function ProductsScreen() {
         points: Number(points),
         salesPrice: Number(salesPrice) || 0,
         category,
+        productNumber: category === "other" ? null : (productNumber.trim() || null),
+        vehicleManufacturer: category === "other" ? null : (vehicleManufacturer.trim() || null),
       };
       // Only include imageBase64 if a new image was picked or if image was explicitly removed
       if (imageBase64 !== null) {
@@ -336,10 +353,19 @@ export default function ProductsScreen() {
         <View style={styles.cardLeft}>
           <Text style={styles.productName}>{item.name}</Text>
           <View style={styles.metaRow}>
-            <View style={styles.metaChip}>
-              <Feather name="star" size={11} color={meta.color} />
-              <Text style={[styles.metaChipText, { color: meta.color }]}>{item.points} pts/unit</Text>
-            </View>
+            {item.category !== "other" && item.productNumber ? (
+              <Text style={[styles.productNumberText, { color: meta.color }]} numberOfLines={1}>
+                {item.productNumber}
+              </Text>
+            ) : (
+              <View style={styles.metaChip}>
+                <Feather name="star" size={11} color={meta.color} />
+                <Text style={[styles.metaChipText, { color: meta.color }]}>{item.points} pts/unit</Text>
+              </View>
+            )}
+            {item.vehicleManufacturer ? (
+              <Text style={styles.manufacturerText} numberOfLines={1}>· {item.vehicleManufacturer}</Text>
+            ) : null}
           </View>
         </View>
         {item.salesPrice > 0 && (
@@ -537,6 +563,29 @@ export default function ProductsScreen() {
                     onChangeText={setName}
                     autoCorrect={false}
                   />
+                  {category !== "other" && (
+                    <>
+                      <Text style={styles.fieldLabel}>Product Number</Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="e.g. D1234"
+                        placeholderTextColor={Colors.textLight}
+                        value={productNumber}
+                        onChangeText={setProductNumber}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                      />
+                      <Text style={styles.fieldLabel}>Vehicle Manufacturer</Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="e.g. Toyota, Honda, Suzuki"
+                        placeholderTextColor={Colors.textLight}
+                        value={vehicleManufacturer}
+                        onChangeText={setVehicleManufacturer}
+                        autoCorrect={false}
+                      />
+                    </>
+                  )}
                   <Text style={styles.fieldLabel}>Points per Unit *</Text>
                   <TextInput
                     style={styles.modalInput}
@@ -734,6 +783,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", gap: 6, alignItems: "center" },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaChipText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  productNumberText: { fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  manufacturerText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, flexShrink: 1 },
   priceWrap: { alignItems: "flex-end", justifyContent: "center", flexShrink: 0 },
   priceCurrency: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, letterSpacing: 0.3 },
   priceValue: { fontSize: 19, fontFamily: "Inter_700Bold", color: Colors.adminText, letterSpacing: -0.5 },

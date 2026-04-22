@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   RefreshControl,
+  ScrollView,
   SectionList,
   StatusBar,
   StyleSheet,
@@ -31,6 +32,8 @@ interface Product {
   salesPrice: number;
   points: number;
   category: ProductCategory;
+  productNumber: string | null;
+  vehicleManufacturer: string | null;
   imageUrl: string | null;
 }
 
@@ -67,7 +70,16 @@ function ProductRow({ product, onPress }: { product: Product; onPress: (p: Produ
       )}
       <View style={{ flex: 1 }}>
         <Text style={styles.productName}>{product.name}</Text>
-        <Text style={styles.productCategory}>{meta.label}</Text>
+        {product.category !== "other" && product.productNumber ? (
+          <Text style={[styles.productNumber, { color: meta.color }]} numberOfLines={1}>
+            {product.productNumber}
+            {product.vehicleManufacturer ? (
+              <Text style={styles.productManufacturer}>  ·  {product.vehicleManufacturer}</Text>
+            ) : null}
+          </Text>
+        ) : (
+          <Text style={styles.productCategory}>{meta.label}</Text>
+        )}
       </View>
       <View style={styles.priceBox}>
         <Text style={styles.priceLabel}>Rs.</Text>
@@ -117,6 +129,12 @@ function ImageLightbox({ product, onClose }: { product: Product; onClose: () => 
             <Text style={[styles.categoryBadgeText, { color: meta.color }]}>{meta.label}</Text>
           </View>
           <Text style={styles.lightboxName}>{product.name}</Text>
+          {product.category !== "other" && product.productNumber ? (
+            <Text style={styles.lightboxProductNumber}>#{product.productNumber}</Text>
+          ) : null}
+          {product.vehicleManufacturer ? (
+            <Text style={styles.lightboxManufacturer}>{product.vehicleManufacturer}</Text>
+          ) : null}
           <View style={styles.lightboxPriceRow}>
             <Text style={styles.lightboxPriceLabel}>Price</Text>
             <Text style={styles.lightboxPrice}>Rs. {product.salesPrice.toLocaleString()}</Text>
@@ -139,11 +157,22 @@ export default function ProductsScreen() {
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
   const { category } = useLocalSearchParams<{ category?: string }>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [activeManufacturer, setActiveManufacturer] = useState<string | null>(null);
 
   const { data: products = [], isLoading, refetch, isRefetching } = useQuery<Product[]>({
     queryKey: ["user-products"],
     queryFn: fetchProducts,
   });
+
+  const manufacturers = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      if (p.vehicleManufacturer && p.vehicleManufacturer.trim()) {
+        set.add(p.vehicleManufacturer.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
 
   const visibleCategories: ProductCategory[] =
     category === "disc_pad"
@@ -159,8 +188,12 @@ export default function ProductsScreen() {
       ? "Brake Shoes & Other"
       : "Products";
 
-  const filteredProducts = products.filter((p) =>
-    visibleCategories.includes(p.category ?? "other")
+  const matchesManufacturer = (p: Product) =>
+    !activeManufacturer ||
+    (p.vehicleManufacturer && p.vehicleManufacturer.trim() === activeManufacturer);
+
+  const filteredProducts = products.filter(
+    (p) => visibleCategories.includes(p.category ?? "other") && matchesManufacturer(p)
   );
 
   const sections = visibleCategories
@@ -168,7 +201,7 @@ export default function ProductsScreen() {
       key: cat,
       title: CATEGORY_META[cat].label,
       meta: CATEGORY_META[cat],
-      data: products.filter((p) => (p.category ?? "other") === cat),
+      data: products.filter((p) => (p.category ?? "other") === cat && matchesManufacturer(p)),
     }))
     .filter((s) => s.data.length > 0);
 
@@ -182,6 +215,41 @@ export default function ProductsScreen() {
         </View>
         <View style={{ width: 40 }} />
       </View>
+
+      {manufacturers.length > 0 && (
+        <View style={styles.filterBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            <TouchableOpacity
+              style={[styles.filterChip, !activeManufacturer && styles.filterChipActive]}
+              onPress={() => setActiveManufacturer(null)}
+              activeOpacity={0.8}
+            >
+              <Feather name="grid" size={12} color={!activeManufacturer ? "#fff" : Colors.textSecondary} />
+              <Text style={[styles.filterChipText, !activeManufacturer && styles.filterChipTextActive]}>
+                All
+              </Text>
+            </TouchableOpacity>
+            {manufacturers.map((m) => {
+              const active = activeManufacturer === m;
+              return (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  onPress={() => setActiveManufacturer(active ? null : m)}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="truck" size={12} color={active ? "#fff" : Colors.textSecondary} />
+                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{m}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={styles.center}>
@@ -257,6 +325,34 @@ const styles = StyleSheet.create({
   productImage: { width: 44, height: 44, borderRadius: 10 },
   productName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.text },
   productCategory: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 1 },
+  productNumber: { fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 2, letterSpacing: 0.3 },
+  productManufacturer: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary, letterSpacing: 0 },
+
+  filterBar: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1, borderBottomColor: "#EFEFEF",
+  },
+  filterScroll: {
+    paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+  },
+  filterChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1, borderColor: "#E5E7EB",
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary,
+  },
+  filterChipTextActive: { color: "#fff" },
+
+  lightboxProductNumber: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#E87722", letterSpacing: 0.5 },
+  lightboxManufacturer: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#bbb" },
   priceBox: { alignItems: "flex-end" },
   priceLabel: { fontSize: 10, color: Colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 12 },
   priceValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: Colors.primary },

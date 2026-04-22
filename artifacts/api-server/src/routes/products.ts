@@ -17,6 +17,8 @@ router.get("/", requireAuth, async (req, res) => {
           points: p.points,
           salesPrice: p.salesPrice,
           category: p.category,
+          productNumber: p.productNumber ?? null,
+          vehicleManufacturer: p.vehicleManufacturer ?? null,
           imageUrl: p.imageUrl ?? null,
           createdAt: toISOString(p.createdAt),
         };
@@ -30,7 +32,7 @@ router.get("/", requireAuth, async (req, res) => {
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, points, salesPrice, category, imageBase64 } = req.body;
+    const { name, points, salesPrice, category, productNumber, vehicleManufacturer, imageBase64 } = req.body;
     if (!name || points === undefined) {
       res.status(400).json({ error: "Name and points are required" });
       return;
@@ -40,12 +42,15 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     if (imageBase64) {
       imageUrl = await uploadBase64ToStorage(imageBase64, `products/${id}/image`);
     }
+    const cat = category || "other";
     const product = {
       id,
       name,
       points: Number(points),
       salesPrice: Number(salesPrice) || 0,
-      category: category || "other",
+      category: cat,
+      productNumber: cat === "other" ? null : (productNumber ? String(productNumber).trim() : null),
+      vehicleManufacturer: cat === "other" ? null : (vehicleManufacturer ? String(vehicleManufacturer).trim() : null),
       imageUrl,
       createdAt: new Date(),
     };
@@ -64,7 +69,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
       res.status(400).json({ error: "Invalid product id" });
       return;
     }
-    const { name, points, salesPrice, category, imageBase64 } = req.body;
+    const { name, points, salesPrice, category, productNumber, vehicleManufacturer, imageBase64 } = req.body;
     if (!name || points === undefined) {
       res.status(400).json({ error: "Name and points are required" });
       return;
@@ -75,11 +80,14 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
       res.status(404).json({ error: "Product not found" });
       return;
     }
+    const cat = category || "other";
     const updateData: Record<string, unknown> = {
       name,
       points: Number(points),
       salesPrice: Number(salesPrice) || 0,
-      category: category || "other",
+      category: cat,
+      productNumber: cat === "other" ? null : (productNumber ? String(productNumber).trim() : null),
+      vehicleManufacturer: cat === "other" ? null : (vehicleManufacturer ? String(vehicleManufacturer).trim() : null),
     };
     if (imageBase64 !== undefined) {
       if (imageBase64) {
@@ -98,6 +106,8 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
       points: updated.points,
       salesPrice: updated.salesPrice,
       category: updated.category,
+      productNumber: updated.productNumber ?? null,
+      vehicleManufacturer: updated.vehicleManufacturer ?? null,
       imageUrl: updated.imageUrl ?? null,
       createdAt: toISOString(updated.createdAt),
     });
