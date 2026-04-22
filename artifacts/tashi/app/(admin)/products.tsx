@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -142,6 +142,7 @@ export default function ProductsScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("disc_pad");
+  const [activeManufacturer, setActiveManufacturer] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   // Modal state
@@ -317,13 +318,27 @@ export default function ProductsScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const bottomPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
 
-  // Build SectionList sections (filtered by activeFilter)
+  const manufacturers = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      if (p.vehicleManufacturer && p.vehicleManufacturer.trim()) {
+        set.add(p.vehicleManufacturer.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
+  const matchesManufacturer = (p: Product) =>
+    !activeManufacturer ||
+    (p.vehicleManufacturer && p.vehicleManufacturer.trim() === activeManufacturer);
+
+  // Build SectionList sections (filtered by activeFilter + manufacturer)
   const filteredCategories = activeFilter === "all" ? CATEGORIES : CATEGORIES.filter(c => c.key === activeFilter);
   const sections = filteredCategories.map((cat) => ({
     key: cat.key,
     title: SECTION_TITLES[cat.key],
     meta: cat,
-    data: products.filter((p) => (p.category ?? "other") === cat.key),
+    data: products.filter((p) => (p.category ?? "other") === cat.key && matchesManufacturer(p)),
   })).filter((s) => s.data.length > 0);
 
   const renderProduct = ({ item }: { item: Product }) => {
@@ -462,6 +477,39 @@ export default function ProductsScreen() {
           );
         })}
       </View>
+
+      {manufacturers.length > 0 && (
+        <View style={styles.mfrFilterBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.mfrFilterScroll}
+          >
+            <TouchableOpacity
+              style={[styles.mfrChip, !activeManufacturer && styles.mfrChipActive]}
+              onPress={() => { Haptics.selectionAsync(); setActiveManufacturer(null); }}
+              activeOpacity={0.8}
+            >
+              <Feather name="grid" size={12} color={!activeManufacturer ? "#fff" : Colors.textSecondary} />
+              <Text style={[styles.mfrChipText, !activeManufacturer && styles.mfrChipTextActive]}>All</Text>
+            </TouchableOpacity>
+            {manufacturers.map((m) => {
+              const active = activeManufacturer === m;
+              return (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.mfrChip, active && styles.mfrChipActive]}
+                  onPress={() => { Haptics.selectionAsync(); setActiveManufacturer(active ? null : m); }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="truck" size={12} color={active ? "#fff" : Colors.textSecondary} />
+                  <Text style={[styles.mfrChipText, active && styles.mfrChipTextActive]}>{m}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {products.length === 0 && !loading ? (
         <View style={styles.empty}>
@@ -907,5 +955,21 @@ const styles = StyleSheet.create({
   },
   filterBtnBottom: { flexDirection: "row", alignItems: "center", gap: 4 },
   filterBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+
+  mfrFilterBar: {
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  mfrFilterScroll: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  mfrChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1, borderColor: "#E5E7EB",
+  },
+  mfrChipActive: { backgroundColor: Colors.adminAccent, borderColor: Colors.adminAccent },
+  mfrChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary },
+  mfrChipTextActive: { color: "#fff" },
   filterCountText: { fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 19 },
 });
