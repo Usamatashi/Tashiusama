@@ -85,9 +85,6 @@ function ProductRow({ product, onPress }: { product: Product; onPress: (p: Produ
         <Text style={styles.priceLabel}>Rs.</Text>
         <Text style={styles.priceValue}>{product.salesPrice.toLocaleString()}</Text>
       </View>
-      {product.imageUrl && (
-        <Feather name="maximize-2" size={14} color="#C0C0C0" style={{ marginLeft: 4 }} />
-      )}
     </TouchableOpacity>
   );
 }
