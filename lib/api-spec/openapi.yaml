@@ -542,12 +542,28 @@ components:
           type: string
         points:
           type: integer
+        salesPrice:
+          type: integer
+        category:
+          type: string
+          enum: [disc_pad, brake_shoes, other]
+        productNumber:
+          type: string
+          nullable: true
+        vehicleManufacturer:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
         createdAt:
           type: string
       required:
         - id
         - name
         - points
+        - salesPrice
+        - category
         - createdAt
 
     CreateProductRequest:
@@ -557,6 +573,20 @@ components:
           type: string
         points:
           type: integer
+        salesPrice:
+          type: integer
+        category:
+          type: string
+          enum: [disc_pad, brake_shoes, other]
+        productNumber:
+          type: string
+          nullable: true
+        vehicleManufacturer:
+          type: string
+          nullable: true
+        imageBase64:
+          type: string
+          nullable: true
       required:
         - name
         - points

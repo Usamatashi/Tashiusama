@@ -5,10 +5,16 @@
  * Tashi API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ProductCategory } from "./productCategory";
 
 export interface Product {
   id: number;
   name: string;
   points: number;
+  salesPrice: number;
+  category: ProductCategory;
+  productNumber?: string | null;
+  vehicleManufacturer?: string | null;
+  imageUrl?: string | null;
   createdAt: string;
 }

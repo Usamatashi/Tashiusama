@@ -60,16 +60,44 @@ export interface CreateUserRequest {
   role: CreateUserRequestRole;
 }
 
+export type ProductCategory =
+  (typeof ProductCategory)[keyof typeof ProductCategory];
+
+export const ProductCategory = {
+  disc_pad: "disc_pad",
+  brake_shoes: "brake_shoes",
+  other: "other",
+} as const;
+
 export interface Product {
   id: number;
   name: string;
   points: number;
+  salesPrice: number;
+  category: ProductCategory;
+  productNumber?: string | null;
+  vehicleManufacturer?: string | null;
+  imageUrl?: string | null;
   createdAt: string;
 }
+
+export type CreateProductRequestCategory =
+  (typeof CreateProductRequestCategory)[keyof typeof CreateProductRequestCategory];
+
+export const CreateProductRequestCategory = {
+  disc_pad: "disc_pad",
+  brake_shoes: "brake_shoes",
+  other: "other",
+} as const;
 
 export interface CreateProductRequest {
   name: string;
   points: number;
+  salesPrice?: number;
+  category?: CreateProductRequestCategory;
+  productNumber?: string | null;
+  vehicleManufacturer?: string | null;
+  imageBase64?: string | null;
 }
 
 export type QRCodeStatus = (typeof QRCodeStatus)[keyof typeof QRCodeStatus];

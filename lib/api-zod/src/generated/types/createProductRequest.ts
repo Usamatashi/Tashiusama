@@ -5,8 +5,14 @@
  * Tashi API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateProductRequestCategory } from "./createProductRequestCategory";
 
 export interface CreateProductRequest {
   name: string;
   points: number;
+  salesPrice?: number;
+  category?: CreateProductRequestCategory;
+  productNumber?: string | null;
+  vehicleManufacturer?: string | null;
+  imageBase64?: string | null;
 }

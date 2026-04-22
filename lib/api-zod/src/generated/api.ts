@@ -72,6 +72,11 @@ export const ListProductsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   points: zod.number(),
+  salesPrice: zod.number(),
+  category: zod.enum(["disc_pad", "brake_shoes", "other"]),
+  productNumber: zod.string().nullish(),
+  vehicleManufacturer: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
   createdAt: zod.string(),
 });
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
@@ -82,6 +87,11 @@ export const ListProductsResponse = zod.array(ListProductsResponseItem);
 export const CreateProductBody = zod.object({
   name: zod.string(),
   points: zod.number(),
+  salesPrice: zod.number().optional(),
+  category: zod.enum(["disc_pad", "brake_shoes", "other"]).optional(),
+  productNumber: zod.string().nullish(),
+  vehicleManufacturer: zod.string().nullish(),
+  imageBase64: zod.string().nullish(),
 });
 
 /**
@@ -94,12 +104,22 @@ export const UpdateProductParams = zod.object({
 export const UpdateProductBody = zod.object({
   name: zod.string(),
   points: zod.number(),
+  salesPrice: zod.number().optional(),
+  category: zod.enum(["disc_pad", "brake_shoes", "other"]).optional(),
+  productNumber: zod.string().nullish(),
+  vehicleManufacturer: zod.string().nullish(),
+  imageBase64: zod.string().nullish(),
 });
 
 export const UpdateProductResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   points: zod.number(),
+  salesPrice: zod.number(),
+  category: zod.enum(["disc_pad", "brake_shoes", "other"]),
+  productNumber: zod.string().nullish(),
+  vehicleManufacturer: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
