@@ -402,6 +402,22 @@ export default function AdminDashboard() {
             );
           })}
         </View>
+
+        {/* Identify Pad */}
+        <TouchableOpacity
+          style={styles.identifyCard}
+          onPress={() => router.push("/identify-pad" as any)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.identifyIconWrap}>
+            <Feather name="search" size={22} color="#E87722" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.identifyTitle}>Identify Worn Pad</Text>
+            <Text style={styles.identifyDesc}>Photo-match a worn pad against product diagrams using AI</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color="#E87722" />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Change Password Modal */}
@@ -685,4 +701,16 @@ const styles = StyleSheet.create({
   submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
   cancelBtn: { alignItems: "center", paddingVertical: 8 },
   cancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  identifyCard: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: "#FFF4EC", borderRadius: 18, padding: 16, marginTop: 12,
+    borderWidth: 1.5, borderColor: "#E8772240",
+  },
+  identifyIconWrap: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: "#FFE8D0", alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  identifyTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#C5611A" },
+  identifyDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#E87722", marginTop: 2, lineHeight: 17 },
 });
