@@ -15,6 +15,7 @@ import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
@@ -60,16 +61,26 @@ export default function IdentifyPadScreen() {
   const [identifying, setIdentifying] = useState(false);
   const [result, setResult] = useState<MatchResult | null>(null);
 
+  const resizeForUpload = async (uri: string): Promise<{ uri: string; base64: string }> => {
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    );
+    return { uri: result.uri, base64: result.base64 ?? "" };
+  };
+
   const takePhoto = async () => {
     if (!cameraRef.current) return;
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.7,
+        base64: false,
+        quality: 1,
       });
       if (photo?.uri) {
-        setCapturedPhoto(photo.uri);
-        identifyPad(photo.base64 ?? "");
+        const resized = await resizeForUpload(photo.uri);
+        setCapturedPhoto(resized.uri);
+        identifyPad(resized.base64);
       }
     } catch {
       Alert.alert("Error", "Failed to take photo. Please try again.");
@@ -84,12 +95,13 @@ export default function IdentifyPadScreen() {
     }
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      quality: 0.7,
-      base64: true,
+      quality: 1,
+      base64: false,
     });
     if (!picked.canceled && picked.assets[0]) {
-      setCapturedPhoto(picked.assets[0].uri);
-      identifyPad(picked.assets[0].base64 ?? "");
+      const resized = await resizeForUpload(picked.assets[0].uri);
+      setCapturedPhoto(resized.uri);
+      identifyPad(resized.base64);
     }
   };
 
