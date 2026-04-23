@@ -40,6 +40,7 @@ interface Product {
   productNumber: string | null;
   vehicleManufacturer: string | null;
   imageUrl: string | null;
+  diagramUrl: string | null;
   createdAt: string;
 }
 
@@ -159,6 +160,8 @@ export default function ProductsScreen() {
   const [salesPrice, setSalesPrice] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [diagramUri, setDiagramUri] = useState<string | null>(null);
+  const [diagramBase64, setDiagramBase64] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -213,6 +216,7 @@ export default function ProductsScreen() {
     setName(""); setPoints(""); setSalesPrice("");
     setProductNumber(""); setVehicleManufacturer("");
     setImageUri(null); setImageBase64(null);
+    setDiagramUri(null); setDiagramBase64(null);
     setModalVisible(true);
   };
 
@@ -228,6 +232,8 @@ export default function ProductsScreen() {
     setSalesPrice(String(p.salesPrice ?? 0));
     setImageUri(p.imageUrl ?? null);
     setImageBase64(null);
+    setDiagramUri(p.diagramUrl ?? null);
+    setDiagramBase64(null);
     setModalVisible(true);
   };
 
@@ -247,6 +253,25 @@ export default function ProductsScreen() {
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
       setImageBase64(result.assets[0].base64 ?? null);
+    }
+  };
+
+  const pickDiagram = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      setErrorMsg("Photo library permission is required to add a diagram.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setDiagramUri(result.assets[0].uri);
+      setDiagramBase64(result.assets[0].base64 ?? null);
     }
   };
 
@@ -277,6 +302,11 @@ export default function ProductsScreen() {
         body.imageBase64 = null;
       }
       // If imageBase64 is null but imageUri is set, the user kept the existing image — omit imageBase64
+      if (diagramBase64 !== null) {
+        body.diagramBase64 = diagramBase64;
+      } else if (diagramUri === null && editProduct?.diagramUrl) {
+        body.diagramBase64 = null;
+      }
 
       const res = await fetch(url, {
         method,
@@ -688,8 +718,9 @@ export default function ProductsScreen() {
             {step === "image" && (
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.modalTitle}>{editProduct ? "Edit Product" : "Add Product"}</Text>
-                <Text style={styles.stepSubtitle}>Step 3 — Product image (optional)</Text>
+                <Text style={styles.stepSubtitle}>Step 3 — Images (optional)</Text>
 
+                <Text style={styles.fieldLabel}>Product Photo</Text>
                 <TouchableOpacity style={styles.imagePicker} onPress={pickImage} activeOpacity={0.85}>
                   {imageUri ? (
                     <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="cover" />
@@ -709,6 +740,31 @@ export default function ProductsScreen() {
                   >
                     <Feather name="trash-2" size={14} color="#EF4444" />
                     <Text style={styles.removeImageText}>Remove image</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={styles.diagramSeparator} />
+                <Text style={styles.fieldLabel}>Shape Diagram <Text style={{ color: "#E87722", fontFamily: "Inter_600SemiBold" }}>(for AI scanning)</Text></Text>
+                <Text style={styles.diagramHint}>Upload the technical line drawing for this product. This is used to identify worn pads by shape.</Text>
+                <TouchableOpacity style={[styles.imagePicker, { borderColor: "#E87722", borderStyle: "dashed" }]} onPress={pickDiagram} activeOpacity={0.85}>
+                  {diagramUri ? (
+                    <Image source={{ uri: diagramUri }} style={styles.imagePreview} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.imagePlaceholder}>
+                      <Feather name="file-text" size={36} color="#E87722" />
+                      <Text style={[styles.imagePlaceholderText, { color: "#E87722" }]}>Tap to add diagram</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {diagramUri && (
+                  <TouchableOpacity
+                    style={styles.removeImageBtn}
+                    onPress={() => { setDiagramUri(null); setDiagramBase64(null); }}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="trash-2" size={14} color="#EF4444" />
+                    <Text style={styles.removeImageText}>Remove diagram</Text>
                   </TouchableOpacity>
                 )}
 
@@ -911,6 +967,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF2F2", borderRadius: 20,
   },
   removeImageText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#EF4444" },
+  diagramSeparator: { height: 1, backgroundColor: Colors.border, marginVertical: 16 },
+  diagramHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginBottom: 10, lineHeight: 18 },
 
   modalBtns: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelBtn: {

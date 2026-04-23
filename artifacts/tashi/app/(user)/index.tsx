@@ -504,6 +504,22 @@ export default function UserHomeScreen() {
         )}
 
 
+        {/* Identify Pad — all roles */}
+        <TouchableOpacity
+          style={styles.identifyCard}
+          onPress={() => router.push("/identify-pad" as any)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.identifyIconWrap}>
+            <Feather name="search" size={22} color="#E87722" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.identifyTitle}>Identify Worn Pad</Text>
+            <Text style={styles.identifyDesc}>Take a photo to match your pad with our products</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color="#E87722" />
+        </TouchableOpacity>
+
         {/* Quick actions — mechanics only */}
         {!isRetailer && !isSalesman && (
           <View style={styles.quickGrid}>
@@ -842,6 +858,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase", marginBottom: -4,
   },
   quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  identifyCard: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: "#FFF4EC", borderRadius: 18, padding: 16, marginTop: 12,
+    borderWidth: 1.5, borderColor: "#E8772240",
+  },
+  identifyIconWrap: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: "#FFE8D0", alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  identifyTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#C5611A" },
+  identifyDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#E87722", marginTop: 2, lineHeight: 17 },
   gridCard: {
     width: "47%",
     borderRadius: 18, padding: 12,
