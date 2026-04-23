@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, router } from "expo-router";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
+import { useAuth } from "@/context/AuthContext";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -149,6 +150,8 @@ function ImageLightbox({ product, onClose }: { product: Product; onClose: () => 
 }
 
 export default function ProductsScreen() {
+  const { user } = useAuth();
+  const isMechanic = user?.role === "mechanic";
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 0);
@@ -210,7 +213,17 @@ export default function ProductsScreen() {
           <Text style={styles.headerTitle}>{headerTitle}</Text>
           <Text style={styles.headerSub}>{filteredProducts.length} available</Text>
         </View>
-        <View style={{ width: 40 }} />
+        {!isMechanic ? (
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={() => router.push("/identify-pad" as any)}
+            activeOpacity={0.8}
+          >
+            <Feather name="camera" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       {manufacturers.length > 0 && (
@@ -299,6 +312,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.text, textAlign: "center" },
   headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2, fontFamily: "Inter_400Regular", textAlign: "center" },
+  scanBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: `${Colors.primary}15`, alignItems: "center", justifyContent: "center" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.text },
   emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", fontFamily: "Inter_400Regular" },

@@ -504,22 +504,6 @@ export default function UserHomeScreen() {
         )}
 
 
-        {/* Identify Pad — all roles */}
-        <TouchableOpacity
-          style={styles.identifyCard}
-          onPress={() => router.push("/identify-pad" as any)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.identifyIconWrap}>
-            <Feather name="search" size={22} color="#E87722" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.identifyTitle}>Identify Worn Pad</Text>
-            <Text style={styles.identifyDesc}>Take a photo to match your pad with our products</Text>
-          </View>
-          <Feather name="chevron-right" size={18} color="#E87722" />
-        </TouchableOpacity>
-
         {/* Quick actions — mechanics only */}
         {!isRetailer && !isSalesman && (
           <View style={styles.quickGrid}>

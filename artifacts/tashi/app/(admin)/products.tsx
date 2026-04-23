@@ -464,9 +464,14 @@ export default function ProductsScreen() {
               <Feather name="arrow-left" size={20} color={Colors.adminAccent} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Products & Points</Text>
-            <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
-              <Feather name="plus" size={20} color={Colors.white} />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.scanBtn} onPress={() => router.push("/identify-pad" as any)} activeOpacity={0.8}>
+                <Feather name="camera" size={18} color={Colors.adminAccent} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
+                <Feather name="plus" size={20} color={Colors.white} />
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </View>
@@ -855,6 +860,11 @@ const styles = StyleSheet.create({
   headerActionBtn: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   editHeaderBtn: { backgroundColor: `${Colors.adminAccent}18` },
   deleteHeaderBtn: { backgroundColor: "#FEE2E2" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  scanBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: `${Colors.adminAccent}18`, alignItems: "center", justifyContent: "center",
+  },
   addBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: Colors.adminAccent, alignItems: "center", justifyContent: "center",

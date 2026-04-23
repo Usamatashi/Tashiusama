@@ -403,21 +403,6 @@ export default function AdminDashboard() {
           })}
         </View>
 
-        {/* Identify Pad */}
-        <TouchableOpacity
-          style={styles.identifyCard}
-          onPress={() => router.push("/identify-pad" as any)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.identifyIconWrap}>
-            <Feather name="search" size={22} color="#E87722" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.identifyTitle}>Identify Worn Pad</Text>
-            <Text style={styles.identifyDesc}>Photo-match a worn pad against product diagrams using AI</Text>
-          </View>
-          <Feather name="chevron-right" size={18} color="#E87722" />
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Change Password Modal */}
