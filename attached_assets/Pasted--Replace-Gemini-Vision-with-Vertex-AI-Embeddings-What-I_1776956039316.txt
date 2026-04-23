@@ -1,0 +1,85 @@
+ Replace Gemini Vision with Vertex AI Embeddings
+What I'll Build
+A visual fingerprint system where every product diagram and every scanned photo gets converted into a 1408-number vector, and matching is done by pure math (cosine similarity). No AI hallucination, deterministic results.
+
+What Gets REPLACED
+File: artifacts/api-server/src/routes/products.ts
+
+Removed:
+
+import { GoogleGenerativeAI } from "@google/generative-ai"
+The entire Gemini call in POST /identify (lines ~58–141): model loading, prompt building, image-to-base64 fetching of all diagrams, generateContent() call, JSON parsing of LLM response
+The MODEL_CANDIDATES fallback array I just added
+The "Failed to identify pad" generic error path
+Replaced with:
+
+A getImageEmbedding(buffer) helper using Vertex AI's multimodalembedding@001 model
+A cosineSimilarity(a, b) function (10 lines)
+New /identify logic: embed the photo → loop through products with stored embeddings → return highest-scoring match above threshold
+File: artifacts/api-server/package.json
+
+Removed: "@google/generative-ai": "^0.24.1"
+Added: "@google-cloud/aiplatform": "^3.x" (the correct SDK for embeddings)
+
+File: artifacts/api-server/src/lib/firebase.ts (or wherever Firebase Admin is initialized)
+
+No changes — reuses your existing Firebase service account, which already has Vertex AI access if I add the IAM role
+What Gets ADDED
+1. Embedding generator helper — artifacts/api-server/src/lib/embeddings.ts (new file, ~50 lines)
+
+Wraps Vertex AI PredictionServiceClient.predict()
+Takes an image buffer or URL, returns number[] (1408 floats)
+Handles auth via existing service account
+Uses dimension: 1408 for max accuracy (or 512 if we want smaller storage)
+2. Auto-embed on product create/update — modify the existing admin product endpoints
+
+When admin uploads/updates a product diagram → fetch the diagram image → generate embedding → store in Firestore as diagramEmbedding: [1408 floats]
+Runs once per product, not per scan
+3. One-time backfill endpoint — POST /admin/backfill-embeddings (admin-only, requires auth)
+
+Loops through all existing products that have diagramUrl but no diagramEmbedding
+Generates embeddings for each
+Returns count of products processed
+You call it once after deploy to populate embeddings for your existing catalog
+4. New /identify route logic:
+
+1. Receive photoBase64 from mobile app
+2. Generate embedding for the photo (~300ms)
+3. Pull all products with diagramEmbedding from Firestore
+4. Compute cosine similarity against each
+5. Sort by score, take the top match
+6. If score ≥ 0.75 → return matched product + confidence label
+   If 0.65–0.75 → return product but flag as "low confidence"  
+   If < 0.65 → return "no confident match, please retake"
+7. Total time: ~1 second
+
+5. Mobile-side change — artifacts/tashi/app/(user)/products.tsx (or wherever the camera is)
+
+Resize the captured photo to max 1024px before uploading using expo-image-manipulator
+Reduces upload size from ~3MB to ~150KB
+Faster scans, lower bandwidth, better embedding quality
+What You'll Need to Do (Once)
+Enable Vertex AI API in Google Cloud Console for project tashi-9512b
+Grant your App Engine service account the Vertex AI User role (one click in IAM)
+Pull the updated code, run pnpm install, pnpm run build, gcloud app deploy
+After deploy, hit the /admin/backfill-embeddings endpoint once (I'll give you the exact curl/Postman command)
+Rebuild Expo APK (because the mobile-side resize change requires a new build)
+Cost (Realistic)
+Vertex AI multimodal embeddings: ~$0.0002 per image
+1000 scans/day = ~$6/month
+Backfilling 100 existing products = ~$0.02 one-time
+For comparison, Gemini 2.5 Pro is ~10x more expensive per call.
+
+Accuracy Expectations (Honest)
+Condition	Expected accuracy
+Decent lighting, pad fills frame, plain background	90–95%
+Workshop floor, some clutter, side-angle photo	80–85%
+Heavy dirt, extreme angle, partial occlusion	60–70%
+Better than current Gemini, but not magic. UX rule: always show top match + confidence, let the mechanic confirm before adding to inventory.
+
+What I Will NOT Do
+Won't migrate to Cloud Run
+Won't install OpenCV or any native binaries
+Won't change your Firestore schema beyond adding one diagramEmbedding field per product
+Won't touch your auth, orders, or other routes
+Won't change your deploy pipeline — same gcloud app deploy
