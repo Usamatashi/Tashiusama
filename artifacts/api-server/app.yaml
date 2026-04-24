@@ -1,5 +1,6 @@
 runtime: nodejs22
 entrypoint: node --enable-source-maps ./dist/index.mjs
+instance_class: F4
 
 env_variables:
   NODE_ENV: "production"
