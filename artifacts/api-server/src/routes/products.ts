@@ -6,8 +6,8 @@ import { getImageEmbedding, getImageEmbeddingFromUrl, cosineSimilarity } from ".
 
 const router = Router();
 
-const HIGH_CONFIDENCE = 0.75;
-const LOW_CONFIDENCE = 0.65;
+const HIGH_CONFIDENCE = 0.55;
+const LOW_CONFIDENCE = 0.40;
 
 router.get("/", requireAuth, async (req, res) => {
   try {
