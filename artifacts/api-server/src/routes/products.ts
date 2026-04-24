@@ -2,7 +2,7 @@ import { Router } from "express";
 import { fdb, nextId, toISOString } from "../lib/firebase";
 import { uploadBase64ToStorage, deleteFromStorage } from "../lib/storage";
 import { requireAuth, requireAdmin } from "../lib/auth";
-import { getImageEmbedding, getImageEmbeddingFromUrl, cosineSimilarity } from "../lib/embeddings";
+import { getImageEmbedding, getImageEmbeddingFromUrl, cosineSimilarity, preprocessForMatching } from "../lib/embeddings";
 
 const router = Router();
 
@@ -59,7 +59,9 @@ router.post("/identify", requireAuth, async (req, res) => {
     }
 
     const cleanBase64 = photoBase64.replace(/^data:image\/\w+;base64,/, "");
-    const photoEmbedding = await getImageEmbedding(Buffer.from(cleanBase64, "base64"));
+    const rawPhoto = Buffer.from(cleanBase64, "base64");
+    const sketch = await preprocessForMatching(rawPhoto);
+    const photoEmbedding = await getImageEmbedding(sketch);
 
     const scored = productsWithEmbeddings
       .map((p) => ({
@@ -132,10 +134,11 @@ router.post("/admin/backfill-embeddings", requireAuth, requireAdmin, async (req,
     const snap = await fdb.collection("products").get();
     const products = snap.docs.map((d) => ({ ref: d.ref, data: d.data() }));
 
+    const force = req.body?.force === true;
     const targets = products.filter(
       (p) =>
         p.data.diagramUrl &&
-        (!Array.isArray(p.data.diagramEmbedding) || p.data.diagramEmbedding.length === 0),
+        (force || !Array.isArray(p.data.diagramEmbedding) || p.data.diagramEmbedding.length === 0),
     );
 
     let processed = 0;
@@ -144,7 +147,11 @@ router.post("/admin/backfill-embeddings", requireAuth, requireAdmin, async (req,
 
     for (const t of targets) {
       try {
-        const emb = await getImageEmbeddingFromUrl(t.data.diagramUrl);
+        const resp = await fetch(t.data.diagramUrl);
+        if (!resp.ok) throw new Error(`Failed to fetch diagram: ${resp.status}`);
+        const buf = Buffer.from(await resp.arrayBuffer());
+        const sketch = await preprocessForMatching(buf);
+        const emb = await getImageEmbedding(sketch);
         await t.ref.update({ diagramEmbedding: emb });
         processed++;
       } catch (e: any) {
@@ -184,7 +191,8 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
       diagramUrl = await uploadBase64ToStorage(diagramBase64, `products/${id}/diagram`);
       try {
         const cleanB64 = diagramBase64.replace(/^data:image\/\w+;base64,/, "");
-        diagramEmbedding = await getImageEmbedding(Buffer.from(cleanB64, "base64"));
+        const sketch = await preprocessForMatching(Buffer.from(cleanB64, "base64"));
+        diagramEmbedding = await getImageEmbedding(sketch);
       } catch (e) {
         req.log.error({ err: e }, "Failed to generate embedding on create");
       }
@@ -253,7 +261,8 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
         updateData.diagramUrl = await uploadBase64ToStorage(diagramBase64, `products/${id}/diagram`);
         try {
           const cleanB64 = diagramBase64.replace(/^data:image\/\w+;base64,/, "");
-          updateData.diagramEmbedding = await getImageEmbedding(Buffer.from(cleanB64, "base64"));
+          const sketch = await preprocessForMatching(Buffer.from(cleanB64, "base64"));
+          updateData.diagramEmbedding = await getImageEmbedding(sketch);
         } catch (e) {
           req.log.error({ err: e }, "Failed to generate embedding on update");
           updateData.diagramEmbedding = null;

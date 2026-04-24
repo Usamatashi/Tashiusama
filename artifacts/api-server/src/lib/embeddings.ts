@@ -1,4 +1,5 @@
 import aiplatform from "@google-cloud/aiplatform";
+import sharp from "sharp";
 import { logger } from "./logger";
 
 const { PredictionServiceClient } = aiplatform.v1;
@@ -36,6 +37,36 @@ function getClient(): InstanceType<typeof PredictionServiceClient> {
 
   client = new PredictionServiceClient({ apiEndpoint, projectId: PROJECT_ID });
   return client;
+}
+
+export async function preprocessForMatching(input: Buffer): Promise<Buffer> {
+  const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+  const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+
+  const base = await sharp(input)
+    .rotate()
+    .resize(512, 512, { fit: "inside", background: { r: 255, g: 255, b: 255 } })
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .grayscale()
+    .normalize()
+    .blur(1)
+    .toBuffer();
+
+  const ex = await sharp(base).convolve({ width: 3, height: 3, kernel: sobelX }).toBuffer();
+  const ey = await sharp(base).convolve({ width: 3, height: 3, kernel: sobelY }).toBuffer();
+
+  const { data: dx, info } = await sharp(ex).raw().toBuffer({ resolveWithObject: true });
+  const { data: dy } = await sharp(ey).raw().toBuffer({ resolveWithObject: true });
+
+  const out = Buffer.alloc(dx.length);
+  for (let i = 0; i < dx.length; i++) {
+    const m = Math.min(255, Math.sqrt(dx[i] * dx[i] + dy[i] * dy[i]));
+    out[i] = m > 40 ? 0 : 255;
+  }
+
+  return sharp(out, { raw: { width: info.width, height: info.height, channels: info.channels } })
+    .png()
+    .toBuffer();
 }
 
 export async function getImageEmbedding(input: Buffer | string): Promise<number[]> {
