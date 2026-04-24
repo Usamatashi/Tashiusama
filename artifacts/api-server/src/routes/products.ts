@@ -7,7 +7,8 @@ import { getImageEmbedding, getImageEmbeddingFromUrl, cosineSimilarity } from ".
 const router = Router();
 
 const HIGH_CONFIDENCE = 0.55;
-const LOW_CONFIDENCE = 0.40;
+const LOW_CONFIDENCE = 0.45;
+const MIN_MARGIN = 0.04;
 
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -60,11 +61,16 @@ router.post("/identify", requireAuth, async (req, res) => {
     const cleanBase64 = photoBase64.replace(/^data:image\/\w+;base64,/, "");
     const photoEmbedding = await getImageEmbedding(Buffer.from(cleanBase64, "base64"));
 
-    let best: { product: Record<string, unknown>; score: number } | null = null;
-    for (const p of productsWithEmbeddings) {
-      const score = cosineSimilarity(photoEmbedding, p.diagramEmbedding as number[]);
-      if (!best || score > best.score) best = { product: p, score };
-    }
+    const scored = productsWithEmbeddings
+      .map((p) => ({
+        product: p,
+        score: cosineSimilarity(photoEmbedding, p.diagramEmbedding as number[]),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    const runnerUp = scored[1];
+    const margin = runnerUp ? best.score - runnerUp.score : 1;
 
     if (!best) {
       res.status(500).json({ error: "Failed to score products" });
@@ -76,16 +82,21 @@ router.post("/identify", requireAuth, async (req, res) => {
     let matchedProduct: Record<string, unknown> | null = null;
     let reason: string;
 
-    if (best.score >= HIGH_CONFIDENCE) {
+    const ambiguous = runnerUp && margin < MIN_MARGIN;
+
+    if (best.score >= HIGH_CONFIDENCE && !ambiguous) {
       confidence = "high";
       matchedProductId = best.product.id as number;
       matchedProduct = best.product;
-      reason = `Visual match score ${best.score.toFixed(3)}`;
-    } else if (best.score >= LOW_CONFIDENCE) {
+      reason = `Visual match score ${best.score.toFixed(3)} (margin ${margin.toFixed(3)})`;
+    } else if (best.score >= LOW_CONFIDENCE && !ambiguous) {
       confidence = "medium";
       matchedProductId = best.product.id as number;
       matchedProduct = best.product;
-      reason = `Low-confidence visual match (score ${best.score.toFixed(3)}). Please verify before confirming.`;
+      reason = `Low-confidence visual match (score ${best.score.toFixed(3)}, margin ${margin.toFixed(3)}). Please verify before confirming.`;
+    } else if (ambiguous) {
+      confidence = "low";
+      reason = `Ambiguous match: top score ${best.score.toFixed(3)} but runner-up ${runnerUp.score.toFixed(3)} too close (margin ${margin.toFixed(3)}). Please retake the photo with better lighting, angle, and a plain background.`;
     } else {
       confidence = "low";
       reason = `No confident match (best score ${best.score.toFixed(3)}). Please retake the photo with better lighting and angle.`;
