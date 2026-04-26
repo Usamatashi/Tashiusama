@@ -4,8 +4,14 @@ import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.resolve(moduleDir, "public");
+const deleteAccountPage = path.join(publicDir, "delete-account.html");
 
 const app: Express = express();
 
@@ -83,6 +89,10 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use("/api", router);
+
+app.get(["/delete-account", "/delete-account.html", "/account/delete"], (_req, res) => {
+  res.sendFile(deleteAccountPage);
+});
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Not found" });
