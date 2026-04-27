@@ -35,7 +35,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
 │   ├── api-server/         # Express API server (port 8080, path /api)
-│   └── tashi/              # Expo React Native mobile app (port 19190)
+│   ├── tashi/              # Expo React Native mobile app (port 19190)
+│   └── web/                # Tashi Brakes website (React + Vite, port 5000)
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -129,6 +130,21 @@ Expo React Native mobile app with role-based authentication.
 - **API base URL**: `https://${EXPO_PUBLIC_DOMAIN}/api`
 - **Super Admin credentials**: phone `03055198651` / password `khan0112`
 - Colors: primary `#E87722` (orange), superAdmin `#7B2FBE` (purple)
+
+### `artifacts/web` (`@workspace/web`)
+
+Public-facing Tashi Brakes website — consumer e-commerce + company pages + admin dashboard. Deployed as a static SPA to Firebase Hosting (with the existing API server providing data).
+
+- **Stack**: React 19 + Vite 7 + TypeScript + Tailwind 4 + React Router DOM 7
+- **Brand**: Tashi orange `#E87722`, Inter + Plus Jakarta Sans fonts
+- **Workflow**: `Tashi Website` — `pnpm --filter @workspace/web run dev` on port 5000
+- **Build**: `pnpm --filter @workspace/web run build` → `artifacts/web/dist/`
+- **Deploy target**: Firebase Hosting (config to be added in Phase 4)
+- **Auth**: Firebase Auth (same accounts as the mobile app)
+- **API consumed**: existing `@workspace/api-server` routes
+- **Pages built (Phase 1, marketing)**: `/`, `/about`, `/team`, `/culture`, `/quality`, `/products`, `/contact`
+- **Pages pending (Phase 2, e-commerce)**: `/cart`, `/checkout`, `/orders`, `/login`, `/signup`
+- **Pages pending (Phase 3, admin)**: `/admin/login`, `/admin`, `/admin/{orders,users,products,qrcodes,claims,points,regions,ads,settings}`
 
 ### `scripts` (`@workspace/scripts`)
 
