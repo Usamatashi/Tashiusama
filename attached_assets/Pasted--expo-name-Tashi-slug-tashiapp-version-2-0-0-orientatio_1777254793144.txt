@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tashi",
     "slug": "tashiapp",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tashi",
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.tashi.app",
-      "versionCode": 3,
+      "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_CONTACTS",
@@ -39,9 +39,9 @@
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
-      "adaptiveIcon": {
+      "Icon": {
         "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#E87722"
+        "backgroundColor": "#FFFFFF"
       }
     },
     "web": {
@@ -88,6 +88,7 @@
       "eas": {
         "projectId": "45508069-9fda-40a7-a4ff-96cefc29c4ac"
       }
-    }
+    },
+    "owner": "tashibrakes"
   }
 }
