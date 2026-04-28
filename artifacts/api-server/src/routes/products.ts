@@ -10,6 +10,29 @@ const HIGH_CONFIDENCE = 0.55;
 const LOW_CONFIDENCE = 0.45;
 const MIN_MARGIN = 0.04;
 
+router.get("/public", async (req, res) => {
+  try {
+    const snap = await fdb.collection("products").orderBy("createdAt", "desc").get();
+    res.json(
+      snap.docs.map((d) => {
+        const p = d.data();
+        return {
+          id: p.id,
+          name: p.name,
+          salesPrice: p.salesPrice,
+          category: p.category,
+          productNumber: p.productNumber ?? null,
+          vehicleManufacturer: p.vehicleManufacturer ?? null,
+          imageUrl: p.imageUrl ?? null,
+        };
+      }),
+    );
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/", requireAuth, async (req, res) => {
   try {
     const snap = await fdb.collection("products").orderBy("createdAt", "desc").get();

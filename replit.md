@@ -141,7 +141,8 @@ Public-facing Tashi Brakes website — consumer e-commerce + company pages + adm
 - **Build**: `pnpm --filter @workspace/web run build` → `artifacts/web/dist/`
 - **Deploy target**: Firebase Hosting (config to be added in Phase 4)
 - **Auth**: Firebase Auth (same accounts as the mobile app)
-- **API consumed**: existing `@workspace/api-server` routes
+- **API consumed**: existing `@workspace/api-server` routes (proxied through Vite: `/api` → `http://localhost:8080`, configurable via `VITE_API_URL`)
+- **Public products**: `/products` page calls `GET /api/products/public` (no auth) so admin-managed inventory from the mobile app shows up live; falls back to a hardcoded sample set on error/empty
 - **Pages built (Phase 1, marketing)**: `/`, `/about`, `/team`, `/culture`, `/quality`, `/products`, `/contact`
 - **Pages pending (Phase 2, e-commerce)**: `/cart`, `/checkout`, `/orders`, `/login`, `/signup`
 - **Pages pending (Phase 3, admin)**: `/admin/login`, `/admin`, `/admin/{orders,users,products,qrcodes,claims,points,regions,ads,settings}`

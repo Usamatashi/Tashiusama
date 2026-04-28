@@ -90,6 +90,10 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use("/api", router);
 
+app.get("/", (_req, res) => {
+  res.status(200).json({ status: "ok", service: "tashi-api" });
+});
+
 app.get(["/delete-account", "/delete-account.html", "/account/delete"], (_req, res) => {
   res.sendFile(deleteAccountPage);
 });

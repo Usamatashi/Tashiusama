@@ -23,7 +23,7 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
 
 validateConfig();
 
-const server = app.listen(port, () => {
+const server = app.listen(port, "0.0.0.0", () => {
   logger.info({ port, env: process.env.NODE_ENV ?? "development" }, "Server listening");
   seedAdminUser().catch((err) => logger.error({ err }, "Post-startup tasks failed"));
 });
