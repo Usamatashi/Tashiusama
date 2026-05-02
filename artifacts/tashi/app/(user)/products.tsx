@@ -22,6 +22,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/context/AuthContext";
+import { apiBase } from "@/lib/apiBase";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -48,7 +49,7 @@ const CATEGORY_ORDER: ProductCategory[] = ["disc_pad", "brake_shoes", "other"];
 
 async function fetchProducts(): Promise<Product[]> {
   const token = (await AsyncStorage.getItem("tashi_token")) || "";
-  const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/products`, {
+  const res = await fetch(`${apiBase}/products`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to load products");

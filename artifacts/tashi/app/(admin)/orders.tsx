@@ -26,6 +26,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
+import { apiBase } from "@/lib/apiBase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface OrderItem {
@@ -79,7 +80,7 @@ async function getToken() {
 
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     ...opts,
     headers: {
       "Content-Type": "application/json",

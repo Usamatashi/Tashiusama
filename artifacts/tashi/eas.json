@@ -17,7 +17,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_RAILWAY_URL": "https://tashiusama--soryforbeinglat.replit.app"
+        "EXPO_PUBLIC_RAILWAY_URL": "https://YOUR_GCLOUD_API_URL_HERE",
+        "EXPO_PUBLIC_DOMAIN": "YOUR_GCLOUD_API_URL_HERE"
       }
     },
     "production": {
@@ -25,7 +26,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_RAILWAY_URL": "https://tashiusama--soryforbeinglat.replit.app"
+        "EXPO_PUBLIC_RAILWAY_URL": "https://YOUR_GCLOUD_API_URL_HERE",
+        "EXPO_PUBLIC_DOMAIN": "YOUR_GCLOUD_API_URL_HERE"
       }
     }
   },

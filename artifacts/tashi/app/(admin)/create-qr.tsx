@@ -18,6 +18,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { apiBase } from "@/lib/apiBase";
 import * as Haptics from "expo-haptics";
 import * as MediaLibrary from "expo-media-library";
 import ViewShot from "react-native-view-shot";
@@ -118,7 +119,7 @@ export default function CreateQRScreen() {
   const fetchProducts = async () => {
     setLoadingProducts(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/products`, {
+      const res = await fetch(`${apiBase}/products`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -138,7 +139,7 @@ export default function CreateQRScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/qrcodes`, {
+      const res = await fetch(`${apiBase}/qrcodes`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ qrNumber, productId: selectedProduct.id }),

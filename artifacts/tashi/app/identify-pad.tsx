@@ -19,8 +19,9 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 type MatchResult = {
   matchedProductId: number | null;

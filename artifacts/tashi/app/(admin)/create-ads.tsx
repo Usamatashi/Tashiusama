@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48) / 2;
@@ -39,7 +40,7 @@ async function getToken() {
   return (await AsyncStorage.getItem("tashi_token")) || "";
 }
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 
 export default function CreateAdsScreen() {

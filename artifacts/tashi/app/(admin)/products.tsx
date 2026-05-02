@@ -25,8 +25,9 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type ProductCategory = "disc_pad" | "brake_shoes" | "other";

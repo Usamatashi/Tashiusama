@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import TickerMarquee from "@/components/TickerMarquee";
 import { BrakePadCard } from "@/components/BrakePadCard";
+import { apiBase } from "@/lib/apiBase";
 
 const profilePicKey = (userId?: number) => `tashi_profile_pic_${userId ?? "unknown"}`;
 const ROLE_COLORS: Record<string, string> = {
@@ -133,7 +134,7 @@ export default function UserHomeScreen() {
     if (!user?.role) return;
     try {
       const token = await getToken();
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/whatsapp-contacts`, {
+      const res = await fetch(`${apiBase}/whatsapp-contacts`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -148,10 +149,10 @@ export default function UserHomeScreen() {
     try {
       const token = await getToken();
       const [adRes, tickerRes] = await Promise.all([
-        fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ads`, {
+        fetch(`${apiBase}/ads`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/ticker`, {
+        fetch(`${apiBase}/ticker`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -166,10 +167,10 @@ export default function UserHomeScreen() {
       const token = await getToken();
       if (user.role === "salesman") {
         const [bonusRes, ordersRes] = await Promise.all([
-          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-bonus`, {
+          fetch(`${apiBase}/orders/my-bonus`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders`, {
+          fetch(`${apiBase}/orders`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -182,7 +183,7 @@ export default function UserHomeScreen() {
           setPendingOrderCount(orders.filter(o => o.status === "pending").length);
         }
       } else if (user.role === "retailer") {
-        const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/orders/my-retail-orders`, {
+        const res = await fetch(`${apiBase}/orders/my-retail-orders`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -247,7 +248,7 @@ export default function UserHomeScreen() {
     setLoadingHistory(true);
     try {
       const token = await getToken();
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims`, {
+      const res = await fetch(`${apiBase}/claims`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setClaimHistory(await res.json());
@@ -271,7 +272,7 @@ export default function UserHomeScreen() {
     setClaiming(true);
     try {
       const token = await getToken();
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims`, {
+      const res = await fetch(`${apiBase}/claims`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });

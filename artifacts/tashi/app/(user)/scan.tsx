@@ -14,6 +14,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
+import { apiBase } from "@/lib/apiBase";
 
 export default function ScanScreen() {
   const { token, refreshUser } = useAuth();
@@ -27,7 +28,7 @@ export default function ScanScreen() {
     setScanned(true);
     setProcessing(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/qrcodes/scan`, {
+      const res = await fetch(`${apiBase}/qrcodes/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ qrNumber: data }),

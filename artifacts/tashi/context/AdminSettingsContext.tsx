@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { useAuth } from "./AuthContext";
+import { apiBase } from "@/lib/apiBase";
 
 export type AdminSettings = {
   tab_dashboard: boolean;
@@ -52,7 +53,7 @@ interface AdminSettingsContextType {
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | null>(null);
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 const POLL_INTERVAL_MS = 30_000;
 

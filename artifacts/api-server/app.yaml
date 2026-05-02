@@ -5,8 +5,10 @@ instance_class: F4
 env_variables:
   NODE_ENV: "production"
   PORT: "8080"
-
-# All secrets (FIREBASE_SERVICE_ACCOUNT, JWT_SECRET) must be set
-# in Google Cloud App Engine environment variables via Cloud Console:
-# App Engine → Versions → Edit → Environment Variables
-# OR via app.yaml env_variables above (not recommended for secrets)
+  # REQUIRED: Set these in GCloud Console → App Engine → Versions → Edit → Environment Variables
+  # Do NOT put secrets directly in this file — set them in the Cloud Console UI:
+  #   FIREBASE_SERVICE_ACCOUNT  — full JSON content of your Firebase service account key
+  #   JWT_SECRET                — a long random string (must match what was used to sign existing tokens)
+  #
+  # If FIREBASE_SERVICE_ACCOUNT is missing → Firestore queries return empty/fail
+  # If JWT_SECRET is missing/wrong        → all authenticated API calls return 401

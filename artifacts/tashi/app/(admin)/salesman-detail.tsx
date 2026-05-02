@@ -19,8 +19,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, router } from "expo-router";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 
 function fmt(n: number) { return n.toLocaleString(); }

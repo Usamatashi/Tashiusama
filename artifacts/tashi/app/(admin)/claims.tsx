@@ -20,6 +20,7 @@ import * as SMS from "expo-sms";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
 interface ClaimScan {
   id: number;
@@ -181,7 +182,7 @@ export default function AdminClaimsScreen() {
   const fetchClaims = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims`, {
+      const res = await fetch(`${apiBase}/claims`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -202,7 +203,7 @@ export default function AdminClaimsScreen() {
     setScansLoading(true);
     try {
       const res = await fetch(
-        `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims/${claim.id}/scans`,
+        `${apiBase}/claims/${claim.id}/scans`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -246,7 +247,7 @@ export default function AdminClaimsScreen() {
 
     try {
       const res = await fetch(
-        `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims/${verifyingClaim.id}/verify-qr`,
+        `${apiBase}/claims/${verifyingClaim.id}/verify-qr`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -315,7 +316,7 @@ export default function AdminClaimsScreen() {
           onPress: async () => {
             try {
               const res = await fetch(
-                `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims/${verifyingClaim.id}/mark-missing`,
+                `${apiBase}/claims/${verifyingClaim.id}/mark-missing`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -365,7 +366,7 @@ export default function AdminClaimsScreen() {
             setMarkingReceived(true);
             try {
               const res = await fetch(
-                `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims/${verifyingClaim.id}`,
+                `${apiBase}/claims/${verifyingClaim.id}`,
                 { method: "PATCH", headers: { Authorization: `Bearer ${token}` } }
               );
               if (res.ok) {

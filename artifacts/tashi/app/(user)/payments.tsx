@@ -30,6 +30,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
 import { TASHI_LOGO_BASE64 } from "@/constants/tashibLogoBase64";
+import { apiBase } from "@/lib/apiBase";
 
 function toWhatsAppPhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -41,7 +42,7 @@ function toWhatsAppPhone(phone: string) {
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     ...opts,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...opts?.headers },
   });

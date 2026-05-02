@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
+import { apiBase } from "@/lib/apiBase";
 
 interface ClaimRecord {
   id: number;
@@ -56,7 +57,7 @@ export default function RewardsScreen() {
     setLoadingClaims(true);
     try {
       const token = await getToken();
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/claims`, {
+      const res = await fetch(`${apiBase}/claims`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setClaimHistory(await res.json());

@@ -126,7 +126,7 @@ Expo React Native mobile app with role-based authentication.
 - **Mechanic**: QR code scanner using `expo-camera`
 - **Navigation**: Admin/Super Admin uses tabs; others use drawer
 - **Auth**: JWT in AsyncStorage, auto-restored on launch
-- **API base URL**: `https://${EXPO_PUBLIC_DOMAIN}/api`
+- **API base URL**: Resolved by `lib/apiBase.ts` — checks `EXPO_PUBLIC_RAILWAY_URL` first, then `EXPO_PUBLIC_DOMAIN`. Set these in `eas.json` env sections for builds.
 - **Super Admin credentials**: phone `03055198651` / password `khan0112`
 - Colors: primary `#E87722` (orange), superAdmin `#7B2FBE` (purple)
 

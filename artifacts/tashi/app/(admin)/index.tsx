@@ -22,8 +22,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminSettings, type AdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 function fmtCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

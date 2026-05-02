@@ -20,8 +20,9 @@ import { Redirect, router } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useAdminSettings } from "@/context/AdminSettingsContext";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 const DEFAULT_ACCESS = {
   tab_dashboard: true,

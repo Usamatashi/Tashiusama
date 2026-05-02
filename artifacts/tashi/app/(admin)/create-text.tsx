@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
 interface TickerItem {
   id: number;
@@ -27,7 +28,7 @@ async function getToken() {
   return (await AsyncStorage.getItem("tashi_token")) || "";
 }
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 export default function CreateTextScreen() {
   const insets = useSafeAreaInsets();

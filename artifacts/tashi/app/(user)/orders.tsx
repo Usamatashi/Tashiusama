@@ -27,6 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { router } from "expo-router";
 import { BackButton } from "@/components/BackButton";
+import { apiBase } from "@/lib/apiBase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Retailer { id: number; name: string | null; phone: string; city: string | null; }
@@ -86,7 +87,7 @@ async function getToken() { return (await AsyncStorage.getItem("tashi_token")) |
 
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     ...opts,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...opts?.headers },
   });

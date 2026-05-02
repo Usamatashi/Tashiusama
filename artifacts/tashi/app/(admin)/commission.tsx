@@ -18,8 +18,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 async function getToken() { return (await AsyncStorage.getItem("tashi_token")) || ""; }
 
 interface CommissionEntry {

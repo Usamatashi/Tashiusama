@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
+import { apiOrigin } from "@/lib/apiBase";
 
 export interface AuthUser {
   id: number;
@@ -27,28 +28,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const STORAGE_KEY_TOKEN = "tashi_token";
 const STORAGE_KEY_USER = "tashi_user";
 
-const RAILWAY_URL = process.env.EXPO_PUBLIC_RAILWAY_URL ?? "";
-const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-
-function resolveApiBaseUrl(): string {
-  if (RAILWAY_URL) {
-    return RAILWAY_URL.startsWith("http") ? RAILWAY_URL : `https://${RAILWAY_URL}`;
-  }
-  if (DOMAIN) {
-    return `https://${DOMAIN}`;
-  }
-  return "";
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const baseUrl = resolveApiBaseUrl();
-    if (baseUrl) {
-      setBaseUrl(baseUrl);
+    if (apiOrigin) {
+      setBaseUrl(apiOrigin);
     }
 
     let storedToken: string | null = null;
@@ -76,8 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (phone: string, password: string) => {
-    const baseUrl = resolveApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/auth/login`, {
+    const response = await fetch(`${apiOrigin}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, password }),
@@ -113,9 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     if (!token) return;
-    const baseUrl = resolveApiBaseUrl();
     try {
-      const response = await fetch(`${baseUrl}/api/auth/me`, {
+      const response = await fetch(`${apiOrigin}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -130,8 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     if (!token) throw new Error("Not authenticated");
-    const baseUrl = resolveApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/auth/change-password`, {
+    const response = await fetch(`${apiOrigin}/api/auth/change-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

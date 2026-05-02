@@ -16,24 +16,17 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AdminSettingsProvider } from "@/context/AdminSettingsContext";
 import AnimatedSplash from "@/components/AnimatedSplash";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { apiOrigin } from "@/lib/apiBase";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const RAILWAY_URL = process.env.EXPO_PUBLIC_RAILWAY_URL ?? "";
-const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-function resolveBaseUrl() {
-  if (RAILWAY_URL) return RAILWAY_URL.startsWith("http") ? RAILWAY_URL : `https://${RAILWAY_URL}`;
-  if (DOMAIN) return `https://${DOMAIN}`;
-  return "";
-}
-
 function AppContent() {
   const { isLoading: authLoading, user, token } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
-  usePushNotifications({ userId: user?.id, token, baseUrl: resolveBaseUrl() });
+  usePushNotifications({ userId: user?.id, token, baseUrl: apiOrigin });
 
   const handleSplashFinish = useCallback(() => {
     setShowSplash(false);

@@ -17,8 +17,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BackButton } from "@/components/BackButton";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 async function getToken() {
   const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;

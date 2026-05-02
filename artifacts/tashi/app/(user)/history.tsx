@@ -14,6 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
 import { BackButton } from "@/components/BackButton";
+import { apiBase } from "@/lib/apiBase";
 
 interface Scan {
   id: number;
@@ -39,7 +40,7 @@ export default function HistoryScreen() {
   const fetchScans = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/scans`, {
+      const res = await fetch(`${apiBase}/scans`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

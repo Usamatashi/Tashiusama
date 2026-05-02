@@ -26,8 +26,9 @@ import {
 } from "@/context/AdminSettingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { Colors } from "@/constants/colors";
+import { apiBase } from "@/lib/apiBase";
 
-const BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const BASE = apiBase;
 
 const SUPER_ACCENT = "#7B2FBE";
 
