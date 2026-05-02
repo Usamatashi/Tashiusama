@@ -35,8 +35,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
 │   ├── api-server/         # Express API server (port 8080, path /api)
-│   ├── tashi/              # Expo React Native mobile app (port 19190)
-│   └── web/                # Tashi Brakes website (React + Vite, port 5000)
+│   └── tashi/              # Expo React Native mobile app (port 19190)
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -75,7 +74,7 @@ Express 5 API server. All data access goes through Firebase Firestore and Fireba
 - Push: `src/lib/push.ts` — Expo push notifications via push token collection
 - Seed: `src/lib/seed.ts` — idempotent super admin creation using `_locks` transaction
 - Routes: 16 route files in `src/routes/`
-- `pnpm --filter @workspace/api-server run dev` — build + start dev server
+- `pnpm --filter @workspace/api-server run dev` — start dev server (pre-built dist)
 - `pnpm --filter @workspace/api-server run build` — esbuild production bundle
 
 ### Firestore Collections
@@ -131,22 +130,6 @@ Expo React Native mobile app with role-based authentication.
 - **Super Admin credentials**: phone `03055198651` / password `khan0112`
 - Colors: primary `#E87722` (orange), superAdmin `#7B2FBE` (purple)
 
-### `artifacts/web` (`@workspace/web`)
-
-Public-facing Tashi Brakes website — consumer e-commerce + company pages + admin dashboard. Deployed as a static SPA to Firebase Hosting (with the existing API server providing data).
-
-- **Stack**: React 19 + Vite 7 + TypeScript + Tailwind 4 + React Router DOM 7
-- **Brand**: Tashi orange `#E87722`, Inter + Plus Jakarta Sans fonts
-- **Workflow**: `Tashi Website` — `pnpm --filter @workspace/web run dev` on port 5000
-- **Build**: `pnpm --filter @workspace/web run build` → `artifacts/web/dist/`
-- **Deploy target**: Firebase Hosting (config to be added in Phase 4)
-- **Auth**: Firebase Auth (same accounts as the mobile app)
-- **API consumed**: existing `@workspace/api-server` routes (proxied through Vite: `/api` → `http://localhost:8080`, configurable via `VITE_API_URL`)
-- **Public products**: `/products` page calls `GET /api/products/public` (no auth) so admin-managed inventory from the mobile app shows up live; falls back to a hardcoded sample set on error/empty
-- **Pages built (Phase 1, marketing)**: `/`, `/about`, `/team`, `/culture`, `/quality`, `/products`, `/contact`
-- **Pages pending (Phase 2, e-commerce)**: `/cart`, `/checkout`, `/orders`, `/login`, `/signup`
-- **Pages pending (Phase 3, admin)**: `/admin/login`, `/admin`, `/admin/{orders,users,products,qrcodes,claims,points,regions,ads,settings}`
-
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts. Run via `pnpm --filter @workspace/scripts run <script>`.
@@ -160,3 +143,8 @@ Utility scripts. Run via `pnpm --filter @workspace/scripts run <script>`.
 | `SUPER_ADMIN_PHONE` | Env | Defaults to `03055198651` |
 | `SUPER_ADMIN_PASSWORD` | Env | Defaults to `khan0112` |
 | `PORT` | Runtime | Assigned by Replit |
+
+## Deployment Notes
+
+- **API server**: Deployed to Google Cloud (port 8080). Set `FIREBASE_SERVICE_ACCOUNT`, `JWT_SECRET` as environment variables.
+- **Website** (separate repo): When building with Vite for App Engine, set `VITE_API_URL` at build time to the deployed API server's public URL (e.g. `https://your-api.appspot.com`). Without this, API calls resolve relative to the App Engine domain and return no data.
